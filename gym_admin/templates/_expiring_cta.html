@@ -1,0 +1,22 @@
+{% set label_prefix = label_prefix if label_prefix is defined else '' %}
+{% if fecha_fin and telefono %}
+  {% set phone = telefono %}
+  {% if phone and phone.startswith('+') %}
+    {% set phone_raw = phone %}
+  {% else %}
+    {% set phone_raw = '+591' ~ (phone or '') %}
+  {% endif %}
+  {% set nombre = nombre_display if nombre_display is defined else '' %}
+  {% set msg = "Estimado(a) " ~ (nombre or '') ~ ", te escribimos desde Hipertrofia Funcional para recordarte que tu membresía vencerá pronto (" ~ fecha_fin ~ "). Puedes renovarla por adelantado sin esperar al vencimiento." %}
+  {% set wa_url = ('https://wa.me/' ~ (phone_raw|replace('+','')) ~ '?text=' ~ (msg|urlencode)) %}
+  
+  <div class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-md px-2 py-1 shadow-sm">
+    <div class="flex items-center gap-1.5 border-r border-amber-200/60 pr-2">
+      <i class="ti ti-clock-exclamation text-amber-500 text-[16px] drop-shadow-sm"></i>
+      <span class="text-[11px] font-bold text-amber-700 tracking-tight whitespace-nowrap">{{ label_prefix }}Vence: {{ fecha_fin }}</span>
+    </div>
+    <a href="{{ wa_url }}" target="_blank" class="flex items-center justify-center text-emerald-500 hover:text-emerald-600 bg-white border border-emerald-100 rounded shadow-sm hover:shadow transition-all w-6 h-6 hover:-translate-y-0.5 shrink-0" title="Enviar recordatorio por WhatsApp">
+      <i class="ti ti-brand-whatsapp text-[16px]"></i>
+    </a>
+  </div>
+{% endif %}

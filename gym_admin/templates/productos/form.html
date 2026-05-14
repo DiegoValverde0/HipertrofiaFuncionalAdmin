@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Producto{% endblock %}
+{% block content %}
+  <div class="max-w-3xl mx-auto space-y-6">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">{{ 'Editar Producto del Catalogo' if producto else 'Nuevo Producto al Catalogo' }}</h2>
+      <p class="text-sm text-slate-500 mt-1">Completa la informacion del producto y guarda los cambios.</p>
+    </div>
+
+    <form method="post" class="confirm-edit bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      {% if producto %}<input type="hidden" name="id" value="{{ producto.id }}">{% endif %}
+
+      <div class="p-6 space-y-6">
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-slate-700">Nombre</label>
+          <div class="flex items-center gap-2.5">
+            <i class="ti ti-tag text-slate-400 text-sm shrink-0"></i>
+            <input class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500" name="nombre" value="{{ producto.nombre if producto else '' }}" required>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-slate-700">Descripcion</label>
+          <textarea class="min-h-[120px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500" name="descripcion">{{ producto.descripcion if producto else '' }}</textarea>
+        </div>
+
+        <div class="space-y-2 max-w-sm">
+          <label for="precio" class="text-sm font-medium text-slate-700">Precio</label>
+          <div class="flex items-center gap-2.5">
+            <i class="ti ti-currency-dollar text-slate-400 text-sm shrink-0"></i>
+            <input type="number" step="0.01" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500" id="precio" name="precio" value="{{ producto.precio if producto else '' }}" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3 justify-end">
+        <a href="{{ url_for('productos.list_productos') }}" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 h-10 px-4">
+          Cancelar
+        </a>
+        <button type="submit" class="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-colors bg-sky-600 hover:bg-sky-700 text-white h-10 px-6">
+          Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

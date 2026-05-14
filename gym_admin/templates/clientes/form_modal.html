@@ -1,0 +1,120 @@
+<!-- Formulario Modal de Clientes - Sin estructura de página -->
+<!-- Este template se carga dinámicamente en el modal -->
+{% if cliente %}
+<form method="post" action="{{ url_for('clientes.edit_cliente', cliente_id=cliente.id) }}" class="confirm-edit">
+  <input type="hidden" name="id" value="{{ cliente.id }}">
+{% else %}
+<form method="post" action="{{ url_for('clientes.create_cliente') }}" class="confirm-edit">
+{% endif %}
+  
+  <!-- Sección: Datos Personales -->
+  <div class="mb-6 pb-6 border-b border-slate-100">
+    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+      <i class="ti ti-user-edit text-brand-500 text-xl"></i> 
+      Datos Personales
+    </h3>
+
+    <!-- Nombre y Apellido -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="space-y-2" data-field>
+        <label class="text-sm font-medium text-slate-700">Nombre <span class="text-red-500">*</span></label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-user text-slate-400 text-sm shrink-0"></i>
+          <input name="nombre" value="{{ cliente.nombre if cliente else '' }}" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" placeholder="Nombre(s)" required>
+        </div>
+        <p class="text-xs text-red-600 hidden" data-error-msg="nombre"></p>
+      </div>
+
+      <div class="space-y-2" data-field>
+        <label class="text-sm font-medium text-slate-700">Apellido</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-user text-slate-400 text-sm shrink-0"></i>
+          <input name="apellido" value="{{ cliente.apellido if cliente else '' }}" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" placeholder="Apellidos">
+        </div>
+        <p class="text-xs text-red-600 hidden" data-error-msg="apellido"></p>
+      </div>
+    </div>
+
+    <!-- Correo y Teléfono -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-2" data-field>
+        <label class="text-sm font-medium text-slate-700">Correo Electrónico</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-mail text-slate-400 text-sm shrink-0"></i>
+          <input type="email" name="correo" value="{{ (cliente.correo or '') if cliente else '' }}" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" placeholder="ejemplo@correo.com">
+        </div>
+        <p class="text-xs text-red-600 hidden" data-error-msg="correo"></p>
+      </div>
+
+      <div class="space-y-2" data-field>
+        <label class="text-sm font-medium text-slate-700">Teléfono</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-phone text-slate-400 text-sm shrink-0"></i>
+          <input name="telefono" value="{{ cliente.telefono if cliente else '' }}" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" placeholder="Ej: 76843945">
+        </div>
+        <p class="text-xs text-red-600 hidden" data-error-msg="telefono"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Información Adicional -->
+  <div class="mb-6 pb-6 border-b border-slate-100">
+    <!-- Fecha Nacimiento y Tipo -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-2" data-field>
+        <label class="text-sm font-medium text-slate-700">Fecha de Nacimiento <span class="text-red-500">*</span></label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-calendar text-slate-400 text-sm shrink-0"></i>
+          <input id="fecha_nacimiento" type="date" name="fecha_nacimiento" value="{{ cliente.fecha_nacimiento if cliente and cliente.fecha_nacimiento else '' }}" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 cursor-pointer" required>
+        </div>
+        <p class="text-xs text-red-600 hidden" data-error-msg="fecha_nacimiento"></p>
+      </div>
+
+      <div class="space-y-2" data-field>
+        <label class="text-sm font-medium text-slate-700">Tipo de Cliente</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-id-badge-2 text-slate-400 text-sm shrink-0"></i>
+          <select name="tipo_cliente" class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 cursor-pointer">
+            <option value="Individual" {% if cliente and cliente.tipo_cliente=='Individual' %}selected{% endif %}>Individual</option>
+            <option value="Corporativo" {% if cliente and cliente.tipo_cliente=='Corporativo' %}selected{% endif %}>Corporativo</option>
+          </select>
+        </div>
+        <p class="text-xs text-red-600 hidden" data-error-msg="tipo_cliente"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección: Sucursal -->
+  {% if sucursales %}
+  <div class="mb-6">
+    <div class="space-y-2" data-field>
+      <label class="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+        <i class="ti ti-building text-slate-400 text-lg"></i> 
+        Sucursal Asignada
+      </label>
+      <select class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer" name="sucursal_id" {% if current_user and current_user.rol_id != 1 %}disabled{% endif %}>
+        {% set pref = sucursal_actual_id if sucursal_actual_id else None %}
+        {% for s in sucursales %}
+          {% if (cliente and cliente.sucursal_id == s.id) or (not cliente and pref == s.id) %}
+            <option value="{{ s.id }}" selected>{{ s.nombre }}</option>
+          {% else %}
+            <option value="{{ s.id }}">{{ s.nombre }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+      <p class="text-xs text-red-600 hidden" data-error-msg="sucursal_id"></p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Botones de Acción -->
+  <div class="flex gap-3 pt-6 border-t border-slate-100">
+    <button type="button" onclick="modalForm.close()" class="flex-1 inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 h-10 px-4">
+      Cancelar
+    </button>
+    <button type="submit" class="flex-1 inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-brand-600 text-white hover:bg-brand-700 h-10 px-4 disabled:opacity-50 disabled:cursor-not-allowed">
+      <i class="ti ti-check mr-2"></i>
+      {% if cliente %}Actualizar{% else %}Crear Cliente{% endif %}
+    </button>
+  </div>
+</form>

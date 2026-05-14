@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes{% endblock %}
+{% block page_title %}Listado de Clientes{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+  <div>
+    <h2 class="text-2xl font-bold tracking-tight text-slate-900">Clientes</h2>
+    <p class="text-sm text-slate-500 mt-1">Gestiona los clientes registrados y sus membresías.</p>
+  </div>
+  <button onclick="openClienteModal('create')" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:pointer-events-none disabled:opacity-50 bg-brand-600 text-white shadow-sm hover:bg-brand-700 h-9 px-4 py-2 shrink-0">
+    <i class="ti ti-plus mr-2"></i> Nuevo cliente
+  </button>
+</div>
+
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+  <!-- Búsqueda -->
+  <div class="flex items-center gap-2.5 w-full sm:w-80">
+    <i class="ti ti-search h-4 w-4 text-slate-400 shrink-0"></i>
+    <input id="cliente-search" class="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-500" placeholder="Buscar por nombre, correo, teléfono..." value="{{ q or '' }}">
+  </div>
+  
+  <!-- Filtros y Acciones -->
+  <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+    <select id="estado-select" class="flex h-9 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+      <option value="" {% if not estado and not expiring_days %}selected{% endif %}>Todos los estados</option>
+      <option value="Activo" {% if estado=='Activo' and not expiring_days %}selected{% endif %}>Activos</option>
+      <option value="Inactivo" {% if estado=='Inactivo' %}selected{% endif %}>Inactivos</option>
+      <option value="activos_por_vencer" {% if estado=='Activo' and expiring_days %}selected{% endif %}>Por vencer (7 días)</option>
+    </select>
+
+    <div class="shrink-0">
+      <select id="per-page" class="flex h-9 items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+        <option value="10" {% if per_page==10 %}selected{% endif %}>10/pág</option>
+        <option value="25" {% if per_page==25 %}selected{% endif %}>25/pág</option>
+        <option value="50" {% if per_page==50 %}selected{% endif %}>50/pág</option>
+        <option value="100" {% if per_page==100 %}selected{% endif %}>100/pág</option>
+      </select>
+    </div>
+
+    <div class="flex items-center gap-2 border-l border-slate-200 pl-2 shrink-0">
+      <button id="export-clients-csv" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 h-9 px-3 shadow-sm" title="Exportar CSV">
+        <i class="ti ti-file-spreadsheet text-emerald-600 text-lg"></i>
+      </button>
+      <button id="print-clients-view" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 h-9 px-3 shadow-sm" title="Imprimir lista">
+        <i class="ti ti-printer text-lg"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="clientes-table">
+  {% include 'clientes/_table.html' %}
+</div>
+
+<!-- fallback accordion para bootstrap legacy móvil -->
+<div id="clientes-accordion" class="d-block d-sm-none mt-4"></div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  // CLIENT LIST: Unified filter, search, pagination & per-page
+  // All state is kept in a central object and sent to the server
+  // ═══════════════════════════════════════════════════════════════
+  (function(){
+    // Current active filters (initialized from server-rendered values)
+    var filters = {
+      q:        '{{ q or "" }}',
+      estado:   '{{ estado or "" }}',
+      tipo:     '{{ tipo or "" }}',
+      expiring: '{{ expiring_days or "" }}',
+      per_page: {{ per_page or 10 }},
+      page:     {{ page or 1 }}
+    };
+
+    var searchEl = document.getElementById('cliente-search');
+    var estadoEl = document.getElementById('estado-select');
+    var perPageEl = document.getElementById('per-page');
+
+    // ─── Core: Load table via AJAX with current filters ───
+    function loadTable(overrides) {
+      // Merge overrides into filters
+      if (overrides) {
+        for (var k in overrides) {
+          if (overrides.hasOwnProperty(k)) {
+            filters[k] = overrides[k];
+          }
+        }
+      }
+
+      var url = new URL('/clientes/table', window.location.origin);
+
+      // Add all non-empty filters as query params
+      if (filters.q)        url.searchParams.set('q', filters.q);
+      if (filters.estado)   url.searchParams.set('estado', filters.estado);
+      if (filters.tipo)     url.searchParams.set('tipo', filters.tipo);
+      if (filters.expiring) url.searchParams.set('expiring', filters.expiring);
+      url.searchParams.set('per_page', filters.per_page);
+      url.searchParams.set('page', filters.page);
+
+      // Use accordion mode on small screens
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        url.searchParams.set('mode', 'accordion');
+      }
+
+      fetch(url.toString(), { credentials: 'same-origin' })
+        .then(function(res) { return res.text(); })
+        .then(function(html) {
+          var isAccordion = url.searchParams.get('mode') === 'accordion';
+          var targetEl = isAccordion
+            ? document.getElementById('clientes-accordion')
+            : document.getElementById('clientes-table');
+          if (!targetEl) targetEl = document.getElementById('clientes-table');
+          if (targetEl) {
+            targetEl.innerHTML = html;
+          }
+          // Clear the alternate container
+          var otherId = isAccordion ? 'clientes-table' : 'clientes-accordion';
+          var other = document.getElementById(otherId);
+          if (other) other.innerHTML = '';
+
+          // Update URL in address bar to reflect current filters (for refresh/bookmarks)
+          try {
+            var stateUrl = new URL(window.location.pathname, window.location.origin);
+            if (filters.q)        stateUrl.searchParams.set('q', filters.q);
+            if (filters.estado)   stateUrl.searchParams.set('estado', filters.estado);
+            if (filters.tipo)     stateUrl.searchParams.set('tipo', filters.tipo);
+            if (filters.expiring) stateUrl.searchParams.set('expiring', filters.expiring);
+            if (filters.per_page && filters.per_page != 10) stateUrl.searchParams.set('per_page', filters.per_page);
+            if (filters.page && filters.page != 1) stateUrl.searchParams.set('page', filters.page);
+            history.replaceState(null, '', stateUrl.toString());
+          } catch(e) {}
+        })
+        .catch(function(err) {
+          console.error('Error loading client table', err);
+        });
+    }
+
+    // Expose globally for modal save callback
+    window._clientLoadTable = loadTable;
+
+    // ─── Search input (debounced, resets to page 1) ───
+    var searchTimer = null;
+    if (searchEl) {
+      searchEl.addEventListener('input', function(){
+        clearTimeout(searchTimer);
+        var val = this.value.trim();
+        searchTimer = setTimeout(function(){
+          loadTable({ q: val, page: 1 });
+        }, 250);
+      });
+    }
+
+    // ─── Estado filter (resets to page 1) ───
+    if (estadoEl) {
+      estadoEl.addEventListener('change', function(){
+        var val = this.value;
+        if (val === 'activos_por_vencer') {
+          loadTable({ estado: 'Activo', expiring: 7, page: 1 });
+        } else {
+          loadTable({ estado: val, expiring: '', page: 1 });
+        }
+      });
+    }
+
+    // ─── Per-page select (resets to page 1) ───
+    if (perPageEl) {
+      perPageEl.addEventListener('change', function(){
+        loadTable({ per_page: parseInt(this.value), page: 1 });
+      });
+    }
+
+    // ─── Delegated: Pagination link clicks inside the table ───
+    document.body.addEventListener('click', function(e){
+      var a = e.target.closest('#clientes-table .page-link, #clientes-accordion .page-link');
+      if (!a) return;
+      e.preventDefault();
+      try {
+        var href = a.getAttribute('href') || '';
+        if (href === '#') return; // current page link
+        var u = new URL(href, window.location.origin);
+        var page = u.searchParams.get('page') || 1;
+        loadTable({ page: parseInt(page) });
+      } catch(err) {
+        window.location.href = a.href;
+      }
+    });
+
+    // ─── Initial load ───
+    // Don't reload on initial page since the server already rendered the table
+    // But we do need to ensure accordion mode on small screens
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      loadTable({ mode: 'accordion' });
+    }
+  })();
+</script>
+
+<!-- Modal Form Script -->
+<script>
+  function openClienteModal(mode, clienteId = null) {
+    // Determinar URL según el modo
+    let url;
+    if (mode === 'create') {
+      url = '{{ url_for("clientes.create_cliente") }}';
+    } else if (mode === 'edit' && clienteId) {
+      url = `/clientes/${clienteId}/edit`;
+    } else {
+      return;
+    }
+
+    // Actualizar titulo del modal
+    document.getElementById('modal-title').textContent = 
+      mode === 'create' ? 'Crear Nuevo Cliente' : 'Editar Cliente';
+
+    // Abrir modal
+    if (modalForm) {
+      modalForm.saveCallback = function(data) {
+        // Recargar tabla después de guardar, preservando filtros actuales
+        if (typeof window._clientLoadTable === 'function') {
+          window._clientLoadTable({ page: 1 });
+        } else {
+          location.reload();
+        }
+      };
+      modalForm.open(url, mode);
+    }
+  }
+</script>
+{% endblock %}

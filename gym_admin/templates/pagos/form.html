@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Pago{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+  <!-- Header -->
+  <div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Registrar Pago</h2>
+    <p class="text-sm text-slate-500 mt-1">Registra un nuevo abono para una membresía pendiente.</p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <form method="post" class="confirm-edit p-6 sm:p-8 space-y-8" id="payment-form">
+      
+      {# Si no hay membresía, mostrar buscador #}
+      {% if not membresia %}
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2">Seleccionar Membresía</h3>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Buscar cliente con deuda</label>
+          <div class="flex items-center gap-2.5">
+            <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+            <input id="m-search" class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 bg-slate-50 hover:bg-white" placeholder="Escribe el nombre del cliente...">
+          </div>
+          <input type="hidden" name="membresia_id" id="pf-membresia-id" value="{{ membresia.id if membresia else '' }}">
+          <div id="pf-results" class="mt-2 absolute z-10 w-full bg-white rounded-lg shadow-lg border border-slate-100 empty:hidden"></div>
+        </div>
+      </div>
+      {% else %}
+      <div class="bg-brand-50 border border-brand-100 rounded-xl p-4 flex items-start">
+        <div class="bg-brand-100 text-brand-600 rounded-full p-2 mr-3">
+          <i class="ti ti-user-check text-xl"></i>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-slate-900">Cliente Seleccionado</h4>
+          <p class="text-sm text-slate-700 mt-0.5">Registrando pago para la membresía <strong class="text-brand-600">#{{ membresia.id }}</strong> de <strong class="text-slate-900">{{ membresia.cliente.nombre }} {{ membresia.cliente.apellido }}</strong>.</p>
+        </div>
+        <input type="hidden" name="membresia_id" value="{{ membresia.id }}">
+      </div>
+      {% endif %}
+
+      <div class="space-y-6 pt-2">
+        <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2">Detalles del Abono</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Monto a abonar (S/)</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <span class="text-slate-400 sm:text-sm font-medium">S/</span>
+              </div>
+              <input class="block w-full pl-9 rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 bg-slate-50 hover:bg-white" 
+                     name="monto_inicial" id="monto_inicial" type="number" step="0.01" min="0.01" value="{{ '%.2f'|format(monto_a_pagar) if monto_a_pagar else '' }}" required>
+            </div>
+            <p class="mt-1.5 text-xs text-slate-500">Monto total del abono que se está registrando.</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Método de Pago Principal</label>
+            <select class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 px-4 bg-slate-50 hover:bg-white" 
+                    name="metodo_pago" id="metodo_pago" required>
+              <option value="Efectivo" selected>Efectivo</option>
+              <option value="Pago QR">Pago QR</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Tarjeta">Tarjeta</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Split Payment Toggle -->
+        <div class="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center">
+            <input type="checkbox" id="is_split_payment" name="is_split_payment" class="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 cursor-pointer">
+            <label for="is_split_payment" class="ml-2 block text-sm font-medium text-slate-700 cursor-pointer">
+              Dividir pago en múltiples métodos (Ej. Mitad Efectivo, Mitad QR)
+            </label>
+          </div>
+          
+          <div id="split-payment-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200" style="display: none;">
+            <div>
+              <label for="monto_efectivo" class="block text-sm font-medium text-slate-700 mb-1.5">Monto en Efectivo</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><span class="text-slate-400 sm:text-sm">S/</span></div>
+                <input type="number" class="block w-full pl-9 rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-10 bg-white" id="monto_efectivo" name="monto_efectivo" step="0.01" min="0">
+              </div>
+            </div>
+            <div>
+              <label for="monto_qr" class="block text-sm font-medium text-slate-700 mb-1.5">Monto en QR / Digital</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><span class="text-slate-400 sm:text-sm">S/</span></div>
+                <input type="number" class="block w-full pl-9 rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-10 bg-white" id="monto_qr" name="monto_qr" step="0.01" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Comentarios (Opcional)</label>
+          <textarea class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors px-4 py-3 bg-slate-50 hover:bg-white" 
+                    name="comentarios" rows="2" placeholder="Referencia de transferencia, detalles del pago, etc."></textarea>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+        <a href="{{ url_for('pagos.list_pagos') }}" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 h-10 px-5">
+          Cancelar
+        </a>
+        <button type="submit" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 bg-brand-600 text-white hover:bg-brand-700 h-10 px-5 shadow-sm">
+          <i class="ti ti-cash mr-2 text-lg"></i>
+          Procesar Pago
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal confirmation overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity" id="pf-confirm-modal" style="display:none;">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden transform transition-all">
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+      <h5 class="text-lg font-bold text-slate-900 flex items-center">
+        <i class="ti ti-alert-circle text-brand-500 mr-2 text-xl"></i> Confirmar Pago
+      </h5>
+    </div>
+    <div class="p-6 text-slate-700 text-sm space-y-4" id="pf-modal-body">
+      <!-- resumen se inyecta aquí -->
+    </div>
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+      <button type="button" id="pf-modal-close" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 h-10 px-5">Cancelar</button>
+      <button type="button" id="pf-modal-pay" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none bg-brand-600 text-white hover:bg-brand-700 h-10 px-5 shadow-sm font-bold">CONFIRMAR Y PAGAR</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Lógica para el pago dividido
+  document.getElementById('is_split_payment').addEventListener('change', function() {
+    var splitFields = document.getElementById('split-payment-fields');
+    var metodoPagoSelect = document.getElementById('metodo_pago');
+    var montoInicialInput = document.getElementById('monto_inicial');
+    if (this.checked) {
+      splitFields.style.display = 'grid'; // Changed to grid for Tailwind
+      
+      // Auto-calculate split if possible
+      var total = parseFloat(montoInicialInput.value);
+      if(!isNaN(total) && total > 0) {
+        document.getElementById('monto_efectivo').value = (total / 2).toFixed(2);
+        document.getElementById('monto_qr').value = (total / 2).toFixed(2);
+      }
+      
+      // Update method visually
+      var opt = document.createElement('option');
+      opt.value = 'QR/Efectivo';
+      opt.text = 'Pago Dividido (Múltiple)';
+      opt.selected = true;
+      metodoPagoSelect.add(opt);
+      
+      metodoPagoSelect.setAttribute('readonly', 'readonly');
+      metodoPagoSelect.style.pointerEvents = 'none';
+      metodoPagoSelect.style.opacity = '0.7';
+    } else {
+      splitFields.style.display = 'none';
+      metodoPagoSelect.removeAttribute('readonly');
+      metodoPagoSelect.style.pointerEvents = 'auto';
+      metodoPagoSelect.style.opacity = '1';
+      
+      // Remove the custom option
+      for (var i=0; i<metodoPagoSelect.options.length; i++) {
+        if (metodoPagoSelect.options[i].value == 'QR/Efectivo') {
+          metodoPagoSelect.remove(i);
+          break;
+        }
+      }
+      metodoPagoSelect.value = 'Efectivo'; // Volver al valor por defecto
+      document.getElementById('monto_efectivo').value = '';
+      document.getElementById('monto_qr').value = '';
+    }
+  });
+
+  // Lógica para buscar membresías pendientes
+  (function(){
+    var input = document.getElementById('m-search');
+    var results = document.getElementById('pf-results');
+    var hid = document.getElementById('pf-membresia-id');
+    var timer = null;
+    if(!input) return;
+    input.addEventListener('input', function(){
+      clearTimeout(timer);
+      var q = this.value.trim();
+      timer = setTimeout(function(){
+        if(!q){ results.innerHTML = ''; hid.value = ''; return; }
+        fetch('/pagos/search_membresias?q='+encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(data){
+            var html = '<div class="divide-y divide-slate-100 max-h-60 overflow-y-auto">';
+            if(data.length === 0) {
+              html += '<div class="px-4 py-3 text-sm text-slate-500">No se encontraron clientes con membresías pendientes.</div>';
+            } else {
+              data.forEach(function(item){
+                html += '<a href="?membresia_id='+item.id+'" class="block px-4 py-3 hover:bg-slate-50 transition-colors">';
+                html += '<p class="text-sm font-semibold text-slate-900">' + item.cliente_nombre + '</p>';
+                html += '<p class="text-xs text-slate-500 mt-0.5">Plan: ' + item.plan + ' &bull; <span class="font-bold text-red-600">Pendiente: S/ ' + parseFloat(item.pendiente).toFixed(2) + '</span></p>';
+                html += '</a>';
+              });
+            }
+            html += '</div>';
+            results.innerHTML = html;
+          });
+      }, 250);
+    });
+  })();
+
+  // Lógica para el modal de confirmación
+  (function() {
+    var form = document.getElementById('payment-form');
+    var modal = document.getElementById('pf-confirm-modal');
+    if (!form || !modal) return;
+
+    form.addEventListener('submit', function(ev) {
+      ev.preventDefault(); // Detener el envío del formulario siempre
+
+      // Recolectar datos del formulario para el resumen
+      var montoTotal = document.getElementById('monto_inicial').value;
+      var isSplit = document.getElementById('is_split_payment').checked;
+      var metodo = document.getElementById('metodo_pago').value;
+      var montoEfectivo = document.getElementById('monto_efectivo').value;
+      var montoQr = document.getElementById('monto_qr').value;
+
+      // Construir el HTML del resumen con clases de Tailwind
+      var resumenHtml = '<div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 flex justify-between items-center">';
+      resumenHtml += '<span class="text-slate-600 font-medium">Monto Total:</span>';
+      resumenHtml += '<span class="text-2xl font-black text-brand-600">S/ ' + parseFloat(montoTotal).toFixed(2) + '</span>';
+      resumenHtml += '</div>';
+      
+      if (isSplit) {
+        resumenHtml += '<div class="space-y-2 px-2">';
+        resumenHtml += '<p class="flex justify-between border-b border-slate-100 pb-2"><span class="text-slate-500">Método:</span> <strong class="text-slate-900">Pago Dividido</strong></p>';
+        if (montoEfectivo > 0) resumenHtml += '<p class="flex justify-between text-sm"><span class="text-slate-500">Efectivo:</span> <span class="font-medium text-slate-900">S/ ' + parseFloat(montoEfectivo).toFixed(2) + '</span></p>';
+        if (montoQr > 0) resumenHtml += '<p class="flex justify-between text-sm"><span class="text-slate-500">QR / Digital:</span> <span class="font-medium text-slate-900">S/ ' + parseFloat(montoQr).toFixed(2) + '</span></p>';
+        resumenHtml += '</div>';
+      } else {
+        resumenHtml += '<div class="space-y-2 px-2">';
+        resumenHtml += '<p class="flex justify-between"><span class="text-slate-500">Método:</span> <strong class="text-slate-900">' + metodo + '</strong></p>';
+        resumenHtml += '</div>';
+      }
+      
+      resumenHtml += '<p class="mt-4 text-center text-xs text-slate-400">Verifica que los montos sean correctos antes de confirmar.</p>';
+
+      document.getElementById('pf-modal-body').innerHTML = resumenHtml;
+      modal.style.display = 'flex';
+      document.getElementById('pf-modal-close').focus();
+    });
+
+    // Handlers del modal
+    document.getElementById('pf-modal-close').addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+
+    document.getElementById('pf-modal-pay').addEventListener('click', function() {
+      // Evitar doble submit
+      this.disabled = true;
+      this.innerHTML = '<i class="ti ti-loader animate-spin mr-2"></i> Procesando...';
+      // Ocultar modal y enviar el formulario
+      form.submit();
+    });
+
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+  <div class="max-w-7xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <i class="ti ti-report-money text-2xl"></i>
+          </div>
+          Historial de Ventas
+        </h2>
+        <p class="text-sm text-slate-500 mt-1">Consulta, filtra y revisa los detalles de cada venta.</p>
+      </div>
+
+      <a class="h-10 inline-flex items-center justify-center gap-2 px-5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-sm shadow-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 whitespace-nowrap" href="{{ url_for('ventas.create_venta') }}">
+        <i class="ti ti-plus text-lg"></i> Nueva Venta
+      </a>
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+        <div class="flex items-center gap-2.5 flex-1 w-full">
+          <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+          <input id="search-input" class="w-full h-10 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors" placeholder="Buscar por cliente..." value="{{ q or '' }}">
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+          <div class="flex items-center gap-2.5 w-full sm:w-52">
+            <i class="ti ti-calendar text-slate-400 text-sm shrink-0"></i>
+            <select id="period-filter" class="w-full pr-10 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-xl text-sm transition-all duration-200 appearance-none text-slate-900 font-medium cursor-pointer">
+              <option value="all" {% if period == 'all' %}selected{% endif %}>Todos los Periodos</option>
+              <option value="today" {% if period == 'today' %}selected{% endif %}>Hoy</option>
+              <option value="week" {% if period == 'week' %}selected{% endif %}>Esta semana</option>
+              <option value="month" {% if period == 'month' %}selected{% endif %}>Este mes</option>
+              <option value="year" {% if period == 'year' %}selected{% endif %}>Este ano</option>
+              <option value="custom" {% if period == 'custom' %}selected{% endif %}>Rango personalizado</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2.5 w-full sm:w-52">
+            <i class="ti ti-credit-card text-slate-400 text-sm shrink-0"></i>
+            <select id="metodo-pago-filter" class="w-full pr-10 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-xl text-sm transition-all duration-200 appearance-none text-slate-900 font-medium cursor-pointer">
+              <option value="">Todos los metodos</option>
+              <option value="Efectivo" {% if metodo_pago_filter == 'Efectivo' %}selected{% endif %}>Efectivo</option>
+              <option value="Pago QR" {% if metodo_pago_filter == 'Pago QR' %}selected{% endif %}>Pago QR</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2.5 shrink-0">
+            <select id="ventas-per-page" class="h-10 text-sm border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 bg-white shadow-sm cursor-pointer px-3">
+              <option value="10" {% if pagination.per_page==10 %}selected{% endif %}>10/pág</option>
+              <option value="25" {% if pagination.per_page==25 %}selected{% endif %}>25/pág</option>
+              <option value="50" {% if pagination.per_page==50 %}selected{% endif %}>50/pág</option>
+              <option value="100" {% if pagination.per_page==100 %}selected{% endif %}>100/pág</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4" id="custom-range-container" style="display: none;">
+        <div class="flex flex-col sm:flex-row gap-4">
+          <div class="flex-1">
+            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Fecha desde</label>
+            <input id="fecha-desde" type="date" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-xl text-sm transition-all" value="{{ fecha_desde or '' }}">
+          </div>
+          <div class="flex-1">
+            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Fecha hasta</label>
+            <input id="fecha-hasta" type="date" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-xl text-sm transition-all" value="{{ fecha_hasta or '' }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ventas-summary-card" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-sm text-slate-500">Ventas filtradas</div>
+          <div id="ventas-summary-total" class="text-2xl font-semibold text-slate-900">$0.00</div>
+        </div>
+        <div class="text-end">
+          <div class="text-xs text-slate-500 uppercase tracking-wide">Elementos</div>
+          <div id="ventas-summary-count" class="text-lg font-semibold text-slate-700">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="table-container">
+      {% include 'ventas/_table.html' %}
+    </div>
+  </div>
+
+  <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-slate-50">
+          <h5 class="modal-title" id="detailModalLabel">Detalle de Venta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="detailModalBody">
+          <!-- Contenido cargado por AJAX -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var container = document.getElementById('table-container');
+      var searchInput = document.getElementById('search-input');
+      var periodFilter = document.getElementById('period-filter');
+      var customRangeContainer = document.getElementById('custom-range-container');
+      var metodoPagoFilter = document.getElementById('metodo-pago-filter');
+      var perPageSelect = document.getElementById('ventas-per-page');
+      var fechaDesde = document.getElementById('fecha-desde');
+      var fechaHasta = document.getElementById('fecha-hasta');
+      var searchTimeout;
+
+      // Centralized filter state
+      var filters = {
+        q: '{{ q or "" }}',
+        period: '{{ period or "all" }}',
+        metodo_pago: '{{ metodo_pago_filter or "" }}',
+        fecha_desde: '{{ fecha_desde or "" }}',
+        fecha_hasta: '{{ fecha_hasta or "" }}',
+        per_page: {{ pagination.per_page if pagination else 10 }},
+        page: {{ pagination.page if pagination else 1 }}
+      };
+
+      function fetchTable(overrides) {
+        if (overrides) {
+          for (var k in overrides) {
+            if (overrides.hasOwnProperty(k)) filters[k] = overrides[k];
+          }
+        }
+
+        var url = new URL('{{ url_for("ventas.list_ventas") }}', window.location.origin);
+        url.searchParams.set('page', filters.page);
+        url.searchParams.set('per_page', filters.per_page);
+        if (filters.q) url.searchParams.set('q', filters.q);
+        if (filters.period) url.searchParams.set('period', filters.period);
+        if (filters.metodo_pago) url.searchParams.set('metodo_pago', filters.metodo_pago);
+        if (filters.period === 'custom') {
+          if (filters.fecha_desde) url.searchParams.set('fecha_desde', filters.fecha_desde);
+          if (filters.fecha_hasta) url.searchParams.set('fecha_hasta', filters.fecha_hasta);
+        }
+
+        fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function(r) { return r.text(); })
+          .then(function(html) { container.innerHTML = html; })
+          .catch(function(err) { console.error('Error al cargar la tabla:', err); });
+
+        // Update URL bar
+        try {
+          var stateUrl = new URL(window.location.pathname, window.location.origin);
+          if (filters.q) stateUrl.searchParams.set('q', filters.q);
+          if (filters.period && filters.period !== 'all') stateUrl.searchParams.set('period', filters.period);
+          if (filters.metodo_pago) stateUrl.searchParams.set('metodo_pago', filters.metodo_pago);
+          if (filters.period === 'custom') {
+            if (filters.fecha_desde) stateUrl.searchParams.set('fecha_desde', filters.fecha_desde);
+            if (filters.fecha_hasta) stateUrl.searchParams.set('fecha_hasta', filters.fecha_hasta);
+          }
+          if (filters.per_page && filters.per_page != 10) stateUrl.searchParams.set('per_page', filters.per_page);
+          if (filters.page && filters.page != 1) stateUrl.searchParams.set('page', filters.page);
+          history.replaceState(null, '', stateUrl.toString());
+        } catch(e) {}
+
+        fetchSummary();
+      }
+
+      function fetchSummary() {
+        var url = new URL('{{ url_for("ventas.api_summary") }}', window.location.origin);
+        if (filters.q) url.searchParams.set('q', filters.q);
+        if (filters.period) url.searchParams.set('period', filters.period);
+        if (filters.metodo_pago) url.searchParams.set('metodo_pago', filters.metodo_pago);
+        if (filters.period === 'custom') {
+          if (filters.fecha_desde) url.searchParams.set('fecha_desde', filters.fecha_desde);
+          if (filters.fecha_hasta) url.searchParams.set('fecha_hasta', filters.fecha_hasta);
+        }
+        fetch(url.toString())
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var totalNode = document.getElementById('ventas-summary-total');
+            var countNode = document.getElementById('ventas-summary-count');
+            if (totalNode) totalNode.textContent = '$' + Number(data.total || 0).toFixed(2);
+            if (countNode) countNode.textContent = '' + (data.count || 0);
+          })
+          .catch(function(err) { console.error('Error al obtener resumen de ventas:', err); });
+      }
+
+      // Search (debounced)
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        var val = this.value;
+        searchTimeout = setTimeout(function() { fetchTable({ q: val, page: 1 }); }, 300);
+      });
+
+      // Period filter
+      periodFilter.addEventListener('change', function() {
+        customRangeContainer.style.display = this.value === 'custom' ? 'block' : 'none';
+        if (this.value !== 'custom') {
+          fetchTable({ period: this.value, page: 1 });
+        }
+      });
+
+      // Payment method filter
+      metodoPagoFilter.addEventListener('change', function() {
+        fetchTable({ metodo_pago: this.value, page: 1 });
+      });
+
+      // Per-page selector
+      perPageSelect.addEventListener('change', function() {
+        fetchTable({ per_page: parseInt(this.value), page: 1 });
+      });
+
+      // Custom date range
+      fechaDesde.addEventListener('change', function() {
+        fetchTable({ fecha_desde: this.value, page: 1 });
+      });
+      fechaHasta.addEventListener('change', function() {
+        fetchTable({ fecha_hasta: this.value, page: 1 });
+      });
+
+      // Delegated pagination clicks
+      container.addEventListener('click', function(e) {
+        var a = e.target.closest('.page-link');
+        if (a) {
+          e.preventDefault();
+          try {
+            var href = a.getAttribute('href') || '';
+            if (href === '#' || !href) return;
+            var u = new URL(href, window.location.origin);
+            fetchTable({ page: parseInt(u.searchParams.get('page') || 1) });
+          } catch(err) {
+            window.location.href = a.href;
+          }
+          return;
+        }
+        // Detail button
+        if (e.target.closest('.view-detail-btn')) {
+          e.preventDefault();
+          var ventaId = e.target.closest('.view-detail-btn').dataset.ventaId;
+          fetch('{{ url_for("ventas.list_ventas") }}' + ventaId, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+              document.getElementById('detailModalBody').innerHTML = html;
+              new bootstrap.Modal(document.getElementById('detailModal')).show();
+            });
+        }
+      });
+
+      // Initial setup
+      periodFilter.dispatchEvent(new Event('change'));
+      fetchSummary();
+    })();
+  </script>
+{% endblock %}

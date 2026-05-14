@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Nueva Venta{% endblock %}
+{% block content %}
+  <div class="max-w-7xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Nueva Venta</h2>
+        <p class="text-sm text-slate-500 mt-1">Agrega productos, selecciona cliente y registra el pago.</p>
+      </div>
+      <a href="{{ url_for('ventas.list_ventas') }}" class="h-10 inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 px-4">
+        Volver a Ventas
+      </a>
+    </div>
+
+    <form method="post" id="venta-form">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-8">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <i class="ti ti-box text-emerald-600"></i>
+                Productos
+              </h3>
+            </div>
+            <div class="p-6">
+              <div class="mb-4">
+                <label for="product-search" class="text-sm font-medium text-slate-700">Buscar producto</label>
+                <div class="relative">
+                  <div class="flex items-center gap-2.5 mt-1">
+                    <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+                    <input type="text" id="product-search" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" placeholder="Escribe para buscar productos...">
+                  </div>
+                  <div id="product-results" class="mt-1"></div>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead class="bg-slate-50 text-slate-600">
+                    <tr>
+                      <th class="px-4 py-3 text-left font-semibold">Producto</th>
+                      <th class="px-4 py-3 text-left font-semibold" style="width: 120px;">Cantidad</th>
+                      <th class="px-4 py-3 text-left font-semibold">Precio Unit.</th>
+                      <th class="px-4 py-3 text-left font-semibold">Subtotal</th>
+                      <th class="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="cart-items" class="divide-y divide-slate-100">
+                    <!-- Los productos añadidos aparecerán aquí -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <i class="ti ti-receipt text-emerald-600"></i>
+                Resumen de la venta
+              </h3>
+            </div>
+            <div class="p-6 space-y-5">
+              <div>
+                <label for="cliente-search" class="text-sm font-medium text-slate-700">Cliente (opcional)</label>
+                <div id="cliente-search-wrapper" class="mt-1">
+                  <input type="text" id="cliente-search" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" placeholder="Buscar cliente...">
+                  <div id="cliente-results" class="mt-1"></div>
+                  <input type="hidden" name="cliente_id" id="cliente_id_input">
+                  <div id="selected-cliente" class="mt-2" style="display: none;"></div>
+                </div>
+              </div>
+
+              <div>
+                <label class="text-sm font-medium text-slate-700">Metodo de pago</label>
+                <select name="metodo_pago" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Pago QR">Pago QR</option>
+                </select>
+              </div>
+
+              <div class="border-t border-slate-100 pt-4 space-y-2">
+                <div class="flex justify-between text-sm text-slate-600">
+                  <span>Subtotal</span>
+                  <span id="subtotal-display" class="font-medium">0.00</span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-sm text-slate-600">Descuento (monto fijo)</span>
+                  <input name="descuento" id="descuento-input" class="h-9 w-32 rounded-lg border border-slate-200 bg-white px-2 text-sm text-right shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" type="number" step="0.01" value="0">
+                </div>
+              </div>
+
+              <div class="border-t border-slate-100 pt-4 flex items-center justify-between text-lg font-semibold text-slate-900">
+                <span>TOTAL</span>
+                <span id="total-display">0.00</span>
+              </div>
+
+              <button type="submit" class="w-full h-11 inline-flex items-center justify-center rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
+                Registrar Venta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal de Confirmación -->
+  <div class="modal fade" id="confirm-sale-modal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-slate-50">
+          <h5 class="modal-title" id="confirmModalLabel">Confirmar Venta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="sale-summary">
+          <!-- El resumen de la venta se inyectará aquí -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100" data-bs-dismiss="modal" id="cancel-sale-btn">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="confirm-sale-btn">Confirmar Venta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const productSearch = document.getElementById('product-search');
+      const productResults = document.getElementById('product-results');
+      const cartItems = document.getElementById('cart-items');
+      const subtotalDisplay = document.getElementById('subtotal-display');
+      const descuentoInput = document.getElementById('descuento-input');
+      const totalDisplay = document.getElementById('total-display');
+      const ventaForm = document.getElementById('venta-form');
+      const confirmModal = new bootstrap.Modal(document.getElementById('confirm-sale-modal'));
+      const clienteSearch = document.getElementById('cliente-search');
+      const clienteResults = document.getElementById('cliente-results');
+      const clienteIdInput = document.getElementById('cliente_id_input');
+      const selectedClienteDiv = document.getElementById('selected-cliente');
+      const cancelBtn = document.getElementById('cancel-sale-btn');
+      let allProducts = [];
+      let searchTimeout;
+
+      // Cargar productos
+      fetch("{{ url_for('ventas.api_productos') }}")
+        .then(r => r.json())
+        .then(data => { allProducts = data.items || []; });
+
+      // Lógica de búsqueda de clientes
+      clienteSearch.addEventListener('input', function() {
+        const query = this.value;
+        if (query.length < 2) {
+          clienteResults.innerHTML = '';
+          return;
+        }
+        fetch(`{{ url_for('ventas.api_clientes') }}?q=${encodeURIComponent(query)}`)
+          .then(response => response.json())
+          .then(data => {
+            clienteResults.innerHTML = '';
+            if (data.length > 0) {
+              clienteResults.className = 'border border-slate-200 rounded-lg shadow-sm bg-white mt-1 max-h-60 overflow-y-auto';
+            }
+            data.forEach((cliente, index) => {
+              const item = document.createElement('a');
+              item.href = '#';
+              item.className = 'block w-full text-left px-4 py-2 hover:bg-slate-100 text-sm text-slate-900 border-b border-slate-100 transition-colors';
+              if (index === data.length - 1) {
+                item.className = item.className.replace(' border-b border-slate-100', ' border-b-0');
+              }
+              item.textContent = cliente.text;
+              item.addEventListener('click', e => {
+                e.preventDefault();
+                clienteIdInput.value = cliente.id;
+                selectedClienteDiv.innerHTML = `Cliente: <strong>${cliente.text}</strong> <button type="button" class="ml-2 px-2 py-1 text-xs font-medium text-red-700 hover:text-red-900 transition-colors" id="clear-cliente"> (x)</button>`;
+                selectedClienteDiv.style.display = 'block';
+                clienteSearch.style.display = 'none';
+                clienteResults.innerHTML = '';
+              });
+              clienteResults.appendChild(item);
+            });
+          });
+      });
+
+      selectedClienteDiv.addEventListener('click', function(e) {
+        if (e.target.id === 'clear-cliente') {
+          clienteIdInput.value = '';
+          selectedClienteDiv.style.display = 'none';
+          clienteSearch.value = '';
+          clienteSearch.style.display = 'block';
+        }
+      });
+
+      productSearch.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.toLowerCase().trim();
+        productResults.innerHTML = '';
+        if (query.length < 2) return;
+
+        searchTimeout = setTimeout(() => {
+          const filtered = allProducts.filter(p => p.nombre.toLowerCase().includes(query));
+          if (filtered.length > 0) {
+            productResults.className = 'border border-slate-200 rounded-lg shadow-sm bg-white mt-1 max-h-60 overflow-y-auto';
+          }
+          filtered.forEach((p, index) => {
+            const stockClass = p.stock > 10 ? 'bg-emerald-100 text-emerald-700' : p.stock > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'block w-full text-left px-4 py-2 hover:bg-slate-100 text-sm text-slate-900 border-b border-slate-100 transition-colors';
+            if (index === filtered.length - 1) {
+              item.className = item.className.replace(' border-b border-slate-100', ' border-b-0');
+            }
+            item.innerHTML = `<div class="flex justify-between items-center"><span>${p.nombre} - S/ ${p.precio.toFixed(2)}</span><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stockClass}">${p.stock}</span></div>`;
+            item.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (p.stock > 0) {
+                addProductToCart(p);
+                productSearch.value = '';
+                productResults.innerHTML = '';
+              }
+            });
+            productResults.appendChild(item);
+          });
+        }, 250);
+      });
+
+      function addProductToCart(product) {
+        const existingRow = cartItems.querySelector(`tr[data-product-id="${product.id}"]`);
+        if (existingRow) {
+          const qtyInput = existingRow.querySelector('.cantidad-input');
+          const newQty = parseInt(qtyInput.value) + 1;
+          if (newQty <= product.stock) {
+            qtyInput.value = newQty;
+          }
+        } else {
+          const row = document.createElement('tr');
+          row.dataset.productId = product.id;
+          row.innerHTML = `
+            <td>
+              ${product.nombre}
+              <input type="hidden" name="producto_id[]" value="${product.id}">
+              <input type="hidden" name="precio[]" value="${product.precio}">
+            </td>
+            <td><input type="number" name="cantidad[]" class="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-right shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cantidad-input" value="1" min="1" max="${product.stock}"></td>
+            <td>${product.precio.toFixed(2)}</td>
+            <td class="subtotal-cell">${product.precio.toFixed(2)}</td>
+            <td><button type="button" class="px-2 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors remove-row-btn">&times;</button></td>
+          `;
+          cartItems.appendChild(row);
+        }
+        updateTotals();
+      }
+
+      cartItems.addEventListener('input', function(e) {
+        if (e.target.classList.contains('cantidad-input')) {
+          updateTotals();
+        }
+      });
+
+      cartItems.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-row-btn')) {
+          e.target.closest('tr').remove();
+          updateTotals();
+        }
+      });
+
+      descuentoInput.addEventListener('input', updateTotals);
+
+      function updateTotals() {
+        let subtotal = 0;
+        cartItems.querySelectorAll('tr').forEach(row => {
+          const cantidad = parseFloat(row.querySelector('.cantidad-input').value) || 0;
+          const precio = parseFloat(row.querySelector('input[name="precio[]"]').value) || 0;
+          const rowSubtotal = cantidad * precio;
+          row.querySelector('.subtotal-cell').textContent = rowSubtotal.toFixed(2);
+          subtotal += rowSubtotal;
+        });
+
+        const descuento = parseFloat(descuentoInput.value) || 0;
+        const total = subtotal - descuento;
+
+        subtotalDisplay.textContent = subtotal.toFixed(2);
+        totalDisplay.textContent = total.toFixed(2);
+      }
+
+      // Lógica del Modal de Confirmación
+      ventaForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const summaryContainer = document.getElementById('sale-summary');
+        let summaryHtml = '<h6>Resumen de la Venta:</h6><ul class="list-group">';
+        let hasItems = false;
+
+        cartItems.querySelectorAll('tr').forEach(row => {
+          hasItems = true;
+          const productName = row.cells[0].innerText.trim();
+          const quantity = row.querySelector('.cantidad-input').value;
+          summaryHtml += `<li class="list-group-item">${productName} (x${quantity})</li>`;
+        });
+
+        if (!hasItems) {
+          alert('No hay productos en el carrito.');
+          return;
+        }
+
+        summaryHtml += '</ul>';
+        summaryHtml += `<hr><p class="text-end"><strong>Total: ${totalDisplay.textContent}</strong></p>`;
+        summaryContainer.innerHTML = summaryHtml;
+
+        confirmModal.show();
+        // Enfocar el botón de cancelar por defecto
+        setTimeout(() => cancelBtn.focus(), 500);
+      });
+
+      document.getElementById('confirm-sale-btn').addEventListener('click', function() {
+        // Si se confirma, se envía el formulario
+        ventaForm.submit();
+      });
+
+    });
+  </script>
+{% endblock %}

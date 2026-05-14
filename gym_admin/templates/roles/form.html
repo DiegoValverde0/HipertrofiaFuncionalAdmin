@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Rol - Gym Admin{% endblock %}
+
+{% block content %}
+  <h2>{{ 'Editar' if role else 'Crear' }} rol</h2>
+  <form method="post" class="confirm-edit">
+    {% if role %}<input type="hidden" name="id" value="{{ role.id }}">{% endif %}
+    <div class="mb-3">
+      <label class="form-label">Nombre</label>
+      <input class="form-control" name="nombre" value="{{ role.nombre if role else '' }}" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a class="btn btn-secondary" href="{{ url_for('roles.list_roles') }}">Cancelar</a>
+  </form>
+{% endblock %}

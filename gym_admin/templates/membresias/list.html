@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Membresías{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+          <i class="ti ti-id-badge-2 text-2xl"></i>
+        </div>
+        Membresías
+      </h2>
+      <p class="text-sm text-slate-500 mt-1">Gestiona las suscripciones y planes de los clientes.</p>
+    </div>
+    
+    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+      <div class="flex items-center gap-2.5 w-full sm:w-72">
+        <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+        <input id="membresia-search" class="w-full h-10 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" placeholder="Buscar por cliente o ID..." value="{{ q or '' }}">
+      </div>
+      
+      <button onclick="openMembresiaModal('create')" class="h-10 inline-flex items-center justify-center gap-2 px-5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-sm shadow-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap">
+        <i class="ti ti-plus text-lg"></i> Nueva Membresía
+      </button>
+    </div>
+  </div>
+
+  <div id="membresias-table">
+    {% include 'membresias/_table.html' %}
+  </div>
+
+<!-- Centralized filter/pagination script (same pattern as clientes) -->
+<script>
+  (function(){
+    var filters = {
+      q:        '{{ q or "" }}',
+      per_page: {{ per_page or 10 }},
+      page:     {{ pagination.page if pagination else 1 }}
+    };
+
+    var searchEl = document.getElementById('membresia-search');
+
+    function loadTable(overrides) {
+      if (overrides) {
+        for (var k in overrides) {
+          if (overrides.hasOwnProperty(k)) filters[k] = overrides[k];
+        }
+      }
+
+      var url = new URL('/membresias', window.location.origin);
+      if (filters.q) url.searchParams.set('q', filters.q);
+      url.searchParams.set('per_page', filters.per_page);
+      url.searchParams.set('page', filters.page);
+      url.searchParams.set('partial', '1');
+
+      fetch(url.toString(), { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(res) { return res.text(); })
+        .then(function(html) {
+          var container = document.getElementById('membresias-table');
+          if (container) container.innerHTML = html;
+
+          // Update URL bar
+          try {
+            var stateUrl = new URL(window.location.pathname, window.location.origin);
+            if (filters.q) stateUrl.searchParams.set('q', filters.q);
+            if (filters.per_page && filters.per_page != 10) stateUrl.searchParams.set('per_page', filters.per_page);
+            if (filters.page && filters.page != 1) stateUrl.searchParams.set('page', filters.page);
+            history.replaceState(null, '', stateUrl.toString());
+          } catch(e) {}
+        })
+        .catch(function(err) { console.error('Error loading membresias table', err); });
+    }
+
+    window._membLoadTable = loadTable;
+
+    // Search (debounced, resets to page 1)
+    var searchTimer = null;
+    if (searchEl) {
+      searchEl.addEventListener('input', function(){
+        clearTimeout(searchTimer);
+        var val = this.value.trim();
+        searchTimer = setTimeout(function(){ loadTable({ q: val, page: 1 }); }, 250);
+      });
+    }
+
+    // Per-page change (delegated since per-page is inside the AJAX-loaded partial)
+    document.body.addEventListener('change', function(e){
+      var sel = e.target.closest && e.target.closest('#per-page');
+      if (!sel) return;
+      // Only handle if we're on the membresias page
+      if (!document.getElementById('membresias-table')) return;
+      loadTable({ per_page: parseInt(sel.value), page: 1 });
+    });
+
+    // Pagination click delegation
+    document.body.addEventListener('click', function(e){
+      var a = e.target.closest('#membresias-table .page-link');
+      if (!a) return;
+      e.preventDefault();
+      try {
+        var href = a.getAttribute('href') || '';
+        if (href === '#' || !href) return;
+        var u = new URL(href, window.location.origin);
+        var page = u.searchParams.get('page') || 1;
+        loadTable({ page: parseInt(page) });
+      } catch(err) {
+        window.location.href = a.href;
+      }
+    });
+  })();
+</script>
+
+<script>
+  function openMembresiaModal(mode, membresiaId = null) {
+    let url;
+    if (mode === 'create') {
+      url = '{{ url_for("membresias.create_membresia") }}';
+    } else if (mode === 'edit' && membresiaId) {
+      url = `/membresias/${membresiaId}/edit`;
+    } else {
+      return;
+    }
+
+    document.getElementById('modal-title').textContent = mode === 'create' ? 'Crear Membresía' : 'Editar Membresía';
+
+    if (modalForm) {
+      modalForm.saveCallback = function(data) {
+        if (typeof window._membLoadTable === 'function') {
+          window._membLoadTable({ page: 1 });
+        } else {
+          location.reload();
+        }
+      };
+      modalForm.open(url, mode);
+    }
+  }
+  function openPagoModal(membresiaId) {
+    if (!membresiaId) return;
+    const url = `{{ url_for('pagos.create_pago') }}?membresia_id=${membresiaId}`;
+    if (modalForm) {
+      modalForm.saveCallback = function(data) {
+        if (typeof window._membLoadTable === 'function') {
+          window._membLoadTable({});
+        } else {
+          location.reload();
+        }
+      };
+      modalForm.open(url, 'create');
+    }
+  }
+</script>
+
+  {# Pagination presented by the included table fragment to avoid duplication when loaded via AJAX #}
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Estado de Membresía{% endblock %}
+
+{% block content %}
+  <h2>{{ 'Editar' if estado else 'Crear' }} estado</h2>
+  <form method="post" class="confirm-edit">
+    {% if estado %}<input type="hidden" name="id" value="{{ estado.id }}">{% endif %}
+    <div class="mb-3">
+      <label class="form-label">Nombre</label>
+      <input class="form-control" name="nombre" value="{{ estado.nombre if estado else '' }}" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a class="btn btn-secondary" href="{{ url_for('estados_membresias.list_estados') }}">Cancelar</a>
+  </form>
+{% endblock %}

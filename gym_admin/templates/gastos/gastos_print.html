@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Imprimir gastos{% endblock %}
+{% block content %}
+  <div class="border p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="mb-0">Gym Admin</h3>
+        <small class="text-muted">Reporte de Gastos</small>
+      </div>
+      <div class="text-end">
+        <strong>Fecha:</strong> {{ now.strftime('%Y-%m-%d %H:%M') }}
+      </div>
+    </div>
+    <hr>
+    <div class="row">
+      <div class="col-md-6">
+        <h6>Filtros aplicados</h6>
+        <ul class="list-unstyled small">
+          <li><strong>Descripción:</strong> {{ filters.q if filters.q else 'Todos' }}</li>
+          <li><strong>Categoría:</strong> {{ (filters.categoria and (categorias_map[filters.categoria] if categorias_map else filters.categoria)) or 'Todas las categorías' }}</li>
+          <li><strong>Cuenta:</strong> {{ (filters.cuenta and (cuentas_map[filters.cuenta] if cuentas_map else filters.cuenta)) or 'Todas las cuentas' }}</li>
+        </ul>
+      </div>
+      <div class="col-md-6 text-end">
+        <h6>Filtrado por usuario</h6>
+        <p class="mb-0">{{ (filters.usuario and (usuarios_map[filters.usuario] if usuarios_map else filters.usuario)) or 'Todos los usuarios' }}</p>
+        <p class="mb-0"><strong>Periodo:</strong> {% if filters.periodo == 'custom' %}{{ filters.fecha_desde }} - {{ filters.fecha_hasta }}{% elif filters.periodo %}{{ filters.periodo }}{% else %}Todos{% endif %}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead class="table-light"><tr><th>Fecha</th><th>Descripción</th><th class="text-end">Monto</th><th>Cuenta</th><th>Categoría</th><th>Usuario</th></tr></thead>
+      <tbody>
+        {% for g in gastos %}
+          <tr>
+            <td>{{ g.fecha_gasto|local_dt if g.fecha_gasto else '' }}</td>
+            <td>{{ g.descripcion }}</td>
+            <td class="text-end">{{ '{:,.2f}'.format(g.monto) }}</td>
+            <td>{{ g.cuenta.nombre if g.cuenta else '—' }}</td>
+            <td>{{ g.categoria.nombre if g.categoria else '—' }}</td>
+            <td>{{ g.usuario.nombre if g.usuario else g.usuario_id }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script>window.print();</script>
+{% endblock %}

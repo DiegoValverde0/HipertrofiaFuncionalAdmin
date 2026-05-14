@@ -1,0 +1,96 @@
+<div id="fin-panel-content" class="space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+          <i class="ti ti-arrow-up-right text-emerald-600 text-lg"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-800">Ingresos</h3>
+      </div>
+      <div class="space-y-2">
+        <div class="text-3xl font-bold text-slate-900">{{ total_ingresos }}</div>
+        <div class="text-sm text-slate-500">{{ total_ingresos_count }} registros</div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
+          <i class="ti ti-arrow-down-left text-rose-600 text-lg"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-800">Egresos</h3>
+      </div>
+      <div class="space-y-2">
+        <div class="text-3xl font-bold text-slate-900">{{ total_egresos }}</div>
+        <div class="text-sm text-slate-500">{{ total_egresos_count }} registros</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <i class="ti ti-chart-bar text-sky-600"></i>
+        Membresías pagadas por plan
+      </h3>
+      {% if plan_stats %}
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Plan</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Cantidad</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for p in plan_stats %}
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 text-slate-900">{{ p.plan }}</td>
+                  <td class="px-4 py-3 font-medium text-slate-900">{{ p.count }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-8 text-slate-500">
+          <i class="ti ti-inbox text-3xl mb-2 block opacity-50"></i>
+          <p>No hay datos para el periodo seleccionado.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <i class="ti ti-receipt text-amber-600"></i>
+        Gastos por categoría
+      </h3>
+      {% if gastos_by_cat %}
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Categoría</th>
+                <th class="px-4 py-3 text-left font-semibold text-slate-600">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for g in gastos_by_cat %}
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 text-slate-900">{{ g.categoria }}</td>
+                  <td class="px-4 py-3 font-medium text-slate-900">{{ g.total }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-8 text-slate-500">
+          <i class="ti ti-inbox text-3xl mb-2 block opacity-50"></i>
+          <p>No hay gastos en el periodo seleccionado.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>

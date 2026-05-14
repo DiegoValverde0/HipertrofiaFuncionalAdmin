@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Perfil de {{ cliente.nombre }} {{ cliente.apellido }}{% endblock %}
+{% block page_title %}Detalles del Cliente{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+  <div class="flex items-center gap-3">
+    <a href="{{ url_for('clientes.list_clientes') }}" class="inline-flex items-center justify-center rounded-lg h-9 w-9 border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-200" title="Volver al listado">
+      <i class="ti ti-arrow-left text-lg"></i>
+    </a>
+    <div>
+      <h2 class="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        {{ cliente.nombre }} {{ cliente.apellido }}
+      </h2>
+      <p class="text-sm text-slate-500 mt-0.5 flex items-center gap-1.5"><i class="ti ti-user-circle text-slate-400"></i> Perfil de cliente</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    {% if current_user and current_user.rol_id == 1 %}
+      <a href="{{ url_for('clientes.edit_cliente', cliente_id=cliente.id) }}" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm h-9 px-4">
+        <i class="ti ti-edit mr-2 text-[16px] text-slate-400"></i> Editar Perfil
+      </a>
+    {% endif %}
+    <a href="{{ url_for('membresias.create_membresia') }}?cliente_id={{ cliente.id }}" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-brand-600 text-white hover:bg-brand-700 shadow-sm h-9 px-4">
+      <i class="ti ti-plus mr-2"></i> Nueva Membresía
+    </a>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Tarjeta de Perfil -->
+  <div class="lg:col-span-1 space-y-6">
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden relative">
+      <div class="h-28 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
+        <!-- Decoración de fondo suave -->
+        <div class="absolute -right-6 -top-12 opacity-10">
+          <i class="ti ti-rosette-discount-check-filled text-[150px] text-slate-900"></i>
+        </div>
+      </div>
+      <div class="px-6 pb-6 relative">
+        <div class="w-24 h-24 rounded-2xl bg-white p-1.5 absolute -top-12 shadow-sm border border-slate-100">
+          <div class="w-full h-full rounded-xl bg-gradient-to-br from-brand-100 to-brand-50 border border-brand-100 flex items-center justify-center text-brand-600 font-bold text-3xl">
+            {{ cliente.nombre[:1] }}{{ cliente.apellido[:1] if cliente.apellido else '' }}
+          </div>
+        </div>
+        <div class="mt-16">
+          <div class="flex justify-between items-start mb-5">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900 leading-tight">{{ cliente.nombre }} <br>{{ cliente.apellido }}</h3>
+              <span class="inline-flex mt-1 items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">{{ cliente.tipo_cliente or 'General' }}</span>
+            </div>
+            {% if cliente.estado == 'Activo' %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm"><i class="ti ti-point-filled text-[14px] text-emerald-500 animate-pulse"></i> Activo</span>
+            {% elif cliente.estado == 'Inactivo' %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm"><i class="ti ti-circle-off text-[14px] text-slate-400"></i> Inactivo</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm"><i class="ti ti-alert-circle text-[14px] text-amber-500"></i> {{ cliente.estado }}</span>
+            {% endif %}
+          </div>
+          
+          <div class="space-y-4 pt-2 border-t border-slate-100">
+            <div class="flex items-center gap-3 text-sm group">
+              <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-50 transition-colors shrink-0">
+                <i class="ti ti-mail text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Correo Electrónico</p>
+                <p class="text-slate-700 font-medium truncate">{{ cliente.correo or 'No registrado' }}</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-3 text-sm group">
+              <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-50 transition-colors shrink-0">
+                <i class="ti ti-phone text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Teléfono</p>
+                <p class="text-slate-700 font-medium truncate">{{ cliente.telefono or 'No registrado' }}</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-3 text-sm group">
+              <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-50 transition-colors shrink-0">
+                <i class="ti ti-cake text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Edad / Nacimiento</p>
+                <p class="text-slate-700 font-medium truncate">
+                  {% if cliente.fecha_nacimiento %}
+                    {{ (today.year - cliente.fecha_nacimiento.year) - ((today.month, today.day) < (cliente.fecha_nacimiento.month, cliente.fecha_nacimiento.day)) }} años 
+                    <span class="text-slate-400 font-normal ml-1">({{ cliente.fecha_nacimiento }})</span>
+                  {% else %}
+                    <span class="text-slate-400 font-normal">No registrado</span>
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Membresías -->
+  <div class="lg:col-span-2 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+      <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="ti ti-id-badge-2 text-slate-400 text-xl"></i> Membresías Activas y Recientes</h3>
+      <a href="{{ url_for('membresias.list_by_cliente', cliente_id=cliente.id) }}" class="inline-flex items-center gap-1 text-[13px] font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded transition-colors">Ver historial <i class="ti ti-arrow-right"></i></a>
+    </div>
+
+    {% if membresias and membresias|length > 0 %}
+      <div class="space-y-4">
+      {% for entry in membresias %}
+        {% set m = entry.membresia if entry.membresia is defined else entry['membresia'] %}
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 flex items-center justify-center border border-brand-200 shadow-sm group-hover:scale-105 transition-transform">
+                <i class="ti ti-rosette-discount-check-filled text-xl text-brand-500 drop-shadow-sm"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-900">{{ m.plan.nombre if m.plan else 'N/A' }}</h4>
+                <p class="text-[11px] text-slate-500 font-medium">Folio: #{{ m.id }}</p>
+              </div>
+            </div>
+            <div>
+              {% set estado_nombre = m.estado.nombre if m.estado else m.estado_id %}
+              {% if estado_nombre == 'Activa' or estado_nombre == 'Activo' %}
+                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wide shadow-sm"><i class="ti ti-check mr-1 text-sm"></i> Activa</span>
+              {% elif estado_nombre == 'Vencida' or estado_nombre == 'Expirada' %}
+                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-50 text-red-700 border border-red-200 uppercase tracking-wide shadow-sm"><i class="ti ti-x mr-1 text-sm"></i> Vencida</span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wide shadow-sm">{{ estado_nombre }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="px-5 py-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="ti ti-calendar-up text-sm"></i> Fecha Inicio</span>
+                <span class="text-[13px] font-semibold text-slate-800">{{ m.fecha_inicio or '-' }}</span>
+              </div>
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="ti ti-calendar-down text-sm"></i> Vencimiento</span>
+                <span class="text-[13px] font-semibold text-slate-800">{{ m.fecha_fin or '-' }}</span>
+              </div>
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="ti ti-receipt-2 text-sm"></i> Valor Total</span>
+                <span class="text-sm font-bold text-slate-900 flex items-center"><span class="text-xs text-slate-400 mr-1 font-medium">Bs.</span> {{ _compute_monto_total_for_membresia(m) }}</span>
+              </div>
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="ti ti-tag text-sm"></i> Promoción</span>
+                {% if m.promocion %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100" title="Descuento: {{ m.promocion.descuento }}%">
+                    {{ m.promocion.nombre }}
+                  </span>
+                {% else %}
+                  <span class="text-[13px] text-slate-400 font-medium">-</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+      </div>
+    {% else %}
+      <div class="bg-slate-50 border border-slate-200 rounded-xl border-dashed p-10 text-center">
+        <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 shadow-sm">
+          <i class="ti ti-id-badge-off text-3xl text-slate-300"></i>
+        </div>
+        <h4 class="text-base font-bold text-slate-900 mb-1">Sin membresías</h4>
+        <p class="text-sm text-slate-500 mb-5 max-w-sm mx-auto">Este cliente no tiene ninguna membresía registrada o activa actualmente en el sistema.</p>
+        <a href="{{ url_for('membresias.create_membresia') }}?cliente_id={{ cliente.id }}" class="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-colors bg-white border border-slate-200 text-slate-700 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 shadow-sm h-9 px-4">
+          <i class="ti ti-plus mr-2 text-lg"></i> Asignar primera membresía
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

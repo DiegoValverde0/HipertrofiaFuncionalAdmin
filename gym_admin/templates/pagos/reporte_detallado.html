@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte Detallado de Pagos{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Reporte Detallado</h2>
+      <p class="text-sm text-slate-500 mt-1">Historial completo de abonos individuales realizados.</p>
+    </div>
+    <a href="{{ url_for('pagos.list_pagos') }}" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 h-10 px-5 shadow-sm">
+      <i class="ti ti-arrow-left mr-2 text-lg"></i>
+      Volver a Pagos
+    </a>
+  </div>
+
+  <!-- Kpi Card -->
+  <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl border border-emerald-400 shadow-sm p-6 text-white text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="bg-white/20 p-3 rounded-2xl">
+        <i class="ti ti-cash text-4xl"></i>
+      </div>
+      <div>
+        <p class="text-emerald-100 font-medium text-sm mb-1 uppercase tracking-wider">Total Recaudado (Filtros)</p>
+        <h3 class="text-3xl font-black tracking-tight">S/ {{ "%.2f"|format(total_filtrado) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Card -->
+  <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      
+      <!-- Search -->
+      <div class="lg:col-span-1">
+        <label for="report-search" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Buscar Cliente</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+          <input id="report-search" class="w-full pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all duration-200 text-slate-900 placeholder:text-slate-500" placeholder="Nombre..." value="{{ q or '' }}">
+        </div>
+      </div>
+
+      <!-- Método -->
+      <div>
+        <label for="report-metodo-pago-filter" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Método de Pago</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-wallet text-slate-400 text-sm shrink-0"></i>
+          <select id="report-metodo-pago-filter" class="w-full pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all duration-200 appearance-none text-slate-900 font-medium cursor-pointer">
+            <option value="">Todos los Métodos</option>
+            <option value="Efectivo" {% if metodo_pago_filter == 'Efectivo' %}selected{% endif %}>Efectivo</option>
+            <option value="Pago QR" {% if metodo_pago_filter == 'Pago QR' %}selected{% endif %}>Pago QR</option>
+            <option value="Transferencia" {% if metodo_pago_filter == 'Transferencia' %}selected{% endif %}>Transferencia</option>
+            <option value="Tarjeta" {% if metodo_pago_filter == 'Tarjeta' %}selected{% endif %}>Tarjeta</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Período -->
+      <div>
+        <label for="report-period" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Período</label>
+        <div class="flex items-center gap-2.5">
+          <i class="ti ti-calendar text-slate-400 text-sm shrink-0"></i>
+          <select id="report-period" class="w-full pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all duration-200 appearance-none text-slate-900 font-medium cursor-pointer">
+            <option value="all" {% if period == 'all' %}selected{% endif %}>Todos los tiempos</option>
+            <option value="today" {% if period == 'today' %}selected{% endif %}>Hoy</option>
+            <option value="week" {% if period == 'week' %}selected{% endif %}>Esta semana</option>
+            <option value="month" {% if period == 'month' %}selected{% endif %}>Este mes</option>
+            <option value="year" {% if period == 'year' %}selected{% endif %}>Este año</option>
+            <option value="custom" {% if period == 'custom' %}selected{% endif %}>Rango personalizado</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fechas Custom -->
+      <div id="custom-range-container" style="display: none;" class="md:col-span-3 lg:col-span-1 pt-4 lg:pt-0 border-t border-slate-100 lg:border-t-0">
+        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Rango de Fechas</label>
+        <div class="flex gap-2">
+          <input id="report-desde" type="date" class="w-full px-3 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all text-slate-900" value="{{ fecha_desde or '' }}" placeholder="Desde">
+          <input id="report-hasta" type="date" class="w-full px-3 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all text-slate-900" value="{{ fecha_hasta or '' }}" placeholder="Hasta">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Content -->
+  <div id="report-table-container" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50/50 border-b border-slate-200">
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ID Abono</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Fecha y Hora</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Monto</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Método</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Detalle</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          {% for abono in abonos %}
+          <tr class="hover:bg-slate-50/50 transition-colors">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">#{{ abono.id }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+              <div class="flex items-center">
+                <i class="ti ti-calendar-time mr-2 text-slate-400 text-lg"></i>
+                {{ abono.fecha_pago|local_dt('%d %b %Y, %H:%M') if abono.fecha_pago else 'N/A' }}
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold text-slate-900">{{ abono.pago.cliente.nombre }} {{ abono.pago.cliente.apellido }}</span>
+                <span class="text-xs text-slate-500 flex items-center mt-0.5"><i class="ti ti-id mr-1"></i>Mem: #{{ abono.pago.membresia_id }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="text-sm font-bold text-emerald-600">
+                S/ {{ "%.2f"|format(abono.monto_pagado) }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                {{ abono.metodo_pago }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-slate-600 max-w-xs truncate" title="{{ abono.comentarios }}">
+              {{ abono.comentarios or '-' }}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="px-6 py-12 text-center">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 mb-4">
+                <i class="ti ti-filter-off text-2xl text-slate-400"></i>
+              </div>
+              <h3 class="text-sm font-medium text-slate-900">No se encontraron abonos</h3>
+              <p class="mt-1 text-sm text-slate-500">Ajusta los filtros de búsqueda o fechas para ver resultados.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if pagination and pagination.pages > 1 %}
+    <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
+      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-slate-700">
+            Página <span class="font-medium">{{ pagination.page }}</span> de <span class="font-medium">{{ pagination.pages }}</span>
+          </p>
+        </div>
+        <div>
+          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('pagos.reporte_detallado', page=pagination.prev_num, q=q, metodo_pago=metodo_pago_filter, period=period, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50">
+              <span class="sr-only">Anterior</span>
+              <i class="ti ti-chevron-left text-lg"></i>
+            </a>
+            {% endif %}
+            
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                <a href="{{ url_for('pagos.reporte_detallado', page=p, q=q, metodo_pago=metodo_pago_filter, period=period, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium {{ 'text-brand-600 bg-brand-50 z-10' if p == pagination.page else 'text-slate-700 hover:bg-slate-50' }}">
+                  {{ p }}
+                </a>
+              {% else %}
+                <span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>
+              {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <a href="{{ url_for('pagos.reporte_detallado', page=pagination.next_num, q=q, metodo_pago=metodo_pago_filter, period=period, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50">
+              <span class="sr-only">Siguiente</span>
+              <i class="ti ti-chevron-right text-lg"></i>
+            </a>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  (function() {
+    const periodSelect = document.getElementById('report-period');
+    const customRangeContainer = document.getElementById('custom-range-container');
+
+    function applyFilters() {
+      const q = document.getElementById('report-search').value;
+      const metodo = document.getElementById('report-metodo-pago-filter').value;
+      const period = periodSelect.value;
+      const desde = document.getElementById('report-desde').value;
+      const hasta = document.getElementById('report-hasta').value;
+
+      let url = `{{ url_for('pagos.reporte_detallado') }}?q=${encodeURIComponent(q)}&metodo_pago=${encodeURIComponent(metodo)}&period=${period}`;
+      if (period === 'custom') {
+        url += `&fecha_desde=${desde}&fecha_hasta=${hasta}`;
+      }
+      // Add visual feedback
+      document.getElementById('report-table-container').style.opacity = '0.5';
+      window.location.href = url;
+    }
+
+    let timeoutId;
+    document.getElementById('report-search').addEventListener('input', function() {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(applyFilters, 500); // 500ms delay for text input
+    });
+    
+    document.getElementById('report-metodo-pago-filter').addEventListener('change', applyFilters);
+    periodSelect.addEventListener('change', function() {
+      if (this.value === 'custom') {
+        customRangeContainer.style.display = 'block';
+        customRangeContainer.animate([{opacity: 0}, {opacity: 1}], {duration: 200, fill: 'forwards'});
+      } else {
+        customRangeContainer.style.display = 'none';
+        applyFilters();
+      }
+    });
+    document.getElementById('report-hasta').addEventListener('change', applyFilters);
+    document.getElementById('report-desde').addEventListener('change', function() {
+      if(document.getElementById('report-hasta').value) {
+        applyFilters();
+      }
+    });
+
+    // Estado inicial del contenedor de rango
+    customRangeContainer.style.display = periodSelect.value === 'custom' ? 'block' : 'none';
+  })();
+</script>
+{% endblock %}

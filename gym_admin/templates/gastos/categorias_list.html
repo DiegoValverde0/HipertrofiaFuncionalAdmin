@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorías de gasto{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Categorías</h2>
+    <a class="btn btn-primary" href="{{ url_for('gastos.categorias_create') }}">Nueva categoría</a>
+  </div>
+  <table class="table">
+    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for c in categorias %}
+        <tr><td>{{ c.nombre }}</td><td>
+          {% if current_user and current_user.rol_id == 1 %}
+            <form method="post" action="{{ url_for('gastos.categorias_delete', cat_id=c.id) }}" style="display:inline" class="confirm-delete-form" data-name="{{ c.nombre }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

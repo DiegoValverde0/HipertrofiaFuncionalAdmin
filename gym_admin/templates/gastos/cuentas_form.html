@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Crear cuenta{% endblock %}
+{% block content %}
+  <h2>Crear cuenta</h2>
+  <form method="post" class="confirm-edit">
+    {% if cuenta %}<input type="hidden" name="id" value="{{ cuenta.id }}">{% endif %}
+    <div class="mb-3"><label>Nombre</label><input name="nombre" class="form-control"></div>
+    <button class="btn btn-primary">Guardar</button>
+  </form>
+{% endblock %}

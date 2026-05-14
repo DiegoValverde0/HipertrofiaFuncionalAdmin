@@ -1,0 +1,481 @@
+<div class="p-4">
+  <form id="membresia-form" method="post" action="{% if is_edit or membresia %}{{ url_for('membresias.edit_membresia', membresia_id=membresia.id) }}{% else %}{{ url_for('membresias.create_membresia') }}{% endif %}" class="confirm-edit">
+    {% if is_edit or membresia %}<input type="hidden" name="id" value="{{ membresia.id }}">{% endif %}
+    {% set cliente_obj = cliente if cliente else (membresia.cliente if membresia and membresia.cliente else None) %}
+
+    <div class="p-6 md:p-8 space-y-8">
+      <!-- Sección Cliente -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+          <i class="ti ti-user-scan text-indigo-500"></i> Búsqueda de Cliente
+        </h3>
+
+        <div class="mb-3 relative">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Buscar cliente</label>
+          {% if origin_cliente_id or (is_edit or membresia) %}
+            <div class="flex items-center gap-2.5">
+              <i class="ti ti-user-check text-slate-400 text-sm shrink-0"></i>
+              <input class="flex h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600" disabled value="{{ cliente_obj.nombre if cliente_obj else '' }} {{ cliente_obj.apellido if cliente_obj else '' }}">
+            </div>
+            <input type="hidden" name="cliente_id" id="cliente_id" value="{{ cliente_obj.id if cliente_obj else '' }}">
+            <input type="hidden" name="cliente_sucursal_id" id="cliente_sucursal_id" value="{{ cliente_obj.sucursal_id if cliente_obj else '' }}">
+            {% if client_status and client_status.has %}
+              <div class="mt-3 flex items-start gap-3 p-4 bg-indigo-50 text-indigo-800 rounded-xl border border-indigo-100 text-sm">
+                <i class="ti ti-info-circle text-lg mt-0.5 shrink-0"></i>
+                <div>
+                  <p class="font-medium">Membresía Activa Detectada</p>
+                  <p class="mt-1 opacity-90">El cliente ya tiene una membresía (ID: {{ client_status.last_id }}). Vencimiento: {{ client_status.last_fecha_fin or 'desconocido' }}.</p>
+                </div>
+              </div>
+            {% endif %}
+          {% else %}
+            <div class="flex items-center gap-2.5">
+              <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+              <input id="m-search" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Comienza a escribir para buscar...">
+            </div>
+            <input type="hidden" name="cliente_id" id="cliente_id" value="{{ cliente.id if cliente else '' }}">
+            <input type="hidden" name="cliente_sucursal_id" id="cliente_sucursal_id" value="{{ cliente.sucursal_id if cliente else '' }}">
+            <div id="m-search-results" class="mt-2 absolute z-10 w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden"></div>
+          {% endif %}
+          <div id="m-last" class="mt-3" data-last-fecha-fin="{{ client_status.last_fecha_fin if client_status and client_status.last_fecha_fin else '' }}"></div>
+        </div>
+      </div>
+
+      <!-- Sección Plan y Promoción -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+          <i class="ti ti-tags text-indigo-500"></i> Plan y Facturación
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="form-group">
+            <label for="plan_id" class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              Plan Seleccionado <span class="text-rose-500">*</span>
+            </label>
+            <div class="flex items-center gap-2.5">
+              <i class="ti ti-calendar-star text-slate-400 text-sm shrink-0"></i>
+              <select class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer" id="plan_id" name="plan_id" required>
+                <option value="" disabled {% if not (is_edit or membresia) %}selected{% endif %}>Elegir un plan...</option>
+                {% for plan in plans %}
+                  <option value="{{ plan.id }}" data-duracion="{{ plan.duracion }}" data-precio="{{ plan.precio }}" {% if (is_edit or membresia) and membresia and membresia.plan_id == plan.id %}selected{% endif %}>
+                    {{ plan.nombre }} ({{ plan.precio|round(2) }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Promoción (Opcional)</label>
+            <div class="flex items-center gap-2.5">
+              <i class="ti ti-discount text-slate-400 text-sm shrink-0"></i>
+              <select id="m-promocion" name="promocion_id" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer">
+                <option value="">-- ninguna --</option>
+                {% for p in promos %}
+                  <option value="{{ p.id }}" data-descuento="{{ p.descuento or 0 }}" {% if (is_edit or membresia) and membresia and membresia.promocion_id == p.id %}selected{% endif %}>{{ p.nombre }} {% if p.descuento %} ( -{{ p.descuento|round(2) }} ){% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div id="m-promocion-calculada" class="mt-3 text-sm" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Fechas -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+          <i class="ti ti-calendar-time text-indigo-500"></i> Vigencia
+        </h3>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Acción</label>
+          <div class="flex items-center gap-2.5">
+            <i class="ti ti-arrow-merge-alt-left text-slate-400 text-sm shrink-0"></i>
+            <select name="opcion" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer" {% if is_edit or membresia %}disabled{% endif %}>
+              <option value="new" {% if default_opcion=='new' %}selected{% endif %}>Crear nueva membresía</option>
+              <option value="extend" {% if default_opcion=='extend' %}selected{% endif %}>Extender membresía actual (apilar fecha)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Fecha inicio <span class="text-rose-500">*</span></label>
+            {% set _default_start = (default_start_date if default_start_date is defined and default_start_date) or (membresia.fecha_inicio.strftime('%Y-%m-%d') if (is_edit or membresia) and membresia and membresia.fecha_inicio else '') %}
+            <div class="flex items-center gap-2.5">
+              <i class="ti ti-calendar-event text-slate-400 text-sm shrink-0"></i>
+              <input class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer" name="fecha_inicio" id="m-fecha-inicio" placeholder="YYYY-MM-DD" value="{{ _default_start }}">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Fecha fin calculada</label>
+            <div class="flex items-center gap-2.5">
+              <i class="ti ti-calendar-check text-slate-400 text-sm shrink-0"></i>
+              <input class="flex h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" name="fecha_fin" id="m-fecha-fin" placeholder="YYYY-MM-DD" value="{{ (membresia.fecha_fin.strftime('%Y-%m-%d') if (is_edit or membresia) and membresia and membresia.fecha_fin else '') }}"
+                {% if not (current_user and current_user.is_authenticated and current_user.rol_id == 1) %} readonly disabled {% endif %}>
+            </div>
+            {% if not (current_user and current_user.is_authenticated and current_user.rol_id == 1) %}
+              <p class="text-xs text-slate-500 mt-2 flex items-center gap-1"><i class="ti ti-info-circle"></i> Sólo administradores pueden editarla manualmente.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div id="m-fecha-preview" class="mt-4"></div>
+      </div>
+
+      {% if is_edit or membresia %}
+        <div class="mb-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <label class="block text-sm font-medium text-slate-700 mb-2">Estado Manual</label>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div class="flex items-center gap-2.5 w-full sm:w-64">
+              <i class="ti ti-toggle-right text-slate-400 text-sm shrink-0"></i>
+              <select name="estado_id" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer">
+                <option value="">-- Mantener automático --</option>
+                <option value="{{ anulada_id | default(3) }}" {% if (is_edit or membresia) and membresia and membresia.is_anulada %}selected{% endif %}>Anulada</option>
+                <option value="{{ inactiva_id | default(4) }}" {% if (is_edit or membresia) and membresia and membresia.is_inactiva %}selected{% endif %}>Inactiva</option>
+              </select>
+            </div>
+            <span class="text-sm text-slate-500 font-medium px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm">
+              Actual: {{ membresia.estado_membresia.nombre if (is_edit or membresia) and membresia and membresia.estado_membresia else membresia.estado_id }}
+            </span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+      <button type="button" class="h-10 px-4 inline-flex items-center justify-center text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-200" onclick="modalForm.close()">
+        Cancelar
+      </button>
+      <button type="submit" class="h-10 px-6 inline-flex items-center justify-center text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 gap-2">
+        <i class="ti ti-device-floppy text-lg"></i> Guardar Membresía
+      </button>
+    </div>
+  </form>
+
+  <script>
+    var isEditMode = {{ 'true' if (is_edit or membresia) else 'false' }};
+
+    (function(){
+      var input = document.getElementById('m-search');
+      var results = document.getElementById('m-search-results');
+      var hid = document.getElementById('cliente_id');
+      var timer = null;
+      if(!input) return;
+      input.addEventListener('input', function(){
+        clearTimeout(timer);
+        var q = this.value.trim();
+        timer = setTimeout(function(){
+          if(!q){ if(results) results.innerHTML = ''; if(hid) hid.value = ''; var alertBox = document.getElementById('m-last'); if(alertBox) alertBox.innerHTML = ''; return; }
+          fetch('/membresias/search_clientes?q='+encodeURIComponent(q), { credentials:'same-origin' })
+            .then(function(r){ return r.json(); })
+            .then(function(data){
+              var html = '<div class="list-group">';
+              data.forEach(function(item){
+                var icon = item.has_membresia ? '<i class="bi bi-check-circle-fill text-success me-2"></i>' : '<i class="bi bi-person-lines-fill text-muted me-2"></i>';
+                var soonBadge = item.soon ? '<span class="badge bg-warning text-dark ms-2">Vence pronto</span>' : '';
+                var badge = item.has_membresia ? '<span class="badge bg-success ms-2">Tiene</span>' : '<span class="badge bg-secondary ms-2">Sin</span>';
+                var attrs = ' data-id="'+item.id+'" data-has="'+item.has_membresia+'" data-soon="'+(item.soon||false)+'" data-last="'+(item.ultima_membresia||'')+'" data-ultima_fecha_fin="'+(item.ultima_fecha_fin||'')+'" data-sucursal="'+(item.sucursal_id||'')+'"';
+                html += '<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" '+attrs+'><div class="d-flex align-items-center">'+icon+'<div>'+item.text+'</div></div><div class="text-end">'+soonBadge+badge+'</div></button>';
+              });
+              html += '</div>';
+              if(results){
+                results.innerHTML = html;
+                var items = results.querySelectorAll('.list-group-item') || [];
+                items.forEach(function(b){
+                  b.addEventListener('click', function(){
+                    if(hid) hid.value = this.dataset.id;
+                    var suc = (this.dataset.sucursal) ? this.dataset.sucursal : null;
+                    if(suc){ var sucEl = document.getElementById('cliente_sucursal_id'); if(sucEl) sucEl.value = suc; }
+                    input.value = this.textContent.trim();
+                    results.innerHTML = '';
+                    var has = this.dataset.has === 'true';
+                    var soon = this.dataset.soon === 'true';
+                    var lastId = this.dataset.last || null;
+                    var ultimaFin = this.dataset.ultima_fecha_fin || null;
+                    var alertBox = document.getElementById('m-last');
+                    if(alertBox){
+                      if(has){
+                        var fechaTxt = ultimaFin ? (' - Vencimiento: ' + ultimaFin) : '';
+                        var soonTxt = soon ? ' <strong>(vence pronto)</strong>' : '';
+                        alertBox.innerHTML = '<div class="alert alert-info">Cliente tiene membresía activa (ID: '+lastId+')'+fechaTxt+soonTxt+'. Puedes elegir extenderla o crear una nueva.</div>';
+                        var opcionSel = document.querySelector('select[name="opcion"]');
+                        if(opcionSel) opcionSel.value = 'extend';
+                        if(ultimaFin){
+                          try {
+                            var defaultStartDateFromBackend = document.getElementById('m-fecha-inicio').value;
+                            var inicioEl = document.getElementById('m-fecha-inicio');
+                            if(inicioEl && window.flatpickr){ try{ document.querySelector('#m-fecha-inicio')._flatpickr.setDate(defaultStartDateFromBackend); }catch(e){} }
+                            try{ var mlast = document.getElementById('m-last'); if(mlast) mlast.setAttribute('data-last-fecha-fin', ultimaFin); }catch(e){}
+                            try{ if(window.computeClientFin) window.computeClientFin(true); }catch(e){}
+                          }catch(e){ console.error('error parsing ultimaFin', e); }
+                        }
+                      } else {
+                        alertBox.innerHTML = '<div class="alert alert-warning">Cliente sin membresía. Se creará una nueva (pendiente de pago).</div>';
+                      }
+                    }
+                    try{ var ev = new Event('change'); var fe = document.getElementById('m-fecha-inicio'); if(fe) fe.dispatchEvent(ev); var os = document.querySelector('select[name="opcion"]'); if(os) os.dispatchEvent(ev); }catch(e){}
+                  });
+                });
+              }
+            }).catch(function(err){
+              console.error('Error buscando clientes:', err);
+            });
+        }, 250);
+      });
+    })();
+
+    async function updateFechaFinPreview(force) {
+      const inicioEl = document.getElementById('m-fecha-inicio');
+      const finEl = document.getElementById('m-fecha-fin');
+      const planSel = document.getElementById('plan_id');
+      const opcionSel = document.querySelector('select[name="opcion"]');
+      const clienteIdEl = document.getElementById('cliente_id');
+
+      if (!inicioEl || !finEl || !planSel) return;
+
+      const fechaInicio = inicioEl.value;
+      const planId = planSel.value;
+      const opcion = isEditMode ? 'new' : (opcionSel?.value || 'new');
+      const clienteId = clienteIdEl?.value;
+
+      if (!fechaInicio || !planId) {
+        finEl.value = '';
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({
+          fecha_inicio: fechaInicio,
+          plan_id: planId,
+          opcion: opcion,
+          ...(clienteId && { cliente_id: clienteId })
+        });
+
+        const response = await fetch(`/membresias/preview-dates?${params}`, { credentials: 'same-origin' });
+
+        if (!response.ok) {
+          console.error('Error en preview:', response.status);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.estado === 'valido') {
+          finEl.value = data.fecha_fin;
+
+          if (window.flatpickr) {
+            try {
+              document.querySelector('#m-fecha-fin')._flatpickr.setDate(data.fecha_fin);
+            } catch (e) {}
+          }
+
+          showFechaPreview(data);
+        } else if (data.estado === 'warning') {
+          finEl.value = '';
+          showFechaWarning(data.mensaje);
+        } else {
+          finEl.value = '';
+          showFechaError(data.mensaje);
+        }
+
+      } catch (error) {
+        console.error('Error fetching preview:', error);
+        finEl.value = '';
+      }
+    }
+
+    function showFechaPreview(data) {
+      const container = document.getElementById('m-fecha-preview');
+      if (container) {
+        const diasTxt = data.dias_vigencia === 1 ? '1 día' : data.dias_vigencia + ' días';
+        container.innerHTML = `
+          <div class="alert alert-info d-flex align-items-center" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <div>
+              <strong>Vigencia:</strong> ${diasTxt}<br>
+              <small>${data.fecha_inicio} a ${data.fecha_fin}</small>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function showFechaWarning(msg) {
+      const container = document.getElementById('m-fecha-preview');
+      if (container) {
+        container.innerHTML = `<div class="alert alert-warning d-flex align-items-center" role="alert"><i class="bi bi-exclamation-triangle me-2"></i><div>${msg}</div></div>`;
+      }
+    }
+
+    function showFechaError(msg) {
+      const container = document.getElementById('m-fecha-preview');
+      if (container) {
+        container.innerHTML = `<div class="alert alert-danger d-flex align-items-center" role="alert"><i class="bi bi-x-circle me-2"></i><div>${msg}</div></div>`;
+      }
+    }
+
+    window.updateFechaFinPreview = updateFechaFinPreview;
+
+    var esLocaleScript = document.createElement('script');
+    esLocaleScript.src = 'https://npmcdn.com/flatpickr/dist/l10n/es.js';
+    document.head.appendChild(esLocaleScript);
+
+    esLocaleScript.onload = function() {
+      var inicio = document.getElementById('m-fecha-inicio');
+      var fin = document.getElementById('m-fecha-fin');
+      var planSel = document.getElementById('plan_id');
+      var opcionSel = document.querySelector('select[name="opcion"]');
+      var today = new Date();
+
+      function toFlatpickrFormat(d){
+        var yyyy=d.getFullYear();
+        var m=('0'+(d.getMonth()+1)).slice(-2);
+        var day=('0'+d.getDate()).slice(-2);
+        return yyyy+'-'+m+'-'+day;
+      }
+
+      if(inicio && !inicio.value) inicio.value = toFlatpickrFormat(today);
+
+      if(window.flatpickr){
+        var fp_config = { altInput: true, altFormat: "d-M-Y", dateFormat: "Y-m-d", locale: "es" };
+        flatpickr('#m-fecha-inicio', {
+          ...fp_config,
+          defaultDate: inicio.value || 'today',
+          onChange: function(){ updateFechaFinPreview(true); }
+        });
+        flatpickr('#m-fecha-fin', {
+          ...fp_config
+        });
+      }
+
+      planSel?.addEventListener('change', function(){
+        updateFechaFinPreview(true);
+      });
+
+      opcionSel?.addEventListener('change', function(){
+        applyOpcionDate();
+        setTimeout(function() { updateFechaFinPreview(true); }, 100);
+      });
+
+      setTimeout(function() {
+        updateFechaFinPreview(true);
+      }, 200);
+    };
+
+    (function(){
+      var opcionSel = document.querySelector('select[name="opcion"]');
+      var inicioEl = document.getElementById('m-fecha-inicio');
+      var lastBox = document.getElementById('m-last');
+
+      function toYMDDate(d){
+        var yyyy=d.getUTCFullYear();
+        var m=('0'+(d.getUTCMonth()+1)).slice(-2);
+        var day=('0'+d.getUTCDate()).slice(-2);
+        return yyyy+'-'+m+'-'+day;
+      }
+
+      function applyExtendDate(){
+        if(!lastBox) return;
+        var lf = lastBox.dataset.lastFechaFin || lastBox.getAttribute('data-last-fecha-fin') || '';
+        if(!lf) return null;
+        try{
+          var parts = lf.split(/[- :]/);
+          var d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+          d.setUTCDate(d.getUTCDate() + 1);
+          var wd = d.getUTCDay();
+          if (wd === 6) d.setUTCDate(d.getUTCDate() + 2);
+          if (wd === 0) d.setUTCDate(d.getUTCDate() + 1);
+          var val = toYMDDate(d);
+          if(inicioEl){
+            inicioEl.value = val;
+            if(window.flatpickr) try{ document.querySelector('#m-fecha-inicio')._flatpickr.setDate(val); }catch(e){}
+          }
+          return val;
+        }catch(e){ return null; }
+      }
+
+      function applyNewDate(){
+        var d = new Date();
+        var val = toYMDDate(d);
+        if(inicioEl){
+          inicioEl.value = val;
+          if(window.flatpickr) try{ document.querySelector('#m-fecha-inicio')._flatpickr.setDate(val); }catch(e){}
+        }
+      }
+
+      function applyOpcionDate() {
+        if (isEditMode) return;
+        if(opcionSel){
+          try{
+            if(opcionSel.value === 'extend') applyExtendDate(); else applyNewDate();
+          }catch(e){}
+        }
+      }
+
+      if(opcionSel && !isEditMode){
+        try{ applyOpcionDate(); }catch(e){}
+      }
+
+      window.applyExtendDate = applyExtendDate;
+      window.applyOpcionDate = applyOpcionDate;
+    })();
+
+    (function(){
+      var btn = document.getElementById('m-load-by-id');
+      var input = document.getElementById('m-search-id');
+      var infoBox = document.getElementById('m-load-info');
+      if(!btn || !input) return;
+      btn.addEventListener('click', function(){
+        var id = input.value && input.value.trim();
+        if(!id) { if(infoBox) infoBox.innerHTML = '<div class="text-muted">Ingrese un ID válido.</div>'; return; }
+        fetch('/membresias/'+encodeURIComponent(id)+'/info', { credentials:'same-origin' })
+          .then(function(r){ if(!r.ok) throw new Error('No encontrada'); return r.json(); })
+          .then(function(data){
+            if(infoBox) infoBox.innerHTML = '<div class="alert alert-success">Membresía encontrada: Plan ID '+(data.plan_id||'')+', Precio: '+(data.monto_total||'')+' </div>';
+            try{ var planSel = document.getElementById('plan_id') || document.getElementById('m-plan'); if(planSel) planSel.value = data.plan_id || planSel.value; }catch(e){}
+            try{ var promSel = document.getElementById('m-promocion'); if(promSel) promSel.value = data.promocion_id || ''; }catch(e){}
+            try{ var inicio = document.getElementById('m-fecha-inicio'); var fin = document.getElementById('m-fecha-fin'); if(inicio && data.fecha_inicio) { inicio.value = data.fecha_inicio; if(window.flatpickr) try{ document.querySelector('#m-fecha-inicio')._flatpickr.setDate(data.fecha_inicio); }catch(e){} } if(fin && data.fecha_fin) { fin.value = data.fecha_fin; if(window.flatpickr) try{ document.querySelector('#m-fecha-fin')._flatpickr.setDate(data.fecha_fin); }catch(e){} } }catch(e){}
+            try{ window.updateFechaFinPreview(true); }catch(e){}
+          }).catch(function(err){ if(infoBox) infoBox.innerHTML = '<div class="alert alert-danger">No se encontró la membresía o ocurrió un error.</div>'; console.error(err); });
+      });
+    })();
+  </script>
+  <script>
+    (function(){
+      var planSel = document.getElementById('plan_id');
+      var promSel = document.getElementById('m-promocion');
+      var target = document.getElementById('m-promocion-calculada');
+      if(!planSel || !promSel || !target) return;
+
+      function parseNum(v){
+        var n = parseFloat(String(v).replace(',', '.'));
+        return isNaN(n) ? 0 : n;
+      }
+
+      function updatePromoCalc(){
+        try{
+          var planOpt = planSel.options[planSel.selectedIndex];
+          var precio = planOpt ? parseNum(planOpt.dataset.precio) : 0;
+          var promOpt = promSel.options[promSel.selectedIndex];
+          var descuento = promOpt ? parseNum(promOpt.dataset.descuento) : 0;
+
+          if(promSel.value){
+            var final = precio - descuento;
+            if(final < 0) final = 0;
+            target.style.display = 'block';
+            target.innerHTML = '<div class="alert alert-info">Precio con promoción: <strong>$'+final.toFixed(2)+'</strong> <span class="text-muted">(Descuento: $'+descuento.toFixed(2)+')</span></div>';
+          } else {
+            target.style.display = 'none';
+            target.innerHTML = '';
+          }
+        }catch(e){ console.error('error updating promo calc', e); }
+      }
+
+      promSel.addEventListener('change', updatePromoCalc);
+      planSel.addEventListener('change', updatePromoCalc);
+      setTimeout(updatePromoCalc, 150);
+    })();
+  </script>
+</div>

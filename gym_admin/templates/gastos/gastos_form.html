@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Registrar gasto{% endblock %}
+{% block content %}
+  <h2>Registrar gasto</h2>
+  <form method="post" class="confirm-edit">
+    {% if gasto %}<input type="hidden" name="id" value="{{ gasto.id }}">{% endif %}
+    <div class="mb-3"><label>Descripción</label><input name="descripcion" class="form-control" required></div>
+    <div class="mb-3"><label>Monto</label><input name="monto" class="form-control" required></div>
+    <div class="mb-3"><label>Cuenta</label>
+      <select name="cuenta_id" class="form-select">
+        <option value="">-- Seleccionar --</option>
+        {% for c in cuentas %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="mb-3"><label>Sucursal</label>
+      <select name="sucursal_id" class="form-select" required>
+        <option value="">-- Seleccionar sucursal --</option>
+        {% for s in sucursales %}
+          <option value="{{ s.id }}" {% if session.get('sucursal_id') and session.get('sucursal_id') == s.id %}selected{% endif %}>{{ s.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3"><label>Categoría</label>
+      <select name="categoria_id" class="form-select">
+        <option value="">-- Seleccionar --</option>
+        {% for c in categorias %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <button class="btn btn-primary">Guardar</button>
+  </form>
+{% endblock %}

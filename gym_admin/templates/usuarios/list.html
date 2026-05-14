@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuarios - Gym Admin{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Usuarios</h2>
+    <a class="btn btn-primary" href="{{ url_for('usuarios.create_usuario') }}">Nuevo usuario</a>
+  </div>
+  <table class="table table-hover align-middle shadow-sm bg-white rounded">
+    <thead>
+      <tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Sucursal</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.nombre }}</td>
+        <td>{{ u.correo }}</td>
+        <td>{{ u.rol.nombre if u.rol else '' }}</td>
+        <td>{{ u.sucursal.nombre if u.sucursal else '' }}</td>
+        <td>
+          {% if current_user and current_user.rol_id == 1 %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('usuarios.edit_usuario', user_id=u.id) }}">Editar</a>
+            <button class="btn btn-sm btn-outline-danger ms-2 btn-delete" data-action="{{ url_for('usuarios.delete_usuario', user_id=u.id) }}" data-name="{{ u.nombre or u.correo }}">Eliminar</button>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

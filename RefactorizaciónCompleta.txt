@@ -1,0 +1,90 @@
+Resumen de Refactorizacion - Proyecto myflaskapp
+Fecha: 2026-05-03
+
+OBJETIVO GENERAL
+Separar responsabilidades por capas en la app Flask:
+- Blueprint: solo HTTP/validacion de formulario y respuestas.
+- Services: reglas de negocio y orquestacion.
+- Utils: helpers y wrappers de compatibilidad.
+
+FASES COMPLETADAS
+1) Fase 1 - Auth service extraction (COMPLETA)
+- Extraido auth_service para email y tareas post-login.
+- auth blueprint mas delgado (thin views).
+
+2) Fase 2A - Service layer base (COMPLETA)
+- Creados servicios:
+  - gym_admin/services/membership_service.py
+  - gym_admin/services/payment_service.py
+  - gym_admin/services/client_service.py
+
+3) Fase 2B parcial - Blueprints (AVANZADA)
+- Refactor completado en:
+  - gym_admin/blueprints/clientes.py
+  - gym_admin/blueprints/pagos.py (parte create flow)
+- Refactor avanzado en:
+  - gym_admin/blueprints/membresias.py (create/edit delegando al service)
+
+4) Fase 3 - Batch services y delegacion en utils (COMPLETA)
+- Nuevos servicios:
+  - gym_admin/services/membership_state_service.py
+  - gym_admin/services/promotion_service.py
+- gym_admin/utils.py ahora delega procesos batch a services.
+
+VALIDACIONES YA HECHAS
+- Sintaxis validada en:
+  - gym_admin/services/membership_state_service.py
+  - gym_admin/services/promotion_service.py
+  - gym_admin/utils.py
+  - gym_admin/services/membership_service.py
+  - gym_admin/blueprints/membresias.py
+- Importes de app/blueprints/services probados con app context: OK.
+
+CAMBIOS TECNICOS RELEVANTES DE ESTA ULTIMA PARTE
+- membership_service.py ajustado para:
+  - Calculo de pago real via historial (evitando campos no existentes).
+  - Estado anulada en cancelacion de pendientes.
+  - Soporte de fecha_fin opcional en create_membership.
+  - Validaciones de plan/fechas y update robusto.
+- membresias.py ajustado para:
+  - create_membresia delega en create_membership.
+  - edit_membresia delega en update_membership.
+  - Uso de process_membership_states post create/edit.
+  - Eliminacion de duplicidad de calculo de fecha local (usa service).
+
+PENDIENTE INMEDIATO (SIGUIENTE SESION)
+1) Confirmar estado final de membresias.py en UI real
+- Probar flujos:
+  - opcion new
+  - opcion extend
+  - edicion con estado 3/4
+  - promos activas/inactivas
+
+2) Revisar y completar pagos.py restante
+- Rutas aun no totalmente delegadas (abonar, detalle, busquedas, reporte segun estado actual del archivo).
+
+3) Fase 4 - Tests unitarios
+- Crear bateria para services:
+  - membership_service
+  - payment_service
+  - client_service
+  - membership_state_service
+  - promotion_service
+
+4) Commit limpio de los cambios no confirmados en esta sesion
+- Recomendado: usar git desde la carpeta exacta del repo y validar primero con status local.
+
+RIESGO/NOTA IMPORTANTE DETECTADA
+- En esta sesion aparecio mezcla de estado git con rutas externas al proyecto.
+- Recomendacion operativa para la siguiente sesion:
+  - Evitar comandos git sin ruta de repo.
+  - Ejecutar siempre git con root explicito del proyecto.
+
+CHECKLIST RAPIDO PARA RETOMAR
+- Activar entorno virtual.
+- Verificar que run.py levanta.
+- Probar create/edit de membresias desde UI.
+- Ejecutar sintaxis/lint en archivos tocados.
+- Recien despues: commit por fases pequenas.
+
+FIN DEL RESUMEN

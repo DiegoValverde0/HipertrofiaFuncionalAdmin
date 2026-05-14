@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Sucursal{% endblock %}
+
+{% block content %}
+  <h2>{{ 'Editar' if sucursal else 'Crear' }} sucursal</h2>
+  <form method="post" class="confirm-edit">
+    {% if sucursal %}<input type="hidden" name="id" value="{{ sucursal.id }}">{% endif %}
+    <div class="mb-3">
+      <label class="form-label">Nombre</label>
+      <input class="form-control" name="nombre" value="{{ sucursal.nombre if sucursal else '' }}" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Dirección</label>
+      <input class="form-control" name="direccion" value="{{ sucursal.direccion if sucursal else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Teléfono</label>
+      <input class="form-control" name="telefono" value="{{ sucursal.telefono if sucursal else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Estado</label>
+      <select class="form-select" name="estado">
+        <option value="Activo" {% if sucursal and sucursal.estado=='Activo' %}selected{% endif %}>Activo</option>
+        <option value="Inactivo" {% if sucursal and sucursal.estado=='Inactivo' %}selected{% endif %}>Inactivo</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a class="btn btn-secondary" href="{{ url_for('sucursales.list_sucursales') }}">Cancelar</a>
+  </form>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Auditoría{% endblock %}
+
+{% block content %}
+  <h2>Auditoría</h2>
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <label>Tabla</label>
+      <input id="f-tabla" class="form-control" placeholder="Nombre de tabla">
+    </div>
+    <div class="col-md-2">
+      <label>Operación</label>
+      <select id="f-operacion" class="form-select">
+        <option value="">-- Todas --</option>
+        <option value="INSERT">INSERT</option>
+        <option value="UPDATE">UPDATE</option>
+        <option value="DELETE">DELETE</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label>Usuario</label>
+      <input id="f-usuario" list="usuarios-list" class="form-control" placeholder="Seleccione usuario...">
+      <input type="hidden" id="f-usuario-id">
+      <datalist id="usuarios-list"></datalist>
+    </div>
+    <div class="col-md-2">
+      <label>Fecha desde</label>
+      <input id="f-fecha-min" class="form-control" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="col-md-2">
+      <label>Fecha hasta</label>
+      <input id="f-fecha-max" class="form-control" placeholder="YYYY-MM-DD">
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <input id="f-q" class="form-control" placeholder="Buscar texto en descripción...">
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <label class="form-label me-2">Por página</label>
+      <select id="f-per-page" class="form-select d-inline-block w-auto">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+      </select>
+    </div>
+    <div>
+      <button id="export-csv" class="btn btn-sm btn-outline-secondary me-2">Exportar CSV</button>
+      <button id="export-pdf" class="btn btn-sm btn-outline-secondary">Exportar PDF</button>
+    </div>
+  </div>
+  <div id="auditoria-results"></div>
+
+  <script>
+    (function(){
+      var tabla = document.getElementById('f-tabla');
+      var oper = document.getElementById('f-operacion');
+      var usuario = document.getElementById('f-usuario');
+      var fmin = document.getElementById('f-fecha-min');
+      var fmax = document.getElementById('f-fecha-max');
+      var q = document.getElementById('f-q');
+      var out = document.getElementById('auditoria-results');
+      var usuariosList = document.getElementById('usuarios-list');
+      // cargar lista de usuarios para datalist
+      fetch('/auditoria/users', { credentials:'same-origin' }).then(function(r){ return r.json(); }).then(function(data){
+        usuariosList.innerHTML = '';
+        data.forEach(function(u){ var opt = document.createElement('option'); opt.value = u.nombre; opt.setAttribute('data-id', u.id); usuariosList.appendChild(opt); });
+      }).catch(function(){ /* ignore */ });
+      var timer = null;
+      function fmtBolivia(iso){
+        try{
+          var d = new Date(iso);
+          return d.toLocaleString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+        }catch(e){ return iso || ''; }
+      }
+      function load(p){
+        p = p || 1;
+        var params = new URLSearchParams();
+      if(tabla && tabla.value) params.set('tabla', tabla.value);
+      if(oper && oper.value) params.set('operacion', oper.value);
+      // usuario puede ser nombre o id; preferimos el hidden usuario-id
+      var uid = document.getElementById('f-usuario-id').value;
+      if(uid) {
+        params.set('usuario_id', uid);
+      } else if(usuario && usuario.value) {
+        // allow search by usuario nombre
+        params.set('usuario_nombre', usuario.value);
+      }
+      // per_page
+      var per = document.getElementById('f-per-page'); if(per) params.set('per_page', per.value);
+        if(fmin && fmin.value) params.set('fecha_min', fmin.value);
+        if(fmax && fmax.value) params.set('fecha_max', fmax.value);
+        if(q && q.value) params.set('q', q.value);
+        params.set('page', p);
+        fetch('/auditoria/search?'+params.toString(), { credentials:'same-origin' })
+          .then(function(r){ return r.json(); })
+      .then(function(data){
+            var html = '';
+        html += '<div class="table-responsive"><table class="table table-sm table-striped">';
+        html += '<thead><tr><th>Fecha</th><th>Tabla</th><th>PK</th><th>Op</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody>';
+            data.items.forEach(function(it){
+              var usuarioTxt = it.usuario || (it.usuario_id ? ('#'+it.usuario_id) : '-');
+              var detalle = '';
+              try{ detalle = JSON.parse(it.descripcion); }catch(e){ detalle = it.descripcion; }
+              var detalleHtml = '';
+              if(typeof detalle === 'object' && detalle !== null){
+                if(detalle.accion === 'INSERT' || detalle.accion === 'DELETE'){
+                  var vals = detalle.valores || detalle.values || {};
+                  // merge pk into valores for display if present
+                  if(detalle.pk && typeof detalle.pk === 'object'){
+                    Object.keys(detalle.pk).forEach(function(k){ try{ if(!vals[k]) vals[k] = detalle.pk[k]; }catch(e){} });
+                  }
+                  detalleHtml += '<ul class="mb-0">';
+                  Object.keys(vals).forEach(function(k){ detalleHtml += '<li><strong>'+k+':</strong> '+(vals[k]===null?'<em>null</em>':vals[k])+'</li>'; });
+                  detalleHtml += '</ul>';
+                } else if(detalle.accion === 'UPDATE'){
+                  var changes = detalle.cambios || [];
+                  detalleHtml += '<ul class="mb-0">';
+                  changes.forEach(function(ch){ detalleHtml += '<li><strong>'+ch.columna+':</strong> <span class="text-muted">'+(ch.anterior===null?'<em>null</em>':ch.anterior)+'</span> &rarr; <span>'+(ch.nuevo===null?'<em>null</em>':ch.nuevo)+'</span></li>'; });
+                  detalleHtml += '</ul>';
+                } else {
+                  detalleHtml = JSON.stringify(detalle);
+                }
+              } else {
+                detalleHtml = String(detalle);
+              }
+
+              var pkTxt = '';
+              try{ pkTxt = (it.pk && typeof it.pk === 'object') ? Object.values(it.pk).join(',') : (it.pk || ''); }catch(e){ pkTxt = it.pk || ''; }
+              html += '<tr><td>'+fmtBolivia(it.fecha)+'</td><td>'+it.tabla+'</td><td>'+pkTxt+'</td><td>'+it.operacion+'</td><td>'+usuarioTxt+'</td><td>'+detalleHtml+'</td></tr>';
+            });
+            html += '</tbody></table></div>';
+            // pager: numeric
+            html += '<div class="d-flex justify-content-between align-items-center">';
+            html += '<div>Mostrando '+data.items.length+' de '+data.total+'</div>';
+            html += '<nav aria-label="Page navigation"><ul class="pagination mb-0">';
+            var start = Math.max(1, data.page - 3);
+            var end = Math.min(data.pages, data.page + 3);
+            if(data.page>1) html += '<li class="page-item"><a class="page-link" href="#" data-page="'+(data.page-1)+'">&laquo;</a></li>';
+            for(var i=start;i<=end;i++){
+              html += '<li class="page-item '+(i===data.page? 'active':'')+'"><a class="page-link" href="#" data-page="'+i+'">'+i+'</a></li>';
+            }
+            if(data.page<data.pages) html += '<li class="page-item"><a class="page-link" href="#" data-page="'+(data.page+1)+'">&raquo;</a></li>';
+            html += '</ul></nav>';
+            html += '</div>';
+            out.innerHTML = html;
+            // attach pager handlers
+            var links = out.querySelectorAll('.page-link[data-page]') || [];
+            links.forEach(function(ln){ ln.addEventListener('click', function(e){ e.preventDefault(); var p = parseInt(this.dataset.page,10); load(p); }); });
+                // export buttons
+                var expCsv = document.getElementById('export-csv'); if(expCsv) expCsv.addEventListener('click', function(){
+                  // include usuario_nombre if no uid
+                  var qparams = new URLSearchParams(params);
+                  if(!qparams.get('usuario_id')){
+                    var uname = document.getElementById('f-usuario').value || '';
+                    if(uname) qparams.set('usuario_nombre', uname);
+                  }
+                  window.location = '/auditoria/export?'+qparams.toString();
+                });
+                var expPdf = document.getElementById('export-pdf'); if(expPdf) expPdf.addEventListener('click', function(){
+                  alert('Exportar PDF no implementado, descargando CSV en su lugar');
+                  var qparams = new URLSearchParams(params);
+                  if(!qparams.get('usuario_id')){
+                    var uname = document.getElementById('f-usuario').value || '';
+                    if(uname) qparams.set('usuario_nombre', uname);
+                  }
+                  window.location = '/auditoria/export?'+qparams.toString();
+                });
+          }).catch(function(err){ out.innerHTML = '<div class="alert alert-danger">Error cargando auditoría</div>'; console.error(err); });
+      }
+      [tabla, oper, usuario, fmin, fmax, q].forEach(function(el){ if(!el) return; el.addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(function(){ // reset hidden id when user types
+            document.getElementById('f-usuario-id').value = '';
+            load(1); }, 250); }); });
+      // per-page selector
+      document.getElementById('f-per-page').addEventListener('change', function(){ load(1); });
+      // when user selects from datalist, set hidden id
+      usuario.addEventListener('change', function(){
+        var val = this.value;
+        var opts = usuariosList.querySelectorAll('option') || [];
+        var found = null;
+        for(var i=0;i<opts.length;i++){
+          if(opts[i].value === val){ found = opts[i]; break; }
+        }
+        if(found){ document.getElementById('f-usuario-id').value = found.getAttribute('data-id'); } else { document.getElementById('f-usuario-id').value = ''; }
+        load(1);
+      });
+      // initial load
+      load(1);
+    })();
+  </script>
+
+{% endblock %}

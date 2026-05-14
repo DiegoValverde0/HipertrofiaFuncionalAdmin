@@ -1,0 +1,695 @@
+{% if not request.headers.get("HX-Request") %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+{% endif %}
+
+    <title>{% block title %}Gym Admin{% endblock %}</title>
+
+{% if not request.headers.get("HX-Request") %}
+    <!-- Tailwind CSS (Play CDN for rapid prototyping) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                50:  '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                700: '#0369a1',
+                800: '#075985',
+                900: '#0c4a6e',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Bootstrap CSS (kept for legacy components until fully migrated) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Tabler Icons (Premium Icon set) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+    <!-- flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+      /* Prevenir parpadeo de Alpine */
+      [x-cloak] { display: none !important; }
+      
+      /* Resetear conflictos básicos de Bootstrap vs Tailwind */
+      body { background-color: transparent; }
+      a { text-decoration: none; }
+      
+      /* Scrollbar personalizado para el sidebar */
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.25); border-radius: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.4); }
+
+      /* Sidebar Premium Gradient */
+      .sidebar-premium {
+        background: linear-gradient(180deg, #0a0f1e 0%, #0f172a 40%, #0c1425 100%) !important;
+      }
+      .sidebar-premium::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 200px;
+        background: radial-gradient(ellipse at bottom center, rgba(14,165,233,0.06), transparent 70%);
+        pointer-events: none;
+      }
+
+      /* Sidebar Logo Glow */
+      .logo-glow {
+        box-shadow: 0 0 20px rgba(14,165,233,0.25), 0 0 40px rgba(14,165,233,0.1);
+        animation: logoGlow 3s ease-in-out infinite alternate;
+      }
+      @keyframes logoGlow {
+        0% { box-shadow: 0 0 20px rgba(14,165,233,0.2), 0 0 40px rgba(14,165,233,0.08); }
+        100% { box-shadow: 0 0 25px rgba(14,165,233,0.35), 0 0 50px rgba(14,165,233,0.15); }
+      }
+
+      /* Sidebar nav link active indicator */
+      .nav-active-indicator {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 24px;
+        border-radius: 0 4px 4px 0;
+        background: linear-gradient(180deg, #0ea5e9, #38bdf8);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      /* Header glassmorphism */
+      .header-glass {
+        background: rgba(255,255,255,0.75) !important;
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+      }
+
+      /* Animación Modal */
+      #form-modal {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      
+      #form-modal.flex {
+        opacity: 1;
+      }
+      
+      #form-modal > div:last-child {
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+      }
+      
+      #form-modal.flex > div:last-child {
+        transform: translateX(0);
+      }
+
+      /* Validación inline */
+      [data-field].has-error input,
+      [data-field].has-error select,
+      [data-field].has-error textarea {
+        border-color: #dc2626 !important;
+        background-color: #fef2f2;
+      }
+      
+      [data-error-msg]:not(:empty) {
+        display: block !important;
+      }
+
+      /* Content page entrance animation */
+      .animate-in {
+        animation: contentSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      @keyframes contentSlideIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Notification bell ring on hover */
+      .bell-ring:hover i {
+        animation: bellRing 0.5s ease;
+      }
+      @keyframes bellRing {
+        0% { transform: rotate(0); }
+        20% { transform: rotate(15deg); }
+        40% { transform: rotate(-10deg); }
+        60% { transform: rotate(5deg); }
+        80% { transform: rotate(-2deg); }
+        100% { transform: rotate(0); }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-900 flex h-screen overflow-hidden antialiased font-sans" x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true', tooltipText: '', tooltipY: 0, tooltipShow: false, activeMenu: null, hoverMenu: null, hoverTimer: null, activeTop: 0, toggleSidebarCollapsed() { this.sidebarCollapsed = !this.sidebarCollapsed; this.sidebarOpen = false; this.activeMenu = null; this.hoverMenu = null; this.tooltipShow = false; if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; } }, scheduleSidebarHover(menu, el) { if (!this.sidebarCollapsed) return; if (this.hoverTimer) clearTimeout(this.hoverTimer); this.tooltipShow = false; this.hoverTimer = setTimeout(() => { this.hoverMenu = menu; this.activeTop = el.getBoundingClientRect().top; this.hoverTimer = null; }, 110); }, keepHoverMenu() { if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; } this.tooltipShow = false; }, cancelSidebarHover() { if (this.hoverTimer) clearTimeout(this.hoverTimer); this.hoverTimer = setTimeout(() => { this.hoverMenu = null; this.hoverTimer = null; }, 120); }, showSidebarTooltip(label, el) { if (!this.sidebarCollapsed || this.hoverMenu) return; this.tooltipText = label; this.tooltipY = el.getBoundingClientRect().top + (el.offsetHeight / 2) - 12; this.tooltipShow = true; }, hideSidebarTooltip() { this.tooltipShow = false; } }" x-init="$watch('sidebarCollapsed', val => { localStorage.setItem('sidebarCollapsed', val); if (val) { activeMenu = null; hoverMenu = null; tooltipShow = false; if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } } })">
+
+    <!-- Global Tooltip for Collapsed Sidebar -->
+    <div x-show="tooltipShow" class="fixed z-[100] px-3 py-1.5 bg-slate-800 text-white text-[13px] font-medium rounded-md shadow-lg pointer-events-none whitespace-nowrap transition-opacity duration-150" :style="'left: 88px; top: ' + tooltipY + 'px;'" x-text="tooltipText" x-cloak></div>
+
+    {% if current_user.is_authenticated %}
+    <!-- SIDEBAR (Tailwind + Alpine) -->
+    <aside 
+      :class="[
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        sidebarCollapsed ? 'lg:w-[80px]' : 'lg:w-64'
+      ]"
+      class="sidebar-premium fixed inset-y-0 left-0 z-50 text-slate-300 transition-all duration-300 ease-in-out lg:static lg:translate-x-0 flex flex-col shadow-2xl"
+      @mouseleave="if(sidebarCollapsed) { hideSidebarTooltip(); cancelSidebarHover(); }"
+      x-cloak
+    >
+      <!-- Logo Area -->
+      <div class="flex items-center h-16 px-6 text-white border-b border-white/[0.06]" :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'" style="background: rgba(0,0,0,0.2);">
+        <a href="{{ url_for('index') }}" class="text-xl font-bold flex items-center gap-3 tracking-tight">
+          <div class="logo-glow w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shrink-0">
+            <i class="ti ti-diamond text-white text-lg"></i>
+          </div>
+          <span :class="sidebarCollapsed ? 'hidden' : 'block'" class="text-[17px] font-extrabold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Gym Admin</span>
+        </a>
+        <button @click="sidebarOpen = false" class="lg:hidden text-slate-400 hover:text-white transition-colors" :class="sidebarCollapsed ? 'hidden' : 'block'">
+          <i class="ti ti-x text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Links -->
+       <nav 
+         @click.outside="activeMenu = null; hoverMenu = null" 
+         @scroll.passive="activeMenu = null; hoverMenu = null"
+           class="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar" 
+           :class="sidebarCollapsed ? 'px-2' : 'px-3'" 
+           hx-boost="true" 
+           hx-target="#htmx-content" 
+           @click.capture="if($event.target.tagName === 'A' || $event.target.closest('a')) sidebarOpen = false">
+        {% if current_user.is_authenticated %}
+        
+          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-2" :class="sidebarCollapsed ? 'hidden' : 'px-3'">Principal</p>
+          <a href="{{ url_for('index') }}" class="flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white group transition-all duration-200"
+             :class="sidebarCollapsed ? 'justify-center px-0' : 'px-3'"
+             @mouseenter="if(sidebarCollapsed) { tooltipText = 'Inicio'; tooltipY = $el.getBoundingClientRect().top + ($el.offsetHeight/2) - 12; tooltipShow = true; }" 
+             @mouseleave="tooltipShow = false">
+            <i class="ti ti-home text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+            <span :class="sidebarCollapsed ? 'hidden' : 'block'">Inicio</span>
+          </a>
+
+          {% if current_user.rol_id == 1 %}
+          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6" :class="sidebarCollapsed ? 'hidden' : 'px-3'">Admin</p>
+          <div class="space-y-1 relative" @mouseenter="if(sidebarCollapsed) { keepHoverMenu(); }" @mouseleave="if(sidebarCollapsed) { hideSidebarTooltip(); cancelSidebarHover(); }">
+            <button @click="if(!sidebarCollapsed) { activeMenu = activeMenu === 'config' ? null : 'config'; }" 
+                    class="w-full flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white transition-all duration-200 group focus:outline-none"
+                    :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-3'">
+                  <div class="flex items-center" :class="sidebarCollapsed ? 'justify-center' : ''"
+                    @mouseenter="if(sidebarCollapsed) { scheduleSidebarHover('config', $el); }">
+                <i class="ti ti-settings text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+                <span :class="sidebarCollapsed ? 'hidden' : 'block'">Configuración</span>
+              </div>
+              <i class="ti ti-chevron-down text-sm transition-transform duration-200" :class="[sidebarCollapsed ? 'hidden' : 'block', activeMenu === 'config' ? 'rotate-180 text-brand-500' : 'text-slate-500']"></i>
+            </button>
+              <div x-show="!sidebarCollapsed && activeMenu === 'config'" 
+                   class="pl-11 pr-3 py-1 space-y-1"
+                   x-collapse.duration.200ms>
+               <a href="{{ url_for('usuarios.list_usuarios') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Usuarios</a>
+               <a href="{{ url_for('roles.list_roles') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Roles</a>
+               <a href="{{ url_for('finanzas.index') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Finanzas</a>
+            </div>
+            <template x-if="sidebarCollapsed && hoverMenu === 'config'">
+                  <div class="fixed left-[76px] bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-52 py-2 z-[90] ml-1"
+                    @mouseenter="keepHoverMenu()" @mouseleave="cancelSidebarHover()"
+                   :style="'top: ' + activeTop + 'px;'">
+                <a href="{{ url_for('usuarios.list_usuarios') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Usuarios</a>
+                <a href="{{ url_for('roles.list_roles') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Roles</a>
+                <a href="{{ url_for('finanzas.index') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Finanzas</a>
+              </div>
+            </template>
+          </div>
+          {% endif %}
+
+          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6" :class="sidebarCollapsed ? 'hidden' : 'px-3'">Gestión</p>
+          <a href="{{ url_for('clientes.list_clientes') }}" class="flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white group transition-all duration-200"
+             :class="sidebarCollapsed ? 'justify-center px-0' : 'px-3'"
+             @mouseenter="if(sidebarCollapsed) { tooltipText = 'Clientes'; tooltipY = $el.getBoundingClientRect().top + ($el.offsetHeight/2) - 12; tooltipShow = true; }" 
+             @mouseleave="tooltipShow = false">
+            <i class="ti ti-users text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+            <span :class="sidebarCollapsed ? 'hidden' : 'block'">Clientes</span>
+          </a>
+
+          <div class="space-y-1 relative" @mouseenter="if(sidebarCollapsed) { keepHoverMenu(); }" @mouseleave="if(sidebarCollapsed) { hideSidebarTooltip(); cancelSidebarHover(); }">
+            <button @click="if(!sidebarCollapsed) { activeMenu = activeMenu === 'catalogo' ? null : 'catalogo'; }" 
+                    class="w-full flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white transition-all duration-200 group focus:outline-none"
+                    :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-3'">
+                  <div class="flex items-center" :class="sidebarCollapsed ? 'justify-center' : ''"
+                    @mouseenter="if(sidebarCollapsed) { scheduleSidebarHover('catalogo', $el); }">
+                <i class="ti ti-tags text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+                <span :class="sidebarCollapsed ? 'hidden' : 'block'">Catálogo</span>
+              </div>
+              <i class="ti ti-chevron-down text-sm transition-transform duration-200" :class="[sidebarCollapsed ? 'hidden' : 'block', activeMenu === 'catalogo' ? 'rotate-180 text-brand-500' : 'text-slate-500']"></i>
+            </button>
+              <div x-show="!sidebarCollapsed && activeMenu === 'catalogo'" 
+                   class="pl-11 pr-3 py-1 space-y-1"
+                   x-collapse.duration.200ms>
+               <a href="{{ url_for('planes.list_planes') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Planes</a>
+               <a href="{{ url_for('promociones.list_promociones') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Promociones</a>
+            </div>
+            <template x-if="sidebarCollapsed && hoverMenu === 'catalogo'">
+                  <div class="fixed left-[76px] bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-52 py-2 z-[90] ml-1"
+                    @mouseenter="keepHoverMenu()" @mouseleave="cancelSidebarHover()"
+                   :style="'top: ' + activeTop + 'px;'">
+                <a href="{{ url_for('planes.list_planes') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Planes</a>
+                <a href="{{ url_for('promociones.list_promociones') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Promociones</a>
+              </div>
+            </template>
+          </div>
+
+          <div class="space-y-1 relative" @mouseenter="if(sidebarCollapsed) { keepHoverMenu(); }" @mouseleave="if(sidebarCollapsed) { hideSidebarTooltip(); cancelSidebarHover(); }">
+            <button @click="if(!sidebarCollapsed) { activeMenu = activeMenu === 'operaciones' ? null : 'operaciones'; }" 
+                    class="w-full flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white transition-all duration-200 group focus:outline-none"
+                    :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-3'">
+                  <div class="flex items-center" :class="sidebarCollapsed ? 'justify-center' : ''"
+                    @mouseenter="if(sidebarCollapsed) { scheduleSidebarHover('operaciones', $el); }">
+                <i class="ti ti-wallet text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+                <span :class="sidebarCollapsed ? 'hidden' : 'block'">Operaciones</span>
+              </div>
+              <i class="ti ti-chevron-down text-sm transition-transform duration-200" :class="[sidebarCollapsed ? 'hidden' : 'block', activeMenu === 'operaciones' ? 'rotate-180 text-brand-500' : 'text-slate-500']"></i>
+            </button>
+              <div x-show="!sidebarCollapsed && activeMenu === 'operaciones'" 
+                   class="pl-11 pr-3 py-1 space-y-1"
+                   x-collapse.duration.200ms>
+               <a href="{{ url_for('membresias.list_membresias') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Membresías</a>
+               <a href="{{ url_for('pagos.list_pagos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Pagos</a>
+               <a href="{{ url_for('ventas.list_ventas') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Cafetería / Ventas</a>
+               <a href="{{ url_for('productos.list_productos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Productos</a>
+               <a href="{{ url_for('estados_membresias.list_estados') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Estados Membresía</a>
+            </div>
+            <template x-if="sidebarCollapsed && hoverMenu === 'operaciones'">
+                  <div class="fixed left-[76px] bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-56 py-2 z-[90] ml-1"
+                    @mouseenter="keepHoverMenu()" @mouseleave="cancelSidebarHover()"
+                   :style="'top: ' + activeTop + 'px;'">
+                <a href="{{ url_for('membresias.list_membresias') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Membresías</a>
+                <a href="{{ url_for('pagos.list_pagos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Pagos</a>
+                <a href="{{ url_for('ventas.list_ventas') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Cafetería / Ventas</a>
+                <a href="{{ url_for('productos.list_productos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Productos</a>
+                <a href="{{ url_for('estados_membresias.list_estados') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Estados Membresía</a>
+              </div>
+            </template>
+          </div>
+
+          {% if current_user.rol_id == 1 %}
+          <div class="space-y-1 relative" @mouseenter="if(sidebarCollapsed) { keepHoverMenu(); }" @mouseleave="if(sidebarCollapsed) { hideSidebarTooltip(); cancelSidebarHover(); }">
+            <button @click="if(!sidebarCollapsed) { activeMenu = activeMenu === 'egresos' ? null : 'egresos'; }" 
+                    class="w-full flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white transition-all duration-200 group focus:outline-none"
+                    :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-3'">
+                  <div class="flex items-center" :class="sidebarCollapsed ? 'justify-center' : ''"
+                    @mouseenter="if(sidebarCollapsed) { scheduleSidebarHover('egresos', $el); }">
+                <i class="ti ti-receipt-2 text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+                <span :class="sidebarCollapsed ? 'hidden' : 'block'">Egresos</span>
+              </div>
+              <i class="ti ti-chevron-down text-sm transition-transform duration-200" :class="[sidebarCollapsed ? 'hidden' : 'block', activeMenu === 'egresos' ? 'rotate-180 text-brand-500' : 'text-slate-500']"></i>
+            </button>
+              <div x-show="!sidebarCollapsed && activeMenu === 'egresos'" 
+                   class="pl-11 pr-3 py-1 space-y-1"
+                   x-collapse.duration.200ms>
+               <a href="{{ url_for('gastos.gastos_list') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Gastos</a>
+               <a href="{{ url_for('gastos.cuentas_list') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Cuentas</a>
+               <a href="{{ url_for('gastos.categorias_list') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Categorías</a>
+            </div>
+            <template x-if="sidebarCollapsed && hoverMenu === 'egresos'">
+                  <div class="fixed left-[76px] bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-52 py-2 z-[90] ml-1"
+                    @mouseenter="keepHoverMenu()" @mouseleave="cancelSidebarHover()"
+                   :style="'top: ' + activeTop + 'px;'">
+                <a href="{{ url_for('gastos.gastos_list') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Gastos</a>
+                <a href="{{ url_for('gastos.cuentas_list') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Cuentas</a>
+                <a href="{{ url_for('gastos.categorias_list') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Categorías</a>
+              </div>
+            </template>
+          </div>
+          {% endif %}
+
+        {% endif %}
+      </nav>
+      
+      <!-- Footer del Sidebar -->
+      <div class="p-4 border-t border-slate-800/50" :class="sidebarCollapsed ? 'px-2' : ''">
+        <div class="flex items-center gap-3" :class="sidebarCollapsed ? 'justify-center' : ''">
+          <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 shrink-0 cursor-pointer"
+               @mouseenter="if(sidebarCollapsed) { tooltipText = 'Perfil y Sesión'; tooltipY = $el.getBoundingClientRect().top + ($el.offsetHeight/2) - 12; tooltipShow = true; }" 
+               @mouseleave="tooltipShow = false"
+               @click="if(sidebarCollapsed) sidebarCollapsed = false">
+            <i class="ti ti-user-circle text-2xl"></i>
+          </div>
+          <div class="flex-1 min-w-0" :class="sidebarCollapsed ? 'hidden' : 'block'">
+            {% if current_user.is_authenticated %}
+              <p class="text-[13px] font-bold text-white truncate">{{ current_user.nombre or current_user.correo }}</p>
+              <a href="javascript:void(0)" @click.prevent="globalLogout()" class="text-[11px] text-slate-400 hover:text-white transition-colors flex items-center gap-1 mt-0.5"><i class="ti ti-logout text-xs"></i> Cerrar sesión</a>
+            {% else %}
+              <a href="{{ url_for('auth.login') }}" class="text-[13px] font-bold text-brand-400 hover:text-brand-300">Iniciar sesión</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile Overlay -->
+    <div 
+      x-show="sidebarOpen" 
+      @click="sidebarOpen = false" 
+      class="fixed inset-0 z-40 bg-slate-900/80 backdrop-blur-sm lg:hidden transition-opacity"
+      x-transition.opacity
+      x-cloak
+    ></div>
+    {% endif %}
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-slate-50/50">
+      
+      {% if current_user.is_authenticated %}
+      <!-- Top Navbar -->
+      <header class="header-glass h-16 border-b border-slate-200/60 flex items-center justify-between px-4 sm:px-6 shadow-sm z-30 sticky top-0 transition-all duration-300">
+        <div class="flex items-center">
+          <button @click="sidebarOpen = true" class="lg:hidden mr-4 text-slate-500 hover:text-slate-900 focus:outline-none transition-colors">
+            <i class="ti ti-menu-2 text-2xl"></i>
+          </button>
+          
+          <!-- Botón Desktop Collapse -->
+          <button @click="toggleSidebarCollapsed()" class="hidden lg:flex mr-5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 p-1.5 rounded-lg focus:outline-none transition-colors" title="Alternar menú">
+            <i class="ti ti-menu-deep text-2xl"></i>
+          </button>
+          
+          <h1 class="text-lg font-bold text-slate-800 hidden sm:block">
+            {% block page_title %}Panel de Control{% endblock %}
+          </h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <button class="bell-ring relative p-2 text-slate-400 hover:text-brand-600 transition-colors rounded-full hover:bg-brand-50" id="btn-notifications">
+            <i class="ti ti-bell text-[22px]"></i>
+            <span id="notif-badge" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full hidden border-2 border-white animate-pulse"></span>
+          </button>
+
+          <div class="dropdown">
+            <button class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors" type="button" data-bs-toggle="dropdown" aria-expanded="false" {% if current_user and current_user.sucursal_id %}disabled{% endif %}>
+              <i class="ti ti-building-store text-brand-500 text-lg"></i>
+              {% if current_user and current_user.sucursal %}
+                {{ current_user.sucursal.nombre }}
+              {% elif sucursal_actual_id %}
+                {% set selected = (sucursales|selectattr('id','equalto',sucursal_actual_id)|list).0 %}
+                {{ selected.nombre if selected else 'Sucursal' }}
+              {% else %}
+                Todas las sucursales
+              {% endif %}
+              <i class="ti ti-chevron-down text-xs ml-1 opacity-50"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-xl overflow-hidden text-sm">
+              <li><a class="dropdown-item py-2 px-4 hover:bg-slate-50 font-medium" href="#" data-sucursal-id="0">Todas las sucursales</a></li>
+              {% for s in sucursales %}
+                <li><a class="dropdown-item py-2 px-4 hover:bg-slate-50 text-slate-700" href="#" data-sucursal-id="{{ s.id }}">{{ s.nombre }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </header>
+      {% endif %}
+
+      <!-- MAIN CONTENT AREA -->
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" id="main-content">
+        
+        <div id="htmx-content">
+{% endif %}
+
+          <!-- Flash Messages -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="mb-6 space-y-2">
+              {% for category, m in messages %}
+                {% set cat_class = 'bg-blue-50 text-blue-800 border-blue-200' %}
+                {% if category == 'error' or category == 'danger' %}{% set cat_class = 'bg-red-50 text-red-800 border-red-200' %}{% endif %}
+                {% if category == 'success' %}{% set cat_class = 'bg-emerald-50 text-emerald-800 border-emerald-200' %}{% endif %}
+                {% if category == 'warning' %}{% set cat_class = 'bg-amber-50 text-amber-800 border-amber-200' %}{% endif %}
+                
+                <div class="flex items-center p-4 rounded-xl border {{ cat_class }} shadow-sm" x-data="{ show: true }" x-show="show" x-transition>
+                  <div class="flex-1 text-sm font-medium">{{ m }}</div>
+                  <button @click="show = false" class="ml-4 opacity-50 hover:opacity-100 transition-opacity"><i class="bi bi-x-lg"></i></button>
+                </div>
+              {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <!-- INICIO DE CONTENIDO FLASK -->
+          <div class="animate-in fade-in duration-500">
+            {% block content %}{% endblock %}
+          </div>
+          <!-- FIN DE CONTENIDO FLASK -->
+
+{% if not request.headers.get("HX-Request") %}
+        </div> <!-- Fin htmx-content -->
+
+        <footer class="mt-12 pt-6 border-t border-slate-200/60 text-center pb-4">
+          <p class="text-slate-800 font-bold text-sm">© 2025 Hipertrofia Funcional</p>
+          <p class="text-slate-400 text-xs mt-1"><i class="ti ti-map-pin text-brand-500"></i> Sucursal Central: Av. Mutualista 3er anillo externo</p>
+          <div class="mt-3 flex items-center justify-center gap-3 text-[11px] text-slate-400">
+            <span class="flex items-center gap-1"><i class="ti ti-code text-brand-500/70"></i> Diego Valverde</span>
+            <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+            <span class="flex items-center gap-1"><i class="ti ti-tag text-brand-500/70"></i> v1.2.1</span>
+          </div>
+        </footer>
+
+      </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1055">
+      <div id="toast-container"></div>
+    </div>
+
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-xl rounded-2xl overflow-hidden">
+          <div class="modal-header bg-slate-50 border-b border-slate-100 px-6 py-4">
+            <h5 class="modal-title text-slate-800 font-semibold text-lg">Confirmar acción</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body px-6 py-5 text-slate-600">¿Estás seguro?</div>
+          <div class="modal-footer bg-slate-50 border-t border-slate-100 px-6 py-4">
+            <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-danger bg-red-600 hover:bg-red-700 border-0 rounded-lg px-4" id="confirmOk">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="confirmEditModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-xl rounded-2xl overflow-hidden">
+          <div class="modal-header bg-slate-50 border-b border-slate-100 px-6 py-4">
+            <h5 class="modal-title text-slate-800 font-semibold text-lg">Confirmar edición</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body px-6 py-5 text-slate-600">
+            <p class="mb-4">Estás a punto de modificar este registro. Revisa los cambios abajo y confirma para continuar.</p>
+            <div id="confirm-edit-summary" class="text-sm bg-slate-100 p-4 rounded-xl border border-slate-200 overflow-auto"></div>
+          </div>
+          <div class="modal-footer bg-slate-50 border-t border-slate-100 px-6 py-4">
+            <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary bg-brand-600 hover:bg-brand-700 border-0 rounded-lg px-4" id="confirmEditOk">Confirmar cambios</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="confirmDiscardModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-slate-50">
+            <h5 class="modal-title text-slate-800">Descartar cambios</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" id="confirmDiscardClose"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-slate-600 mb-0">Tienes cambios sin guardar. ¿Deseas descartarlos?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100" data-bs-dismiss="modal" id="confirmDiscardCancel">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="confirmDiscardOk">Descartar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end border-l-0 shadow-2xl" tabindex="-1" id="notificationsCanvas">
+      <div class="offcanvas-header border-b border-slate-100 px-6 py-4">
+        <h5 class="offcanvas-title font-semibold text-slate-800">Notificaciones</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
+      </div>
+      <div class="offcanvas-body px-6 py-4 bg-slate-50">
+        <div id="notifications-list">
+          <div class="text-center py-8">
+            <i class="bi bi-bell-slash text-4xl text-slate-300 mb-3 block"></i>
+            <p class="text-slate-500 text-sm">Sin notificaciones por el momento.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Formularios Dinámicos -->
+    <div id="form-modal" class="hidden fixed inset-0 z-40" data-modal-overlay>
+      <!-- Overlay oscuro -->
+      <div class="absolute inset-0 bg-black/50 transition-opacity duration-300"></div>
+      
+      <!-- Modal Container (Slide desde la derecha) -->
+      <div class="absolute inset-y-0 right-0 w-full md:w-2xl max-w-2xl bg-white shadow-2xl transform transition-transform duration-300 -translate-x-full modal-visible:-translate-x-0 overflow-y-auto">
+        <!-- Header -->
+        <div class="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
+          <h2 id="modal-title" class="text-xl font-bold text-slate-900">Formulario</h2>
+          <button data-modal-close class="inline-flex items-center justify-center rounded-lg h-9 w-9 border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors">
+            <i class="ti ti-x text-lg"></i>
+          </button>
+        </div>
+        
+        <!-- Form Container -->
+        <div id="form-container" class="p-6">
+          <!-- Contenido dinámico del formulario -->
+        </div>
+      </div>
+    </div>
+    
+    <script id="flash-messages" type="application/json">{{ get_flashed_messages()|tojson }}</script>
+    
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      try {
+        var el = document.getElementById('flash-messages');
+        window.FLASH_MESSAGES = el && el.textContent ? JSON.parse(el.textContent) : [];
+      } catch (e) {
+        window.FLASH_MESSAGES = [];
+      }
+      try {
+        var adminEl = document.getElementById('is-admin');
+        window.IS_ADMIN = adminEl && adminEl.textContent ? JSON.parse(adminEl.textContent) : false;
+      } catch(e) {
+        window.IS_ADMIN = false;
+      }
+    </script>
+    <script id="is-admin" type="application/json">{{ (current_user and current_user.rol_id == 1) | tojson }}</script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <!-- CSRF Token: inyección automática en fetch y formularios -->
+    <script>
+      (function(){
+        // Leer token CSRF del meta tag
+        function getCsrfToken(){
+          var meta = document.querySelector('meta[name="csrf-token"]');
+          return meta ? meta.getAttribute('content') : '';
+        }
+
+        // 1. Monkey-patch fetch para inyectar X-CSRFToken en peticiones mutantes
+        var _origFetch = window.fetch;
+        window.fetch = function(url, opts){
+          opts = opts || {};
+          var method = (opts.method || 'GET').toUpperCase();
+          if(method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS'){
+            opts.headers = opts.headers || {};
+            // Si headers es un objeto Headers, usar set; sino tratar como plain object
+            if(opts.headers instanceof Headers){
+              if(!opts.headers.has('X-CSRFToken')) opts.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+              if(!opts.headers['X-CSRFToken']) opts.headers['X-CSRFToken'] = getCsrfToken();
+            }
+          }
+          return _origFetch.call(this, url, opts);
+        };
+
+        // 2. Inyectar campo oculto csrf_token en todos los formularios POST existentes
+        function injectCsrfInput(form){
+          if(form.querySelector('input[name="csrf_token"]')) return;
+          var method = (form.getAttribute('method') || 'GET').toUpperCase();
+          if(method === 'GET') return;
+          var input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'csrf_token';
+          input.value = getCsrfToken();
+          form.prepend(input);
+        }
+
+        // Inyectar en formularios existentes al cargar
+        document.querySelectorAll('form').forEach(injectCsrfInput);
+
+        // 3. MutationObserver para formularios creados dinámicamente
+        var observer = new MutationObserver(function(mutations){
+          mutations.forEach(function(m){
+            m.addedNodes.forEach(function(node){
+              if(node.nodeType !== 1) return;
+              if(node.tagName === 'FORM') injectCsrfInput(node);
+              if(node.querySelectorAll) node.querySelectorAll('form').forEach(injectCsrfInput);
+            });
+          });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        
+        // 4. Función de logout global via POST
+        window.globalLogout = function() {
+          fetch("{{ url_for('auth.logout') }}", { method: 'POST' })
+            .then(function() {
+              window.location.href = "{{ url_for('auth.login') }}";
+            })
+            .catch(function(err) {
+              console.error("Logout failed", err);
+              // Fallback: redirigir de todos modos
+              window.location.href = "{{ url_for('auth.login') }}";
+            });
+        };
+      })();
+    </script>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modal-form.js') }}"></script>
+{% endif %}
+
+    {% block scripts %}{% endblock %}
+
+{% if not request.headers.get("HX-Request") %}
+    <script>
+      (function(){
+        document.querySelectorAll('.dropdown-item[data-sucursal-id]').forEach(function(el){
+          el.addEventListener('click', function(e){
+            e.preventDefault();
+            var id = el.getAttribute('data-sucursal-id');
+            fetch('/sucursales/select/' + id, { method: 'GET', credentials: 'same-origin' })
+              .then(function(response){
+                if (response.ok) window.location.reload();
+              }).catch(function(){
+                window.location.href = window.location.pathname;
+              });
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
+{% endif %}

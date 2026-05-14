@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Listado para imprimir{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 max-w-5xl mx-auto print:p-0 print:max-w-none">
+  <div class="flex items-center justify-between mb-8 border-b border-slate-200 pb-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2"><i class="ti ti-users"></i> Listado de Clientes</h2>
+      <p class="text-sm text-slate-500 mt-1">Gimnasio Hipertrofia Funcional</p>
+    </div>
+    <div class="text-right">
+      <p class="text-sm font-medium text-slate-700">Generado: {{ now }}</p>
+      <p class="text-xs text-slate-500">Total registros: {{ clientes|length }}</p>
+    </div>
+  </div>
+
+  <table class="w-full text-sm text-left border border-slate-200">
+    <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200 print:bg-transparent">
+      <tr>
+        <th class="px-4 py-3 border-r border-slate-200 font-bold">Nombre Completo</th>
+        <th class="px-4 py-3 border-r border-slate-200 font-bold">Correo</th>
+        <th class="px-4 py-3 border-r border-slate-200 font-bold">Teléfono</th>
+        <th class="px-4 py-3 border-r border-slate-200 font-bold">Nacimiento</th>
+        <th class="px-4 py-3 border-r border-slate-200 font-bold">Tipo</th>
+        <th class="px-4 py-3 font-bold">Estado</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-200">
+      {% for c in clientes %}
+      <tr>
+        <td class="px-4 py-2 border-r border-slate-200 font-medium text-slate-900">{{ c.nombre }} {{ c.apellido }}</td>
+        <td class="px-4 py-2 border-r border-slate-200 text-slate-600">{{ c.correo or '-' }}</td>
+        <td class="px-4 py-2 border-r border-slate-200 text-slate-600">{{ c.telefono or '-' }}</td>
+        <td class="px-4 py-2 border-r border-slate-200 text-slate-600">{{ c.fecha_nacimiento or '-' }}</td>
+        <td class="px-4 py-2 border-r border-slate-200 text-slate-600">{{ c.tipo_cliente }}</td>
+        <td class="px-4 py-2 font-medium {% if c.estado == 'Activo' %}text-emerald-600{% else %}text-slate-600{% endif %}">{{ c.estado }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  <div class="mt-12 pt-8 border-t border-slate-200 text-center text-xs text-slate-400 print:block">
+    --- Fin del reporte ---
+  </div>
+</div>
+
+<script>
+  window.addEventListener('load', function() {
+    // Delay print slightly to ensure Tailwind renders
+    setTimeout(function() {
+      window.print();
+    }, 500);
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi perfil{% endblock %}
+
+{% block content %}
+  <h2>Mi perfil</h2>
+  <div class="card mb-4">
+    <div class="card-body">
+      <p><strong>Nombre:</strong> {{ user.nombre }}</p>
+      <p><strong>Correo:</strong> {{ user.correo }}</p>
+      <p><strong>Rol:</strong> {{ user.rol.nombre if user.rol else 'N/A' }}</p>
+    </div>
+  </div>
+
+  <h3>Cambiar contraseña</h3>
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Contraseña actual</label>
+      <input class="form-control" name="current_password" type="password" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Nueva contraseña</label>
+      <input class="form-control" name="new_password" type="password" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Reescribe la nueva contraseña</label>
+      <input class="form-control" name="confirm_password" type="password" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Cambiar contraseña</button>
+  </form>
+
+{% endblock %}

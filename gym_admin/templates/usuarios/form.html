@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuario - Gym Admin{% endblock %}
+
+{% block content %}
+  <h2>{{ 'Editar' if user else 'Crear' }} usuario</h2>
+  <form method="post" class="confirm-edit">
+    {% if user %}<input type="hidden" name="id" value="{{ user.id }}">{% endif %}
+    <div class="mb-3">
+      <label class="form-label">Nombre</label>
+      <input class="form-control" name="nombre" value="{{ user.nombre if user else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Correo</label>
+      <input class="form-control" name="correo" value="{{ user.correo if user else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Contraseña</label>
+      <div class="form-text">Por motivos de privacidad, las contraseñas no pueden modificarse desde este formulario. Para cambiar la contraseña, el usuario debe usar la opción "¿Olvidaste tu contraseña?" en la página de inicio de sesión, la cual envía un correo seguro para restablecerla.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Rol</label>
+      <select class="form-select" name="rol_id">
+        <option value="">-- Ninguno --</option>
+        {% for r in roles %}
+          <option value="{{ r.id }}" {% if user and user.rol_id==r.id %}selected{% endif %}>{{ r.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Sucursal</label>
+      <select class="form-select" name="sucursal_id">
+        <option value="">-- Ninguna --</option>
+        {% for s in sucursales %}
+          <option value="{{ s.id }}" {% if user and user.sucursal_id==s.id %}selected{% endif %}>{{ s.nombre }}</option>
+        {% endfor %}
+      </select>
+      <div class="form-text">Asigna una sucursal a este usuario. Déjalo en "Ninguna" si es un administrador global.</div>
+    </div>
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a class="btn btn-secondary" href="{{ url_for('usuarios.list_usuarios') }}">Cancelar</a>
+  </form>
+{% endblock %}

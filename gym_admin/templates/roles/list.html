@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Roles - Gym Admin{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Roles</h2>
+    <a class="btn btn-primary" href="{{ url_for('roles.create_role') }}">Nuevo rol</a>
+  </div>
+  <table class="table table-hover align-middle shadow-sm bg-white rounded">
+    <thead>
+      <tr><th>ID</th><th>Nombre</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for r in roles %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.nombre }}</td>
+        <td>
+          {% if current_user and current_user.is_authenticated and current_user.rol_id == 1 %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('roles.edit_role', role_id=r.id) }}">Editar</a>
+            <form method="post" action="{{ url_for('roles.delete_role', role_id=r.id) }}" class="d-inline-block ms-2 confirm-delete-form" data-name="{{ r.nombre }}">
+              <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+            </form>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
+

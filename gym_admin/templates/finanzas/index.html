@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Finanzas - Reportes{% endblock %}
+
+{% block content %}
+  <div class="max-w-7xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+            <i class="ti ti-coin text-2xl"></i>
+          </div>
+          Finanzas - Reportes
+        </h2>
+        <p class="text-sm text-slate-500 mt-1">Visualiza ingresos, egresos y análisis financieros.</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <form id="fin-filters" class="flex flex-wrap gap-3 items-end" onsubmit="return false;">
+        <div>
+          <label class="text-sm font-medium text-slate-700 block mb-1">Período</label>
+          <select name="period" id="fin-period" class="h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+            <option value="today" {% if period=='today' %}selected{% endif %}>Hoy</option>
+            <option value="week" {% if period=='week' %}selected{% endif %}>Esta semana</option>
+            <option value="month" {% if period=='month' %}selected{% endif %}>Este mes</option>
+            <option value="year" {% if period=='year' %}selected{% endif %}>Este año</option>
+            <option value="custom" {% if period=='custom' %}selected{% endif %}>Personalizado</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-slate-700 block mb-1">Desde</label>
+          <input type="text" id="fin-fecha-desde" name="fecha_desde" class="h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" placeholder="YYYY-MM-DD" value="{{ start_dt.date() if start_dt else '' }}">
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-slate-700 block mb-1">Hasta</label>
+          <input type="text" id="fin-fecha-hasta" name="fecha_hasta" class="h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" placeholder="YYYY-MM-DD" value="{{ end_dt.date() if end_dt else '' }}">
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-slate-700 block mb-1">Sucursal</label>
+          <select name="sucursal_id" id="fin-sucursal" class="h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+            <option value="0">Todas</option>
+            {% for s in sucursales %}
+              <option value="{{ s.id }}" {% if selected_sucursal==s.id %}selected{% endif %}>{{ s.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-slate-700 block mb-1">Cuenta</label>
+          <select name="cuenta_id" id="fin-cuenta" class="h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+            <option value="">Todas las cuentas</option>
+            {% for c in cuentas %}
+              <option value="{{ c.id }}" {% if selected_cuenta==c.id %}selected{% endif %}>{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input class="w-4 h-4 rounded border-slate-300 text-amber-600 shadow-sm cursor-pointer" type="checkbox" id="fin-include-ventas" name="include_ventas" {% if include_ventas %}checked{% endif %}>
+          <label class="text-sm font-medium text-slate-700 cursor-pointer" for="fin-include-ventas">Incluir ingresos cafetería</label>
+        </div>
+
+        <button class="h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 px-4 text-sm font-medium transition-colors" id="fin-reset">Restablecer</button>
+      </form>
+    </div>
+
+    <div id="fin-panel">
+      {% include 'finanzas/_panel.html' %}
+    </div>
+  </div>
+
+  {% block scripts %}
+  <script>
+    (function(){
+      // flatpickr for date inputs
+      try{
+        if(window.flatpickr){
+          flatpickr('#fin-fecha-desde', {dateFormat:'Y-m-d'});
+          flatpickr('#fin-fecha-hasta', {dateFormat:'Y-m-d'});
+        }
+      }catch(e){console.error(e);} 
+
+      var periodEl = document.getElementById('fin-period');
+      var desdeEl = document.getElementById('fin-fecha-desde');
+      var hastaEl = document.getElementById('fin-fecha-hasta');
+      var sucEl = document.getElementById('fin-sucursal');
+      var cuentaEl = document.getElementById('fin-cuenta');
+      var includeVentasEl = document.getElementById('fin-include-ventas');
+      var resetBtn = document.getElementById('fin-reset');
+
+      function setCustomEnabled(enabled){
+        try{
+          if(enabled){ desdeEl.removeAttribute('disabled'); hastaEl.removeAttribute('disabled'); }
+          else { desdeEl.setAttribute('disabled','disabled'); hastaEl.setAttribute('disabled','disabled'); }
+        }catch(e){}
+      }
+
+      // initial enable/disable
+      setCustomEnabled(periodEl.value === 'custom');
+
+      function gather(){
+        return {
+          period: periodEl.value,
+          fecha_desde: desdeEl.value || '',
+          fecha_hasta: hastaEl.value || '',
+          sucursal_id: sucEl.value || 0,
+          cuenta_id: cuentaEl.value || '',
+          include_ventas: includeVentasEl.checked ? '1' : '0'
+        };
+      }
+
+      var timer = null;
+      function scheduleFetch(){
+        clearTimeout(timer);
+        timer = setTimeout(fetchPanel, 250);
+      }
+
+      function fetchPanel(){
+        var data = gather();
+        fetch('/finanzas/data', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data), credentials:'same-origin' })
+          .then(function(r){ return r.text(); })
+          .then(function(html){
+            var el = document.getElementById('fin-panel');
+            if(el) el.innerHTML = html;
+          }).catch(function(err){ console.error('Error cargando finanzas', err); });
+      }
+
+      periodEl.addEventListener('change', function(){ setCustomEnabled(this.value === 'custom'); scheduleFetch(); });
+      desdeEl.addEventListener('change', scheduleFetch);
+      hastaEl.addEventListener('change', scheduleFetch);
+      sucEl.addEventListener('change', scheduleFetch);
+      cuentaEl.addEventListener('change', scheduleFetch);
+      includeVentasEl.addEventListener('change', scheduleFetch);
+
+      resetBtn.addEventListener('click', function(e){ e.preventDefault(); periodEl.value='month'; setCustomEnabled(false); desdeEl.value=''; hastaEl.value=''; sucEl.value='0'; cuentaEl.value=''; includeVentasEl.checked=false; scheduleFetch(); });
+    })();
+  </script>
+  {% endblock %}
+
+{% endblock %}

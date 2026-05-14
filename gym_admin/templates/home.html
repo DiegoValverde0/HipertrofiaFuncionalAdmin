@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Gym Admin{% endblock %}
+
+{% block content %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  
+  <div class="dashboard-wrapper max-w-7xl mx-auto relative z-10" x-data="dashboardAnimations()">
+
+    <!-- ═══ Greeting Header ═══ -->
+    <div class="dash-fade-up dash-delay-1 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 class="dash-greeting">
+            <span x-text="greeting"></span>, {% if current_user and current_user.nombre %}{{ current_user.nombre.split(' ')[0] }}{% else %}Admin{% endif %} 👋
+          </h1>
+          <p class="dash-greeting-sub">
+            Aquí tienes el resumen de tu gimnasio 
+            {% if sucursal_actual_id %}
+              {% set s = (sucursales|selectattr('id','equalto',sucursal_actual_id)|list).0 %}
+              — <span class="text-brand-600 font-semibold">{{ s.nombre if s else 'Sucursal' }}</span>
+            {% else %}
+              — <span class="text-brand-600 font-semibold">Todas las sucursales</span>
+            {% endif %}
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="dash-pulse-dot green"></span>
+          <span class="text-xs text-slate-500 font-medium" x-text="currentDate"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ KPI Stat Cards ═══ -->
+    <div class="dash-section-title dash-fade-up dash-delay-2">
+      <i class="ti ti-chart-dots-3 text-blue-500"></i> Resumen General
+    </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+      
+      <!-- Total Clientes -->
+      <div class="dash-stat-card dash-fade-up dash-delay-2" onclick="window.location.href='/clientes'" id="card-clients">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Clientes</p>
+            <div class="dash-stat-value" id="card-total-clients" data-target="0">
+              <span class="dash-shimmer inline-block w-16 h-8">&nbsp;</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+              <i class="ti ti-building text-slate-400"></i> Registrados en sucursal
+            </p>
+          </div>
+          <div class="dash-stat-icon blue relative">
+            <i class="ti ti-users-group"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clientes Activos -->
+      <div class="dash-stat-card dash-fade-up dash-delay-3" onclick="window.location.href='/clientes?estado=Activo'">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Clientes Activos</p>
+            <div class="dash-stat-value" id="card-active-clients" data-target="0">
+              <span class="dash-shimmer inline-block w-16 h-8">&nbsp;</span>
+            </div>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="dash-pulse-dot green" style="width:6px;height:6px;"></span>
+              <p class="text-xs text-slate-500">Con membresía vigente</p>
+            </div>
+          </div>
+          <div class="dash-stat-icon emerald relative">
+            <i class="ti ti-user-check"></i>
+          </div>
+        </div>
+        <!-- Progress bar showing active ratio -->
+        <div class="mt-4">
+          <div class="dash-progress-bg">
+            <div class="dash-progress-fill" id="active-progress" style="width: 0%; background: var(--grad-emerald);"></div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1 text-right" id="active-ratio-text">—</p>
+        </div>
+      </div>
+
+      <!-- Clientes Inactivos -->
+      <div class="dash-stat-card dash-fade-up dash-delay-4" onclick="window.location.href='/clientes?estado=Inactivo'">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Clientes Inactivos</p>
+            <div class="dash-stat-value" id="card-inactive-clients" data-target="0">
+              <span class="dash-shimmer inline-block w-16 h-8">&nbsp;</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+              <i class="ti ti-clock-x text-rose-400"></i> Membresía vencida
+            </p>
+          </div>
+          <div class="dash-stat-icon rose relative">
+            <i class="ti ti-user-x"></i>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ Main Charts Row ═══ -->
+    <div class="dash-section-title dash-fade-up dash-delay-4">
+      <i class="ti ti-chart-area-line text-emerald-500"></i> Análisis Financiero
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-7 gap-5 mb-8">
+
+      <!-- Ingresos vs Egresos -->
+      <div class="lg:col-span-4 dash-chart-card dash-fade-up dash-delay-5">
+        <div class="flex flex-col h-full">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <div>
+              <h3 class="dash-chart-title">Ingresos vs Egresos</h3>
+              <p class="dash-chart-subtitle mt-0.5">Últimos 12 meses</p>
+            </div>
+            <div class="dash-toggle-container">
+              <input type="checkbox" id="toggleIncludeCafeteria" class="dash-toggle">
+              <label for="toggleIncludeCafeteria" class="text-xs text-slate-500 cursor-pointer select-none">Incluir ventas</label>
+            </div>
+          </div>
+          <div class="flex-grow min-h-[280px] relative">
+            <canvas id="chart-financials"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Membresías por Expirar -->
+      <div class="lg:col-span-3 dash-list-card dash-fade-up dash-delay-6 flex flex-col" id="card-members-expiring">
+        <div class="dash-list-header">
+          <div class="dash-list-header-icon" style="background: var(--grad-amber);">
+            <i class="ti ti-clock-exclamation"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-bold text-slate-800">Por Expirar</h3>
+            <p class="text-xs text-slate-500">Próximos 7 días</p>
+          </div>
+          <span class="dash-badge amber" id="members-expiring-count-badge">
+            <i class="ti ti-alert-triangle text-[10px]"></i>
+            <span id="members-expiring-count">0</span>
+          </span>
+        </div>
+        <div class="dash-list-body flex-grow" id="members-expiring-list">
+          <div class="dash-list-empty">
+            <div class="dash-shimmer h-10 mb-2 rounded-lg"></div>
+            <div class="dash-shimmer h-10 mb-2 rounded-lg"></div>
+            <div class="dash-shimmer h-10 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ Secondary Info Row ═══ -->
+    <div class="dash-section-title dash-fade-up dash-delay-5">
+      <i class="ti ti-layout-dashboard text-violet-500"></i> Detalles
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-5 mb-8">
+
+      <!-- Cumpleañeros -->
+      <div class="lg:col-span-1 dash-list-card dash-fade-up dash-delay-6" id="card-birthdays">
+        <div class="dash-list-header">
+          <div class="dash-list-header-icon" style="background: var(--grad-violet);">
+            <i class="ti ti-cake"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-bold text-slate-800">Cumpleañeros</h3>
+            <p class="text-xs text-slate-500">Esta semana</p>
+          </div>
+        </div>
+        <div class="dash-list-body" id="birthdays-list">
+          <div class="dash-list-empty">
+            <div class="dash-shimmer h-10 mb-2 rounded-lg mx-4"></div>
+            <div class="dash-shimmer h-10 rounded-lg mx-4"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distribución de Clientes -->
+      <div class="lg:col-span-1 dash-chart-card dash-fade-up dash-delay-7">
+        <div class="mb-4">
+          <h3 class="dash-chart-title">Distribución</h3>
+          <p class="dash-chart-subtitle mt-0.5">Activos vs Inactivos</p>
+        </div>
+        <div class="min-h-[240px] flex items-center justify-center">
+          <canvas id="chart-status-pie"></canvas>
+        </div>
+      </div>
+
+      <!-- Promociones Vigentes -->
+      <div class="lg:col-span-2 dash-list-card dash-fade-up dash-delay-8" id="card-promotions">
+        <div class="dash-list-header">
+          <div class="dash-list-header-icon" style="background: var(--grad-sky);">
+            <i class="ti ti-speakerphone"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-bold text-slate-800">Promociones Vigentes</h3>
+            <p class="text-xs text-slate-500">Ofertas activas</p>
+          </div>
+        </div>
+        <div class="dash-list-body" id="promotions-list">
+          <div class="dash-list-empty">
+            <div class="dash-shimmer h-10 mb-2 rounded-lg mx-4"></div>
+            <div class="dash-shimmer h-10 rounded-lg mx-4"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ Plans Bar Chart ═══ -->
+    <div class="dash-chart-card dash-fade-up dash-delay-8 mb-8">
+      <div class="mb-5">
+        <h3 class="dash-chart-title">Planes Más Solicitados</h3>
+        <p class="dash-chart-subtitle mt-0.5">Distribución de membresías por plan</p>
+      </div>
+      <div class="min-h-[300px] relative">
+        <canvas id="chart-plans-bar"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Alpine.js data for dashboard animations
+    function dashboardAnimations() {
+      return {
+        greeting: '',
+        currentDate: '',
+        init() {
+          var hour = new Date().getHours();
+          if (hour < 12) this.greeting = 'Buenos días';
+          else if (hour < 18) this.greeting = 'Buenas tardes';
+          else this.greeting = 'Buenas noches';
+
+          var opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+          this.currentDate = new Date().toLocaleDateString('es-ES', opts);
+          this.currentDate = this.currentDate.charAt(0).toUpperCase() + this.currentDate.slice(1);
+        }
+      }
+    }
+  </script>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

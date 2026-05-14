@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h3 class="card-title mb-3">Iniciar sesión</h3>
+          <form method="post">
+            <div class="mb-3">
+              <label class="form-label">Correo</label>
+              <input class="form-control" name="correo" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Contraseña</label>
+              <input class="form-control" name="contrasena" type="password" required>
+            </div>
+            <button class="btn btn-primary">Entrar</button>
+            <a class="btn btn-link" href="{{ url_for('auth.forgot') }}">¿Olvidaste tu contraseña?</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

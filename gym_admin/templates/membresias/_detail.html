@@ -1,0 +1,147 @@
+<div class="modal fade" id="membDetailModal" tabindex="-1" data-phone="{{ cliente_telefono or '' }}" data-print-url="{{ pdf_url }}">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-xl rounded-2xl overflow-hidden bg-slate-50">
+      
+      <!-- Header -->
+      <div class="modal-header bg-white border-b border-slate-100 px-6 py-4 flex justify-between items-center relative">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+            <i class="ti ti-id-badge-2 text-xl"></i>
+          </div>
+          <div>
+            <h5 class="text-slate-900 font-bold text-lg mb-0">Detalle de Membresía</h5>
+            <p class="text-xs text-slate-500 font-medium mb-0">Folio: #{{ m.id }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close text-slate-400 hover:text-slate-700 transition-colors bg-none" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body px-6 py-6">
+        
+        <!-- Info Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><i class="ti ti-user"></i> Cliente</h6>
+            <div class="space-y-2">
+              <div class="font-semibold text-slate-900 text-sm">{{ cliente_fullname }}</div>
+              <div class="text-slate-600 text-sm flex items-center gap-2"><i class="ti ti-phone text-slate-400"></i> {{ cliente_telefono or '---' }}</div>
+              <div class="text-slate-600 text-sm flex items-center gap-2"><i class="ti ti-building-store text-slate-400"></i> {{ sucursal_nombre or (m.sucursal_id or '---') }}</div>
+            </div>
+          </div>
+
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><i class="ti ti-calendar-star"></i> Plan y Vigencia</h6>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Plan</span>
+                <span class="font-semibold text-slate-900">{{ plan_nombre }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Duración</span>
+                <span class="font-medium text-slate-700">{{ plan_duracion or '---' }}</span>
+              </div>
+              <div class="flex justify-between items-center border-t border-slate-100 pt-2 mt-2">
+                <span class="text-slate-500">Inicio</span>
+                <span class="font-medium text-slate-700">{{ m.fecha_inicio }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Fin</span>
+                <span class="font-medium text-slate-700">{{ m.fecha_fin }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Finanzas -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><i class="ti ti-wallet"></i> Resumen Financiero</h6>
+            <div class="space-y-3 text-sm">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Precio base</span>
+                <span class="font-medium text-slate-700">{{ precio_base }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Descuento</span>
+                <span class="font-medium text-rose-600">{{ descuento_repr }}</span>
+              </div>
+              <div class="flex justify-between items-center py-2 border-y border-slate-100 bg-slate-50/50 px-2 rounded-lg my-1">
+                <span class="text-slate-700 font-semibold">Total a pagar</span>
+                <span class="font-bold text-indigo-700 text-base">{{ monto_calculado }}</span>
+              </div>
+              <div class="flex justify-between items-center mt-2">
+                <span class="text-slate-500">Pagos realizados ({{ pagos_count }})</span>
+                <span class="font-medium text-emerald-600">{{ pagos_total }}</span>
+              </div>
+              <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+                <span class="font-semibold text-slate-900">Saldo pendiente</span>
+                <span class="font-bold {% if saldo != '$0.00' and saldo != 'Bs.0.00' and saldo != '0.00' %}text-rose-600{% else %}text-emerald-600{% endif %} text-base">{{ saldo }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagos Detalle -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full">
+            <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><i class="ti ti-receipt-2"></i> Historial de Pagos</h6>
+            
+            {% if pagos_list and pagos_list|length %}
+              <div class="space-y-3 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
+                {% for p in pagos_list %}
+                  <div class="p-3 rounded-lg border border-slate-100 bg-slate-50 flex flex-col gap-1 hover:border-slate-200 transition-colors">
+                    <div class="flex justify-between items-start">
+                      <span class="text-xs font-bold text-slate-500">Pago #{{ p.id }}</span>
+                      <span class="text-[11px] font-medium text-slate-400">{{ p.fecha or '' }}</span>
+                    </div>
+                    <div class="font-bold text-emerald-600 text-sm mt-0.5">{{ p.monto }}</div>
+                    {% if p.detalle %}
+                      <div class="text-[11px] text-slate-500 mt-1"><i class="ti ti-info-circle"></i> {{ p.detalle }}</div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="flex-1 flex flex-col items-center justify-center text-center text-slate-400">
+                <i class="ti ti-receipt-off text-3xl mb-2 text-slate-300"></i>
+                <p class="text-sm font-medium">Sin pagos registrados</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if m.observaciones %}
+        <div class="mt-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+          <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><i class="ti ti-notes"></i> Observaciones</h6>
+          <p class="text-sm text-slate-600 italic">{{ m.observaciones }}</p>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer bg-white border-t border-slate-100 px-6 py-4 flex justify-between items-center">
+        <div class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+          <i class="ti ti-circle-half-2"></i> {{ estado_nombre }}
+        </div>
+        <div class="flex gap-2">
+          <button type="button" class="btn bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm rounded-lg px-4 shadow-sm" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-sm rounded-lg px-4 shadow-sm flex items-center gap-1.5 border-0" id="membDetailWhatsapp">
+            <i class="ti ti-brand-whatsapp text-lg"></i> Enviar por WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    document.body.addEventListener('click', function(e){
+      var btn = e.target.closest('#membDetailPrint');
+      if(!btn) return;
+      try{ window.print(); }catch(err){ console.error(err); }
+    });
+  })();
+</script>

@@ -1,0 +1,191 @@
+import pytest
+from datetime import date, timedelta
+from decimal import Decimal
+from gym_admin.services.membership_service import (
+    create_membership, 
+    compute_end_date, 
+    get_membership_status,
+    update_membership,
+)
+from gym_admin.models import Membresia, EstadoMembresia, Plan
+
+def test_compute_fecha_fin():
+    """Test the duration parser and end date calculation."""
+    start = date(2023, 1, 1)
+    
+    # 1 month
+    fin = compute_end_date(start, "1 mes")
+    assert fin.month == 2
+    assert fin.day == 1
+
+    # 3 months (trimestral)
+    fin = compute_end_date(start, "Trimestral")
+    assert fin.month == 4
+    
+    # 6 months (semestral)
+    fin = compute_end_date(start, "Semestral")
+    assert fin.month == 7
+    
+    # 1 year (anual)
+    fin = compute_end_date(start, "Anual")
+    assert fin.year == 2024
+
+def test_create_membership_success(db_session, cliente, plan, estados_membresia):
+    """Test successful membership creation."""
+    start_date = date.today()
+    success, result, error = create_membership(
+        cliente_id=cliente.id,
+        plan_id=plan.id,
+        fecha_inicio=start_date.strftime("%Y-%m-%d"),
+        estado_id=1
+    )
+    
+    assert success is True
+    assert error is None
+    assert isinstance(result, Membresia)
+    assert result.cliente_id == cliente.id
+    assert result.plan_id == plan.id
+    assert result.is_pendiente is True
+    assert result.fecha_inicio == start_date
+    assert result.fecha_fin is not None
+    assert result.sucursal_id == cliente.sucursal_id
+
+def test_create_membership_with_promotions(db_session, cliente, plan, promocion, estados_membresia):
+    """Test membership creation with a promotion."""
+    success, result, error = create_membership(
+        cliente_id=cliente.id,
+        plan_id=plan.id,
+        promocion_id=promocion.id,
+        fecha_inicio=date.today().strftime("%Y-%m-%d"),
+        estado_id=1
+    )
+    
+    assert success is True
+    assert result.promocion_id == promocion.id
+    
+    # The actual discount calculation happens in _compute_monto_total_for_membresia during payment
+    # Here we just assert the relationship is established
+
+def test_create_membership_invalid_client(db_session, plan):
+    """Test creation with invalid client fails."""
+    success, result, error = create_membership(
+        cliente_id=999,
+        plan_id=plan.id,
+        fecha_inicio="2023-01-01",
+        estado_id=1
+    )
+    
+    assert success is False
+    assert result is None
+    assert "Cliente no existe" in error
+
+def test_create_membership_invalid_plan(db_session, cliente):
+    """Test creation with invalid plan fails."""
+    success, result, error = create_membership(
+        cliente_id=cliente.id,
+        plan_id=999,
+        fecha_inicio="2023-01-01",
+        estado_id=1
+    )
+    
+    assert success is False
+    assert "Plan no existe o inactivo" in error
+
+
+def test_update_membership_recalculates_fecha_fin_when_plan_changes(db_session, cliente, plan, estados_membresia):
+    """Test that editing a membership recomputes the end date when the plan changes."""
+    plan_trimestral = Plan(
+        nombre="Trimestral",
+        descripcion="Plan de tres meses",
+        duracion="Trimestral",
+        precio=250.00,
+        tipo="Basico",
+    )
+    db_session.add(plan_trimestral)
+    db_session.commit()
+
+    start_date = date(2026, 5, 4)
+    membresia = Membresia(
+        cliente_id=cliente.id,
+        plan_id=plan.id,
+        sucursal_id=cliente.sucursal_id,
+        fecha_inicio=start_date,
+        fecha_fin=compute_end_date(start_date, plan.duracion),
+        estado_id=estados_membresia[1].id,
+    )
+    db_session.add(membresia)
+    db_session.commit()
+
+    success, error = update_membership(membresia.id, plan_id=plan_trimestral.id)
+
+    assert success is True
+    assert error is None
+    assert membresia.plan_id == plan_trimestral.id
+    assert membresia.fecha_fin == compute_end_date(start_date, plan_trimestral.duracion)
+
+
+def test_update_membership_recalculates_fecha_fin_when_start_changes(db_session, cliente, plan, estados_membresia):
+    """Test that editing a membership recomputes the end date when the start date changes."""
+    start_date = date(2026, 5, 4)
+    new_start_date = date(2026, 6, 2)
+    membresia = Membresia(
+        cliente_id=cliente.id,
+        plan_id=plan.id,
+        sucursal_id=cliente.sucursal_id,
+        fecha_inicio=start_date,
+        fecha_fin=compute_end_date(start_date, plan.duracion),
+        estado_id=estados_membresia[1].id,
+    )
+    db_session.add(membresia)
+    db_session.commit()
+
+    success, error = update_membership(membresia.id, fecha_inicio=new_start_date)
+
+    assert success is True
+    assert error is None
+    assert membresia.fecha_inicio == new_start_date
+    assert membresia.fecha_fin == compute_end_date(new_start_date, plan.duracion)
+
+def test_get_membership_status(db_session, cliente, plan, estados_membresia):
+    """Test resolving membership status dynamically."""
+    # Create active membership ending tomorrow
+    m_activa = Membresia(
+        cliente_id=cliente.id, 
+        plan_id=plan.id, 
+        sucursal_id=cliente.sucursal_id,
+        fecha_inicio=date.today() - timedelta(days=10),
+        fecha_fin=date.today() + timedelta(days=1),
+        estado_id=estados_membresia[2].id # Activa
+    )
+    db_session.add(m_activa)
+    db_session.commit()
+    
+    status = get_membership_status(cliente.id)
+    assert status["has"] is True
+    assert status["soon"] is True # 1 day left <= 5 days
+    assert status["last_id"] == m_activa.id
+    
+    # Update to end next month
+    m_activa.fecha_fin = date.today() + timedelta(days=30)
+    db_session.commit()
+    
+    status = get_membership_status(cliente.id)
+    assert status["has"] is True
+    assert status["soon"] is False # 30 days > 5 days
+
+    # Test "En espera" state
+    m_activa.estado_id = estados_membresia[5].id # En espera
+    db_session.commit()
+    
+    # We must add a payment to make "En espera" count as active
+    from gym_admin.models import Pago, HistorialPago
+    pago = Pago(membresia_id=m_activa.id, cliente_id=cliente.id, sucursal_id=cliente.sucursal_id, monto_total=100.0)
+    db_session.add(pago)
+    db_session.commit()
+    hist = HistorialPago(pago_id=pago.id, monto_pagado=100.0, metodo_pago="Efectivo")
+    db_session.add(hist)
+    db_session.commit()
+    db_session.refresh(m_activa)
+    
+    status = get_membership_status(cliente.id)
+    assert status["has"] is True # En espera with payment counts as active

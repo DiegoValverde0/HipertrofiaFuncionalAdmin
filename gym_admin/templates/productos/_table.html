@@ -1,0 +1,99 @@
+{# Helper macro to build pagination URL preserving all filters #}
+{% macro page_url(page_num) -%}
+  ?page={{ page_num }}&per_page={{ pagination.per_page }}
+  {%- if q %}&q={{ q|urlencode }}{% endif -%}
+{%- endmacro %}
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+  {% if pagination %}
+  <div class="px-4 py-3 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><i class="ti ti-package text-sm"></i> Registros</span>
+    <span class="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm font-medium">{{ productos|length }} de {{ pagination.total }}</span>
+  </div>
+  {% endif %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold">ID</th>
+          <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+          <th class="px-4 py-3 text-left font-semibold">Precio</th>
+          <th class="px-4 py-3 text-left font-semibold">Stock (Sucursal Actual)</th>
+          <th class="px-4 py-3 text-left font-semibold">Estado</th>
+          <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        {% for producto in productos %}
+        <tr class="hover:bg-slate-50" data-nombre="{{ producto.nombre|lower }}">
+          <td class="px-4 py-3 font-medium text-slate-900">#{{ producto.id }}</td>
+          <td class="px-4 py-3">
+            <div class="font-semibold text-slate-900">{{ producto.nombre }}</div>
+            <div class="text-xs text-slate-500 mt-1">{{ producto.descripcion | truncate(80) }}</div>
+          </td>
+          <td class="px-4 py-3 font-semibold">{{ "%.2f"|format(producto.precio) }}</td>
+          <td class="px-4 py-3">
+            {% if sucursal_actual_id %}
+              <span class="inline-flex items-center rounded-full bg-sky-50 text-sky-700 border border-sky-100 px-2.5 py-0.5 text-xs font-semibold">{{ stock_por_producto.get(producto.id, 0) }}</span>
+            {% else %}
+              <span class="inline-flex items-center rounded-full bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold">Seleccione sucursal</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-0.5 text-xs font-semibold">{{ producto.estado }}</span>
+          </td>
+          <td class="px-4 py-3 text-right text-nowrap">
+            {% if sucursal_actual_id %}
+            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 btn-stock-adjust" data-producto-id="{{ producto.id }}" data-producto-nombre="{{ producto.nombre }}">
+              Ajustar Stock
+            </button>
+            {% endif %}
+            <a href="{{ url_for('productos.edit_producto', pid=producto.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">Editar</a>
+            <form method="post" action="{{ url_for('productos.delete_producto', pid=producto.id) }}" class="d-inline confirm-delete-form" data-name="{{ producto.nombre }}">
+              <button class="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-4 py-10 text-center text-slate-500">
+            <div class="flex flex-col items-center justify-center text-slate-400">
+              <i class="ti ti-package text-5xl mb-3 text-slate-300"></i>
+              <p class="text-base font-medium text-slate-600">No se encontraron productos</p>
+              <p class="text-sm mt-1">Ajusta los filtros o crea uno nuevo.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if pagination and pagination.pages > 1 %}
+<div class="flex items-center justify-between px-2 py-4">
+  <div class="text-[13px] text-slate-500">
+    Página <span class="font-semibold text-slate-900">{{ pagination.page }}</span> de <span class="font-semibold text-slate-900">{{ pagination.pages }}</span>
+    <span class="text-slate-400 ml-1">({{ pagination.total }} resultados)</span>
+  </div>
+  <nav class="pagination inline-flex items-center gap-1" aria-label="Paginacion de productos">
+    {% if pagination.has_prev %}
+      <a href="{{ page_url(pagination.prev_num) }}" class="page-link inline-flex items-center justify-center h-9 min-w-[36px] px-3 rounded-lg text-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-100">«</a>
+    {% else %}
+      <span class="inline-flex items-center justify-center h-9 min-w-[36px] px-3 rounded-lg text-sm border border-slate-200 bg-slate-50 text-slate-400">«</span>
+    {% endif %}
+    {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="{{ page_url(p) }}" class="page-link inline-flex items-center justify-center h-9 min-w-[36px] px-3 rounded-lg text-sm border {% if p == pagination.page %}bg-sky-600 text-white border-sky-600{% else %}border-slate-200 bg-white text-slate-600 hover:bg-slate-100{% endif %}">{{ p }}</a>
+      {% else %}
+        <span class="px-2 text-slate-400">...</span>
+      {% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+      <a href="{{ page_url(pagination.next_num) }}" class="page-link inline-flex items-center justify-center h-9 min-w-[36px] px-3 rounded-lg text-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-100">»</a>
+    {% else %}
+      <span class="inline-flex items-center justify-center h-9 min-w-[36px] px-3 rounded-lg text-sm border border-slate-200 bg-slate-50 text-slate-400">»</span>
+    {% endif %}
+  </nav>
+</div>
+{% endif %}

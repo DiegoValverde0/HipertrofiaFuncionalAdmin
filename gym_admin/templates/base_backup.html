@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Gym Admin{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Optional custom styles -->
+    <style>
+      html, body {
+        height: 100%;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        background: #f8fafc;
+      }
+      .main-content-wrapper { flex: 1 0 auto; }
+      footer { flex-shrink: 0; }
+      .navbar-brand { font-weight: 700; letter-spacing: .5px }
+      .card-hover:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+      /* Responsive tweaks for lists and action buttons */
+      @media (max-width: 768px) {
+        .navbar .dropdown-menu { max-height: 60vh; overflow:auto; }
+        .table-responsive { font-size: .9rem; }
+        .btn { padding: .35rem .55rem; font-size: .85rem; }
+        form#gastos-filters .col-md-3, form#gastos-filters .col-md-2, form#gastos-filters .col-md-6 { width: 100%; }
+        form#gastos-filters { display: flex; flex-direction: column; gap:.5rem; }
+      }
+    </style>
+    <!-- flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Dashboard styles (blue metallic palette) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+      <div class="container">
+        <a class="navbar-brand text-dark" href="{{ url_for('index') }}"><i class="bi bi-gem"></i> Gym Admin</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            {% if current_user.is_authenticated %}
+
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
+            <!-- Módulo: Administración (visible sólo para admins) -->
+            {% if current_user and current_user.rol_id == 1 %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="adminMenu" data-bs-toggle="dropdown"> <i class="bi bi-gear-fill"></i> Administración</a>
+              <ul class="dropdown-menu" aria-labelledby="adminMenu">
+                <li><a class="dropdown-item" href="{{ url_for('usuarios.list_usuarios') }}"><i class="bi bi-people"></i> Usuarios</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('roles.list_roles') }}"><i class="bi bi-shield-lock"></i> Roles</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('finanzas.index') }}"><i class="bi bi-bar-chart"></i> Finanzas</a></li>
+              </ul>
+            </li>
+            {% endif %}
+
+            <!-- Módulo: Clientes -->
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('clientes.list_clientes') }}"><i class="bi bi-person-lines-fill"></i> Clientes</a>
+            </li>
+
+            <!-- Módulo: Planes & Promociones -->
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="plansMenu" data-bs-toggle="dropdown"> <i class="bi bi-tags-fill"></i> Planes</a>
+              <ul class="dropdown-menu" aria-labelledby="plansMenu">
+                <li><a class="dropdown-item" href="{{ url_for('planes.list_planes') }}"><i class="bi bi-list-ul"></i> Planes</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('promociones.list_promociones') }}"><i class="bi bi-gift-fill"></i> Promociones</a></li>
+              </ul>
+            </li>
+            <!-- Módulo: Operaciones (Membresías / Pagos) -->
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="opsMenu" data-bs-toggle="dropdown"> <i class="bi bi-wallet2"></i> Operaciones</a>
+              <ul class="dropdown-menu" aria-labelledby="opsMenu">
+                <li><a class="dropdown-item" href="{{ url_for('membresias.list_membresias') }}"><i class="bi bi-card-list"></i> Membresías</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('pagos.list_pagos') }}"><i class="bi bi-cash-stack"></i> Pagos</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('ventas.list_ventas') }}"><i class="bi bi-bag-fill"></i> Cafetería / Ventas</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('productos.list_productos') }}"><i class="bi bi-box-seam"></i> Productos</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('estados_membresias.list_estados') }}"><i class="bi bi-tags"></i> Estados de membresía</a></li>
+              </ul>
+            </li>
+            <!-- Módulo: Gastos (visible sólo para administradores) -->
+            {% if current_user and current_user.is_authenticated and current_user.rol_id == 1 %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="gastosMenu" data-bs-toggle="dropdown"> <i class="bi bi-receipt"></i> Gastos</a>
+              <ul class="dropdown-menu" aria-labelledby="gastosMenu">
+                <li><a class="dropdown-item" href="{{ url_for('gastos.gastos_list') }}"><i class="bi bi-card-list"></i> Gastos</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('gastos.cuentas_list') }}"><i class="bi bi-coin"></i> Cuentas</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('gastos.categorias_list') }}"><i class="bi bi-tags"></i> Categorías</a></li>
+              </ul>
+            </li>
+            {% endif %}
+          </ul>
+          <div class="d-flex align-items-center">
+            <div class="me-3 position-relative">
+              <button class="btn btn-outline-primary btn-sm position-relative" id="btn-notifications"><i class="bi bi-bell"></i>
+                <span id="notif-badge" class="badge bg-danger text-white" style="position:absolute; top:-6px; right:-6px; display:none; font-size:.65rem;">0</span>
+              </button>
+            </div>
+            <!-- selector de sucursal -->
+            <div class="me-3">
+              <div class="btn-group">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false" {% if current_user and current_user.sucursal_id %}disabled{% endif %}>
+                  <i class="bi bi-geo-alt"></i>
+                  {% if current_user and current_user.sucursal %}
+                    {{ current_user.sucursal.nombre }}
+                  {% elif sucursal_actual_id %}
+                    {% set selected = (sucursales|selectattr('id','equalto',sucursal_actual_id)|list).0 %}
+                    {{ selected.nombre if selected else 'Sucursal' }}
+                  {% else %}
+                    Todas
+                  {% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" data-sucursal-id="0">Todas</a></li>
+                  {% for s in sucursales %}
+                    <li><a class="dropdown-item" href="#" data-sucursal-id="{{ s.id }}">{{ s.nombre }}</a></li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if current_user.is_authenticated %}
+            <div class="dropdown">
+              <a class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
+                <strong>{{ current_user.nombre or current_user.correo }}</strong>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Perfil</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Cerrar sesión</a></li>
+              </ul>
+            </div>
+            {% else %}
+            <div>
+              <a class="btn btn-outline-primary btn-sm me-2" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+
+  <div class="container mt-4 main-content-wrapper">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for m in messages %}
+            <div class="alert alert-info">{{ m }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+
+    <footer class="mt-5 py-4 bg-light border-top">
+      <div class="container text-center">
+        <div class="mb-2">
+          <p class="text-dark mb-1"><strong>© 2025 Hipertrofia Funcional.</strong> Todos los derechos reservados.</p>
+          <p class="text-muted small mb-2"><i class="bi bi-geo-alt-fill"></i> Sucursal Central: Av. Mutualista 3er anillo externo.</p>
+        </div>
+        <div class="small text-muted" style="font-size: 0.8rem;">
+          <span><i class="bi bi-code-slash"></i> Desarrollado por Diego Valverde (+591 76843945)</span>
+          <span class="mx-2">|</span>
+          <span><i class="bi bi-tag-fill"></i> Versión 1.2.1</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Toasts container -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+      <div id="toast-container"></div>
+    </div>
+
+    <!-- Confirm modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirmar acción</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">¿Estás seguro?</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="confirmOk">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Confirm edit modal -->
+    <div class="modal fade" id="confirmEditModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirmar edición</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>Estás a punto de modificar este registro. Revisa los cambios abajo y confirma para continuar.</p>
+            <div id="confirm-edit-summary" class="small text-break"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmEditOk">Confirmar cambios</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Notifications offcanvas -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="notificationsCanvas">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title">Notificaciones</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
+      </div>
+      <div class="offcanvas-body">
+        <div id="notifications-list">
+          <p class="text-muted">Sin notificaciones por el momento.</p>
+        </div>
+      </div>
+    </div>
+    
+  <!-- flash messages as JSON payload (safer for static analyzers) -->
+    <script id="flash-messages" type="application/json">{{ get_flashed_messages()|tojson }}</script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // read JSON payload from script tag and expose as window.FLASH_MESSAGES
+      try {
+        var el = document.getElementById('flash-messages');
+        window.FLASH_MESSAGES = el && el.textContent ? JSON.parse(el.textContent) : [];
+      } catch (e) {
+        window.FLASH_MESSAGES = [];
+      }
+      // expose whether current user is admin to JS via a JSON script tag (safer)
+      // the script tag is present below with id="is-admin"
+      try {
+        var adminEl = document.getElementById('is-admin');
+        window.IS_ADMIN = adminEl && adminEl.textContent ? JSON.parse(adminEl.textContent) : false;
+      } catch(e) {
+        window.IS_ADMIN = false;
+      }
+    </script>
+    <script id="is-admin" type="application/json">{{ (current_user and current_user.rol_id == 1) | tojson }}</script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- notifications behavior is handled in static/js/main.js -->
+    {% block scripts %}{% endblock %}
+    <script>
+      // Cuando se selecciona una sucursal en el navbar, llamar al endpoint que persiste la selección en sesión
+      (function(){
+        document.querySelectorAll('.dropdown-item[data-sucursal-id]').forEach(function(el){
+          el.addEventListener('click', function(e){
+            e.preventDefault();
+            var id = el.getAttribute('data-sucursal-id');
+            // llamar al endpoint para guardar en session y recargar sin query params
+            fetch('/sucursales/select/' + id, { method: 'GET', credentials: 'same-origin' }) // This sets the session
+              .then(function(response){
+                if (response.ok) {
+                  // Just reload the page. The server will now use the new session value.
+                  window.location.reload();
+                }
+              }).catch(function(){
+                // en caso de fallo fallback a recarga completa
+                window.location.href = window.location.pathname;
+              });
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

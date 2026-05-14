@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Promociones{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Catálogo de Promociones</h2>
+      <p class="text-sm text-slate-500 mt-1">Gestiona los descuentos y promociones temporales para clientes.</p>
+    </div>
+    <a href="{{ url_for('promociones.create_promocion') }}" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 bg-brand-600 text-white hover:bg-brand-700 h-10 px-4 py-2 shadow-sm">
+      <i class="ti ti-plus mr-2 text-lg"></i>
+      Nueva Promoción
+    </a>
+  </div>
+
+  <!-- Promociones Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for promo in promociones %}
+    <div class="group relative flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden hover:-translate-y-1">
+      <!-- Banner decorativo superior -->
+      <div class="h-2 w-full {{ 'bg-gradient-to-r from-orange-500 to-amber-500' if promo.estado == 'Activo' else 'bg-slate-300' }}"></div>
+      
+      <div class="p-6 flex-1 flex flex-col">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ring-inset {{ 'bg-green-50 text-green-700 ring-green-600/20' if promo.estado == 'Activo' else 'bg-slate-50 text-slate-600 ring-slate-500/10' }}">
+              <span class="w-1.5 h-1.5 rounded-full mr-1.5 {{ 'bg-green-600' if promo.estado == 'Activo' else 'bg-slate-400' }}"></span>
+              {{ promo.estado }}
+            </span>
+          </div>
+          {% if current_user and current_user.rol_id == 1 %}
+          <div class="flex items-center gap-1 transition-opacity">
+            <a href="{{ url_for('promociones.edit_promocion', promocion_id=promo.id) }}" class="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors" title="Editar">
+              <i class="ti ti-edit text-lg"></i>
+            </a>
+            <form method="post" action="{{ url_for('promociones.delete_promocion', promocion_id=promo.id) }}" class="inline-block m-0 p-0 confirm-delete-form" data-name="{{ promo.nombre }}">
+              <button type="submit" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                <i class="ti ti-trash text-lg"></i>
+              </button>
+            </form>
+          </div>
+          {% else %}
+          <div class="h-8"></div>
+          {% endif %}
+        </div>
+        
+        <h3 class="text-xl font-bold text-slate-900 mb-1 leading-tight">{{ promo.nombre }}</h3>
+        
+        <div class="my-4 flex items-baseline gap-1 text-orange-600">
+          <i class="ti ti-ticket text-xl mr-1"></i>
+          <span class="text-xl font-semibold opacity-80">S/</span>
+          <span class="text-4xl font-black tracking-tight">{{ promo.descuento }}</span>
+          <span class="text-sm font-medium ml-1 text-slate-500 uppercase tracking-widest">DSCTO</span>
+        </div>
+        
+        <div class="space-y-3 flex-1 mt-2">
+          <div class="flex items-center text-sm text-slate-600 bg-slate-50 rounded-lg p-2.5">
+            <i class="ti ti-calendar-event mr-2.5 text-orange-500 text-[20px]"></i>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-none mb-0.5">Vigencia</p>
+              <p class="font-medium text-slate-700 leading-none">
+                {{ promo.fecha_inicio or '—' }} al {{ promo.fecha_fin or '—' }}
+              </p>
+            </div>
+          </div>
+          {% if promo.descripcion %}
+          <div class="flex items-start text-sm text-slate-600 pt-3 mt-3 border-t border-slate-100">
+            <i class="ti ti-info-circle mr-2 text-slate-400 text-[18px] shrink-0 mt-0.5"></i>
+            <span class="line-clamp-3 text-[13px] leading-relaxed" title="{{ promo.descripcion }}">{{ promo.descripcion }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
+      <div class="mx-auto w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4">
+        <i class="ti ti-ticket text-3xl text-orange-400"></i>
+      </div>
+      <h3 class="text-lg font-medium text-slate-900">No hay promociones activas</h3>
+      <p class="mt-2 text-sm text-slate-500 max-w-sm mx-auto">Comienza creando una nueva promoción para ofrecer descuentos a tus clientes.</p>
+      <a href="{{ url_for('promociones.create_promocion') }}" class="mt-6 inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 bg-orange-50 text-orange-700 hover:bg-orange-100 h-10 px-4 py-2">
+        <i class="ti ti-plus mr-2"></i>
+        Crear promoción
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if pagination and pagination.pages > 1 %}
+  <div class="flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm">
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+      <div>
+        <p class="text-sm text-slate-700">
+          Mostrando página <span class="font-medium">{{ pagination.page }}</span> de <span class="font-medium">{{ pagination.pages }}</span>
+        </p>
+      </div>
+      <div>
+        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+          {% if pagination.has_prev %}
+          <a href="?page={{ pagination.prev_num }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50">
+            <span class="sr-only">Anterior</span>
+            <i class="ti ti-chevron-left text-lg"></i>
+          </a>
+          {% endif %}
+          
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              <a href="?page={{ p }}" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium {{ 'text-brand-600 bg-brand-50 z-10' if p == pagination.page else 'text-slate-700 hover:bg-slate-50' }}">
+                {{ p }}
+              </a>
+            {% else %}
+              <span class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">...</span>
+            {% endif %}
+          {% endfor %}
+
+          {% if pagination.has_next %}
+          <a href="?page={{ pagination.next_num }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50">
+            <span class="sr-only">Siguiente</span>
+            <i class="ti ti-chevron-right text-lg"></i>
+          </a>
+          {% endif %}
+        </nav>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

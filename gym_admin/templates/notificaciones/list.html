@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Notificaciones{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Notificaciones</h2>
+    <div>
+      <a class="btn btn-sm btn-outline-secondary" href="/notificaciones/api/force_create">Forzar creación (dev)</a>
+    </div>
+  </div>
+
+  <div class="list-group shadow-sm">
+    {% for n in notificaciones %}
+      <div class="list-group-item d-flex justify-content-between align-items-start p-3 notif-row{% if not n.leido %} bg-white border-start border-primary{% else %} text-muted{% endif %}">
+        <div>
+          <div class="small text-muted">{{ n.fecha_creacion|local_dt('%d-%b-%Y %H:%M') if n.fecha_creacion else '' }}</div>
+          <div class="fw-semibold">{{ n.tipo }}</div>
+          <div class="small text-truncate" style="max-width:60ch">{{ n.mensaje }}</div>
+        </div>
+        <div class="text-end">
+          {% if not n.leido %}
+            <form method="post" action="/notificaciones/api/mark_read/{{ n.id }}" style="display:inline">
+              <button class="btn btn-sm btn-outline-primary">Marcar leída</button>
+            </form>
+          {% endif %}
+          <a class="btn btn-sm btn-secondary ms-2" href="/notificaciones/api/detail/{{ n.id }}"></a>
+        </div>
+      </div>
+    {% else %}
+      <div class="list-group-item text-muted">No hay notificaciones</div>
+    {% endfor %}
+  </div>
+
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Membresías de {{ cliente.nombre }} {{ cliente.apellido }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl shrink-0">
+        {{ cliente.nombre[:1] }}{{ cliente.apellido[:1] if cliente.apellido else '' }}
+      </div>
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+          {{ cliente.nombre }} {{ cliente.apellido }}
+        </h2>
+        <p class="text-sm text-slate-500 mt-0.5">Historial completo de membresías del cliente.</p>
+      </div>
+    </div>
+    
+    <div class="flex gap-3">
+      <a href="{{ url_for('clientes.list_clientes') }}" class="h-10 inline-flex items-center justify-center gap-2 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-xl transition-all shadow-sm">
+        <i class="ti ti-arrow-left text-lg"></i> Volver a clientes
+      </a>
+      <a href="{{ url_for('membresias.create_membresia') }}?cliente_id={{ cliente.id }}" class="h-10 inline-flex items-center justify-center gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        <i class="ti ti-plus text-lg"></i> Crear Nueva
+      </a>
+    </div>
+  </div>
+
+  {% if membresias %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 font-semibold">Folio</th>
+              <th class="px-6 py-4 font-semibold">Plan / Promoción</th>
+              <th class="px-6 py-4 font-semibold">Vigencia</th>
+              <th class="px-6 py-4 font-semibold">Estado</th>
+              <th class="px-6 py-4 font-semibold">Pagos</th>
+              <th class="px-6 py-4 font-semibold text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for m in membresias %}
+              {% set is_expiring = expiring and expiring.get(m.id) %}
+              {% set estado_nombre = m.estado_membresia.nombre if m.estado_membresia else (m.estado_id|string) %}
+              {% set status_color = 'bg-slate-100 text-slate-700 border-slate-200' %}
+              {% if estado_nombre|lower == 'activa' %}{% set status_color = 'bg-emerald-50 text-emerald-700 border-emerald-200' %}{% endif %}
+              {% if estado_nombre|lower == 'vencida' %}{% set status_color = 'bg-rose-50 text-rose-700 border-rose-200' %}{% endif %}
+              {% if estado_nombre|lower == 'congelada' %}{% set status_color = 'bg-blue-50 text-blue-700 border-blue-200' %}{% endif %}
+              {% if is_expiring %}{% set status_color = 'bg-amber-50 text-amber-700 border-amber-200' %}{% endif %}
+              
+              <tr class="hover:bg-slate-50/50 transition-colors group {% if active_map and active_map.get(m.id) %}bg-emerald-50/20{% endif %}">
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                    #{{ m.id }}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-col">
+                    <span class="font-medium text-slate-900 flex items-center gap-1.5"><i class="ti ti-calendar-star text-indigo-400"></i> {{ m.plan.nombre if m.plan else m.plan_id }}</span>
+                    {% if m.promocion %}
+                      <span class="text-[11px] text-emerald-600 flex items-center gap-1 mt-1"><i class="ti ti-discount"></i> {{ m.promocion.nombre }}</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-col text-xs text-slate-600">
+                    <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> {{ m.fecha_inicio.strftime('%d %b, %Y') if m.fecha_inicio else '-' }}</div>
+                    <div class="flex items-center gap-1.5 mt-1"><span class="w-2 h-2 rounded-full bg-rose-400"></span> {{ m.fecha_fin.strftime('%d %b, %Y') if m.fecha_fin else '-' }}</div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ status_color }}">
+                    {% if is_expiring %}<i class="ti ti-alert-triangle mr-1 text-sm"></i>{% else %}<span class="w-1.5 h-1.5 rounded-full bg-current mr-1.5"></span>{% endif %}
+                    {{ 'Por vencer' if is_expiring else estado_nombre }}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  {%- set pendiente = pendientes.get(m.id, None) if pendientes is defined else None -%}
+                  {% if m.is_pendiente and (pendiente is none or pendiente > 0) %}
+                    <a href="{{ url_for('pagos.create_pago') }}?membresia_id={{ m.id }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Deuda pendiente">
+                      <i class="ti ti-cash text-base"></i> Cobrar
+                    </a>
+                  {% elif pendiente is none or pendiente > 0 %}
+                    <span class="text-xs text-slate-400 font-medium italic">No cobrable</span>
+                  {% else %}
+                    <span class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">
+                      <i class="ti ti-circle-check-filled"></i> Pagada
+                    </span>
+                  {% endif %}
+
+                  {% if is_expiring %}
+                    <div class="mt-2">
+                      {% set fecha_fin = m.fecha_fin %}
+                      {% set telefono = cliente.telefono %}
+                      {% set nombre_display = cliente.nombre ~ ' ' ~ cliente.apellido %}
+                      {% include '_expiring_cta.html' %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button type="button" class="btn-memb-detalle p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" data-id="{{ m.id }}" title="Ver detalles">
+                      <i class="ti ti-eye text-lg"></i>
+                    </button>
+                    
+                    {% if current_user and current_user.rol_id == 1 %}
+                      <a href="{{ url_for('membresias.edit_membresia', membresia_id=m.id) }}" class="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Editar membresía">
+                        <i class="ti ti-edit text-lg"></i>
+                      </a>
+                      
+                      <!-- Dropdown for more options (Delete) -->
+                      <div class="dropdown">
+                        <button class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                          <i class="ti ti-dots-vertical text-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-xl overflow-hidden text-sm min-w-[160px] p-1">
+                          <li>
+                            <form method="post" action="{{ url_for('membresias.delete_membresia', membresia_id=m.id) }}" class="confirm-delete-form" data-name="Membresía #{{ m.id }}">
+                              <button class="dropdown-item py-2 px-3 hover:bg-rose-50 text-rose-600 font-medium rounded-lg flex items-center gap-2" type="submit">
+                                <i class="ti ti-trash"></i> Eliminar
+                              </button>
+                            </form>
+                          </li>
+                        </ul>
+                      </div>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+      <div class="flex flex-col items-center justify-center text-slate-400">
+        <i class="ti ti-id-badge-off text-5xl mb-4 text-slate-300"></i>
+        <p class="text-lg font-bold text-slate-700">El cliente no tiene membresías</p>
+        <p class="text-sm mt-1 text-slate-500">Crea una nueva membresía para comenzar su suscripción.</p>
+        <a href="{{ url_for('membresias.create_membresia') }}?cliente_id={{ cliente.id }}" class="mt-6 inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all shadow-sm">
+          <i class="ti ti-plus"></i> Crear Primera Membresía
+        </a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

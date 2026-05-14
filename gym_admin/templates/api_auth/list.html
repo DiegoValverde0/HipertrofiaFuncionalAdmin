@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+
+{% block title %}API Keys - Gym Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de API Keys</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateKeyModal">
+      <i class="bi bi-plus-circle"></i> Nueva API Key
+    </button>
+  </div>
+
+  <!-- Alert si no hay keys -->
+  {% if not api_keys %}
+  <div class="alert alert-info" role="alert">
+    <i class="bi bi-info-circle"></i> No tienes API keys generadas. Crea una para conectar WATI o integradores externos.
+  </div>
+  {% endif %}
+
+  <!-- Tabla de API Keys -->
+  {% if api_keys %}
+  <div class="table-responsive shadow-sm bg-white rounded">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nombre</th>
+          <th>API Key</th>
+          <th>Sucursal</th>
+          <th>Estado</th>
+          <th>Creado</th>
+          <th>Último uso</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key in api_keys %}
+        <tr>
+          <td>
+            <strong>{{ key.nombre }}</strong>
+          </td>
+          <td>
+            <code class="text-muted small">
+              <span class="key-display" data-key-id="{{ key.id }}">{{ key.key[:15] }}...{{ key.key[-8:] }}</span>
+              <button class="btn btn-sm btn-outline-secondary ms-2 copy-key-btn" data-key="{{ key.key }}" title="Copiar API key completa">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </code>
+          </td>
+          <td>
+            {% if key.sucursal %}
+              <span class="badge bg-info">{{ key.sucursal.nombre }}</span>
+            {% else %}
+              <span class="text-muted small">Todas</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if key.activo %}
+              <span class="badge bg-success">Activa</span>
+            {% else %}
+              <span class="badge bg-danger">Revocada</span>
+            {% endif %}
+          </td>
+          <td>
+            <small class="text-muted">{{ key.fecha_creacion.strftime('%d/%m/%Y %H:%M') if key.fecha_creacion else '-' }}</small>
+          </td>
+          <td>
+            {% if key.ultimo_uso %}
+              <small class="text-muted">{{ key.ultimo_uso.strftime('%d/%m/%Y %H:%M') }}</small>
+            {% else %}
+              <small class="text-muted text-warning">Nunca</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if key.activo %}
+              <button class="btn btn-sm btn-outline-danger revoke-key-btn" data-key-id="{{ key.id }}" data-revoke-url="{{ url_for('api_auth.revoke_api_key', key_id=key.id) }}" data-key-name="{{ key.nombre }}" title="Revocar esta API key">
+                <i class="bi bi-shield-x"></i> Revocar
+              </button>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal para generar nueva API Key -->
+<div class="modal fade" id="generateKeyModal" tabindex="-1" aria-labelledby="generateKeyModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="generateKeyModalLabel">Generar Nueva API Key</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="generateKeyForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="keyName" class="form-label">Nombre <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="keyName" name="nombre" placeholder="ej: WATI Integration" required>
+            <small class="form-text text-muted">Nombre descriptivo para identificar el uso de esta API key</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="keySucursal" class="form-label">Sucursal <span class="text-warning">(Opcional)</span></label>
+            <select class="form-select" id="keySucursal" name="sucursal_id">
+              <option value="">Todas las sucursales</option>
+              {% for sucursal in sucursales %}
+              <option value="{{ sucursal.id }}">{{ sucursal.nombre }}</option>
+              {% endfor %}
+            </select>
+            <small class="form-text text-muted">Si dejas vacío, la API key tendrá acceso a todas las sucursales</small>
+          </div>
+
+          <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i>
+            <strong>Importante:</strong> La API key se mostrará una sola vez. Guárdala en un lugar seguro.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <span class="spinner-border spinner-border-sm d-none me-2" id="generateSpinner" role="status" aria-hidden="true"></span>
+            Generar API Key
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para mostrar la API Key generada -->
+<div class="modal fade" id="keyGeneratedModal" tabindex="-1" aria-labelledby="keyGeneratedModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="keyGeneratedModalLabel">
+          <i class="bi bi-check-circle"></i> API Key Generada Exitosamente
+        </h5>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-exclamation-triangle"></i>
+          <strong>Esta es la única vez que verás esta API key.</strong> Cópiala ahora y guárdala en un lugar seguro.
+        </div>
+
+        <div class="mb-3">
+          <label for="generatedKey" class="form-label">Tu API Key:</label>
+          <div class="input-group">
+            <input type="text" class="form-control font-monospace" id="generatedKey" readonly>
+            <button class="btn btn-outline-primary" type="button" id="copyGeneratedKeyBtn">
+              <i class="bi bi-clipboard"></i> Copiar
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <h6>Usar en WATI o integradores:</h6>
+          <pre class="bg-light p-2 rounded"><code>Authorization: Bearer &lt;tu_api_key&gt;</code></pre>
+        </div>
+
+        <div class="alert alert-info" role="alert">
+          <strong>Ejemplo cURL:</strong>
+          <pre class="small mb-0"><code>curl -H "Authorization: Bearer &lt;tu_api_key&gt;" \
+  "https://tudominio.com/clientes/api/list?estado=Activo"</code></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para confirmar revocación -->
+<div class="modal fade" id="revokeKeyModal" tabindex="-1" aria-labelledby="revokeKeyModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="revokeKeyModalLabel">
+          <i class="bi bi-shield-x"></i> Revocar API Key
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Seguro que deseas revocar la API key <strong id="revokeKeyName"></strong>?</p>
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-exclamation-triangle"></i>
+          Esto la desactivará inmediatamente. Cualquier integrador que la use dejará de funcionar.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmRevokeBtn">Revocar API Key</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Copiar API key completa
+  document.querySelectorAll('.copy-key-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const key = this.dataset.key;
+      navigator.clipboard.writeText(key).then(() => {
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="bi bi-check"></i>';
+        this.classList.add('text-success');
+        setTimeout(() => {
+          this.innerHTML = originalText;
+          this.classList.remove('text-success');
+        }, 2000);
+      }).catch(err => {
+        alert('Error al copiar: ' + err);
+      });
+    });
+  });
+
+  // Generar nueva API Key
+  document.getElementById('generateKeyForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('keyName').value;
+    const sucursal_id = document.getElementById('keySucursal').value || null;
+    
+    const spinner = document.getElementById('generateSpinner');
+    spinner.classList.remove('d-none');
+
+    fetch('{{ url_for("api_auth.generate_api_key") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        nombre: nombre,
+        sucursal_id: sucursal_id
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      spinner.classList.add('d-none');
+      if (data.success) {
+        // Mostrar la key generada
+        document.getElementById('generatedKey').value = data.data.key;
+        
+        // Cerrar modal anterior y abrir el de éxito
+        bootstrap.Modal.getInstance(document.getElementById('generateKeyModal')).hide();
+        const keyGeneratedModal = new bootstrap.Modal(document.getElementById('keyGeneratedModal'));
+        keyGeneratedModal.show();
+        
+        // Limpiar formulario
+        document.getElementById('generateKeyForm').reset();
+        
+        // Recargar la página después de 5 segundos
+        setTimeout(() => {
+          location.reload();
+        }, 5000);
+      } else {
+        alert('Error: ' + (data.error || 'Error desconocido'));
+      }
+    })
+    .catch(error => {
+      spinner.classList.add('d-none');
+      alert('Error: ' + error);
+    });
+  });
+
+  // Copiar API key generada
+  document.getElementById('copyGeneratedKeyBtn').addEventListener('click', function() {
+    const key = document.getElementById('generatedKey').value;
+    navigator.clipboard.writeText(key).then(() => {
+      const originalText = this.innerHTML;
+      this.innerHTML = '<i class="bi bi-check"></i> Copiado!';
+      this.classList.add('text-success');
+      setTimeout(() => {
+        this.innerHTML = originalText;
+        this.classList.remove('text-success');
+      }, 2000);
+    });
+  });
+
+  // Revocar API Key
+  let revokeKeyId = null;
+  let revokeUrl = null;
+  document.querySelectorAll('.revoke-key-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      revokeKeyId = this.dataset.keyId;
+      revokeUrl = this.dataset.revokeUrl;
+      const keyName = this.dataset.keyName;
+      document.getElementById('revokeKeyName').textContent = keyName;
+      const revokeModal = new bootstrap.Modal(document.getElementById('revokeKeyModal'));
+      revokeModal.show();
+    });
+  });
+
+  document.getElementById('confirmRevokeBtn').addEventListener('click', function() {
+    if (!revokeUrl) return;
+    
+    this.disabled = true;
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner-border spinner-border-sm me-2';
+    this.prepend(spinner);
+
+    fetch(revokeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('revokeKeyModal')).hide();
+        alert('API key revocada correctamente');
+        location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Error desconocido'));
+      }
+    })
+    .catch(error => {
+      alert('Error: ' + error);
+    })
+    .finally(() => {
+      this.disabled = false;
+      spinner.remove();
+    });
+  });
+});
+</script>
+
+<style>
+.table-hover tbody tr:hover {
+  background-color: #f8f9fa;
+}
+code {
+  font-size: 0.85rem;
+}
+.copy-key-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+</style>
+{% endblock %}

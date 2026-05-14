@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Pagos{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Registro de Pagos</h2>
+      <p class="text-sm text-slate-500 mt-1">Gestiona los pagos de membresías y abonos de clientes.</p>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+      <a href="{{ url_for('pagos.reporte_detallado') }}" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 h-10 px-4 py-2 w-full sm:w-auto border border-emerald-200">
+        <i class="ti ti-report-money mr-2 text-lg"></i>
+        Ver Reporte
+      </a>
+      <a href="{{ url_for('pagos.create_pago') }}" class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 bg-brand-600 text-white hover:bg-brand-700 h-10 px-4 py-2 shadow-sm w-full sm:w-auto">
+        <i class="ti ti-plus mr-2 text-lg"></i>
+        Registrar Pago
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters Card -->
+  <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+    <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+      <div class="flex items-center gap-2.5 flex-1 w-full">
+        <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
+        <input id="pagos-search" type="text" placeholder="Buscar por nombre de cliente..." value="{{ q or '' }}"
+               class="w-full pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all duration-200 text-slate-900 placeholder:text-slate-500">
+      </div>
+      
+      <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+        <div class="flex items-center gap-2.5 w-full sm:w-56">
+          <i class="ti ti-calendar text-slate-400 text-sm shrink-0"></i>
+          <select id="pagos-period" class="w-full pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all duration-200 appearance-none text-slate-900 font-medium cursor-pointer">
+            <option value="all">Todos los tiempos</option>
+            <option value="today">Hoy</option>
+            <option value="week">Esta semana</option>
+            <option value="month" {% if not request.args.get('period') or request.args.get('period') == 'month' %}selected{% endif %}>Este mes</option>
+            <option value="year">Este año</option>
+            <option value="custom">Rango Personalizado</option>
+          </select>
+        </div>
+
+        <div class="relative w-full sm:w-40">
+          <select id="pagos-per-page" class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all duration-200 appearance-none text-slate-900 font-medium cursor-pointer">
+            <option value="10" {% if per_page == 10 %}selected{% endif %}>10 por página</option>
+            <option value="25" {% if per_page == 25 %}selected{% endif %}>25 por página</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50 por página</option>
+          </select>
+          <i class="ti ti-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Custom Range Container -->
+    <div id="custom-range-container" style="display: none;" class="mt-4 pt-4 border-t border-slate-100">
+      <div class="flex flex-col sm:flex-row gap-4 items-end">
+        <div class="flex-1 w-full">
+          <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Fecha Desde</label>
+          <input id="pagos-desde" type="date" class="w-full px-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all text-slate-900">
+        </div>
+        <div class="flex-1 w-full">
+          <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Fecha Hasta</label>
+          <input id="pagos-hasta" type="date" class="w-full px-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-xl text-sm transition-all text-slate-900">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Container -->
+  <div id="pagos-table">
+    {% include 'pagos/_table.html' %}
+  </div>
+</div>
+
+<script>
+  (function(){
+    const container = document.getElementById('pagos-table');
+    const search = document.getElementById('pagos-search');
+    const period = document.getElementById('pagos-period');
+    const desde = document.getElementById('pagos-desde');
+    const hasta = document.getElementById('pagos-hasta');
+    const perPage = document.getElementById('pagos-per-page');
+
+    let timeout = null;
+    function buildUrl(params){
+      const url = new URL(window.location.href.split('?')[0], window.location.origin);
+      params = params || {};
+      url.searchParams.set('partial', '1');
+      if(params.page) url.searchParams.set('page', params.page);
+      url.searchParams.set('per_page', perPage.value);
+      if(search.value) url.searchParams.set('q', search.value);
+      if(period.value) url.searchParams.set('period', period.value);
+      if(desde.value) url.searchParams.set('fecha_desde', desde.value);
+      if(hasta.value) url.searchParams.set('fecha_hasta', hasta.value);
+      return url.toString();
+    }
+
+    function fetchTable(page){
+      const u = buildUrl({page: page});
+      // Add subtle opacity to indicate loading
+      container.style.opacity = '0.6';
+      container.style.pointerEvents = 'none';
+      
+      fetch(u, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.text())
+        .then(html => { 
+          container.innerHTML = html;
+          container.style.opacity = '1';
+          container.style.pointerEvents = 'auto';
+        })
+        .catch(err => {
+          console.error('Error fetching pagos:', err);
+          container.style.opacity = '1';
+          container.style.pointerEvents = 'auto';
+        });
+    }
+
+    function scheduleFetch(){
+      if(timeout) clearTimeout(timeout);
+      timeout = setTimeout(()=> fetchTable(1), 300);
+    }
+
+    search.addEventListener('input', scheduleFetch);
+    period.addEventListener('change', function() {
+      const customRange = document.getElementById('custom-range-container');
+      if (this.value === 'custom') {
+        customRange.style.display = 'block';
+        // Add minimal animation
+        customRange.animate([{opacity: 0, transform: 'translateY(-10px)'}, {opacity: 1, transform: 'translateY(0)'}], {duration: 200, fill: 'forwards'});
+      } else {
+        customRange.style.display = 'none';
+      }
+      scheduleFetch();
+    });
+    desde.addEventListener('change', scheduleFetch);
+    hasta.addEventListener('change', scheduleFetch);
+    perPage.addEventListener('change', scheduleFetch);
+
+    // Delegate pagination link clicks inside container
+    container.addEventListener('click', function(e){
+      const a = e.target.closest('a.ajax-page');
+      if(!a) return;
+      e.preventDefault();
+      const url = new URL(a.getAttribute('href'), window.location.origin);
+      const p = url.searchParams.get('page') || 1;
+      fetchTable(p);
+    });
+
+    // Delegate for toggle buttons
+    container.addEventListener('click', function(e) {
+      const button = e.target.closest('.btn-toggle-historial');
+      if (!button) return;
+      const pagoId = button.dataset.pagoId;
+      const historialRow = document.getElementById(`historial-${pagoId}`);
+      if (historialRow) {
+        if (historialRow.style.display === 'none' || historialRow.classList.contains('hidden')) {
+          historialRow.style.display = 'table-row';
+          historialRow.classList.remove('hidden');
+        } else {
+          historialRow.style.display = 'none';
+          historialRow.classList.add('hidden');
+        }
+      }
+    });
+
+    // Initial state for custom range
+    document.getElementById('custom-range-container').style.display = period.value === 'custom' ? 'block' : 'none';
+  })();
+</script>
+{% endblock %}
