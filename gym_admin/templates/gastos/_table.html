@@ -1,21 +1,68 @@
-<div class="table-responsive">
-  <table class="table table-striped">
-    <thead><tr><th>Fecha</th><th>Descripción</th><th>Monto</th><th>Cuenta</th><th>Categoría</th><th>Usuario</th><th>Acciones</th></tr></thead>
-    <tbody>
+<div class="overflow-x-auto custom-scrollbar">
+  <table class="w-full text-left text-sm whitespace-nowrap">
+    <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+      <tr>
+        <th class="px-6 py-4 font-medium">Fecha</th>
+        <th class="px-6 py-4 font-medium">Descripción</th>
+        <th class="px-6 py-4 font-medium">Monto</th>
+        <th class="px-6 py-4 font-medium">Cuenta</th>
+        <th class="px-6 py-4 font-medium">Categoría</th>
+        <th class="px-6 py-4 font-medium">Usuario</th>
+        <th class="px-6 py-4 font-medium text-right">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
       {% for g in gastos %}
-        <tr>
-          <td>{{ g.fecha_gasto|local_dt }}</td>
-          <td>{{ g.descripcion }}</td>
-          <td>{{ g.monto }}</td>
-          <td>{{ g.cuenta.nombre if g.cuenta else '' }}</td>
-          <td>{{ g.categoria.nombre if g.categoria else '' }}</td>
-          <td>{{ g.usuario.nombre if g.usuario else g.usuario_id }}</td>
-          <td>
-            {% if current_user and current_user.rol_id == 1 %}
-              <form method="post" action="{{ url_for('gastos.gastos_delete', gasto_id=g.id) }}" style="display:inline" class="confirm-delete-form" data-name="{{ g.descripcion or ('Gasto ' ~ g.id) }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+        <tr class="hover:bg-slate-50/50 transition-colors group">
+          <td class="px-6 py-4 text-slate-500">{{ g.fecha_gasto|local_dt }}</td>
+          <td class="px-6 py-4">
+            <span class="font-medium text-slate-900">{{ g.descripcion }}</span>
+          </td>
+          <td class="px-6 py-4">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-bold bg-red-50 text-red-700 border border-red-100">
+              - {{ g.monto }} Bs.
+            </span>
+          </td>
+          <td class="px-6 py-4 text-slate-600">
+            {% if g.cuenta %}
+              <span class="inline-flex items-center gap-1.5"><i class="ti ti-wallet text-slate-400"></i>{{ g.cuenta.nombre }}</span>
             {% else %}
-              <span class="text-muted">—</span>
+              <span class="text-slate-400 italic text-xs">Sin cuenta</span>
             {% endif %}
+          </td>
+          <td class="px-6 py-4">
+            {% if g.categoria %}
+              <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                <i class="ti ti-tag mr-1 text-slate-400"></i>{{ g.categoria.nombre }}
+              </span>
+            {% else %}
+              <span class="text-slate-400 italic text-xs">Sin categoría</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 text-slate-500 text-xs">
+            <i class="ti ti-user mr-1"></i>{{ g.usuario.nombre if g.usuario else g.usuario_id }}
+          </td>
+          <td class="px-6 py-4 text-right">
+            {% if current_user and current_user.rol_id == 1 %}
+              <div class="flex items-center justify-end">
+                <form method="post" action="{{ url_for('gastos.gastos_delete', gasto_id=g.id) }}" class="m-0 p-0 confirm-delete-form" data-name="{{ g.descripcion or ('Gasto ' ~ g.id) }}">
+                  <button type="submit" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                    <i class="ti ti-trash text-lg"></i>
+                  </button>
+                </form>
+              </div>
+            {% else %}
+              <span class="text-slate-400 text-xs italic">—</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 mb-3">
+              <i class="ti ti-receipt-off text-2xl text-slate-400"></i>
+            </div>
+            <p>No se encontraron gastos en este periodo.</p>
           </td>
         </tr>
       {% endfor %}
@@ -23,20 +70,41 @@
   </table>
 </div>
 
-<nav aria-label="Page navigation">
-  <ul class="pagination">
+<div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+  <span class="text-sm text-slate-500">
+    Página {{ pagination.page }} de {{ pagination.pages }}
+  </span>
+  <nav class="flex items-center gap-1" aria-label="Pagination">
     {% if pagination.has_prev %}
-      <li class="page-item"><a class="page-link" href="#" data-page="{{ pagination.prev_num }}" data-per-page="{{ pagination.per_page }}">Anterior</a></li>
+      <a href="#" data-page="{{ pagination.prev_num }}" data-per-page="{{ pagination.per_page }}" class="page-link p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+        <i class="ti ti-chevron-left text-lg"></i>
+      </a>
+    {% else %}
+      <span class="p-2 text-slate-300 cursor-not-allowed">
+        <i class="ti ti-chevron-left text-lg"></i>
+      </span>
     {% endif %}
-    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-      {% if p %}
-        <li class="page-item {% if p==pagination.page %}active{% endif %}"><a class="page-link" href="#" data-page="{{ p }}" data-per-page="{{ pagination.per_page }}">{{ p }}</a></li>
-      {% else %}
-        <li class="page-item disabled"><span class="page-link">…</span></li>
-      {% endif %}
-    {% endfor %}
+
+    <div class="hidden sm:flex items-center gap-1">
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="#" data-page="{{ p }}" data-per-page="{{ pagination.per_page }}" class="page-link min-w-[32px] h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors {% if p == pagination.page %}bg-brand-600 text-white shadow-sm{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
+            {{ p }}
+          </a>
+        {% else %}
+          <span class="px-2 text-slate-400">...</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+
     {% if pagination.has_next %}
-      <li class="page-item"><a class="page-link" href="#" data-page="{{ pagination.next_num }}" data-per-page="{{ pagination.per_page }}">Siguiente</a></li>
+      <a href="#" data-page="{{ pagination.next_num }}" data-per-page="{{ pagination.per_page }}" class="page-link p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+        <i class="ti ti-chevron-right text-lg"></i>
+      </a>
+    {% else %}
+      <span class="p-2 text-slate-300 cursor-not-allowed">
+        <i class="ti ti-chevron-right text-lg"></i>
+      </span>
     {% endif %}
-  </ul>
-</nav>
+  </nav>
+</div>

@@ -82,10 +82,7 @@ def api_financials_monthly():
         m_expr_pago.label("m"), func.sum(Pago.monto_total).label("ingresos")
     ).filter(Pago.fecha_pago >= start)
     if sucursal_id:
-        # join to membresia to filter by sucursal
-        pagos_query = pagos_query.join(Pago.membresia).filter(
-            Membresia.sucursal_id == int(sucursal_id)
-        )
+        pagos_query = pagos_query.filter(Pago.sucursal_id == int(sucursal_id))
     pagos_q = pagos_query.group_by(m_expr_pago).order_by(m_expr_pago)
 
     gastos_query = db.session.query(
@@ -116,9 +113,7 @@ def api_financials_monthly():
             ).filter(Venta.fecha_venta >= start)
             # respect sucursal by joining Venta -> Cliente -> Cliente.sucursal_id when sucursal filter present
             if sucursal_id:
-                ventas_query = ventas_query.join(
-                    _Cliente, Venta.cliente_id == _Cliente.id
-                ).filter(_Cliente.sucursal_id == int(sucursal_id))
+                ventas_query = ventas_query.filter(Venta.sucursal_id == int(sucursal_id))
             ventas_q = ventas_query.group_by(m_expr_venta).order_by(m_expr_venta)
             ventas_map = {r.m: float(r.ventas_ing or 0) for r in ventas_q}
             # add ventas_map into pagos map by month key

@@ -137,6 +137,8 @@ def create_venta():
         return redirect(url_for("auth.login") + "?next=" + request.path)
 
     if request.method == "POST":
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        
         cliente_id = request.form.get("cliente_id") or None
         # set usuario_id from current_user
 
@@ -157,13 +159,16 @@ def create_venta():
 
         # validate arrays
         if not productos:
-            flash("No se han añadido productos a la venta.", "warning")
+            msg = "No se han añadido productos a la venta."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 400
+            flash(msg, "warning")
             return redirect(url_for("ventas.create_venta"))
         if not sucursal_id:
-            flash(
-                "No se pudo determinar la sucursal para la venta. Por favor, seleccione una.",
-                "danger",
-            )
+            msg = "No se pudo determinar la sucursal para la venta. Por favor, seleccione una."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 400
+            flash(msg, "danger")
             return redirect(url_for("ventas.create_venta"))
 
         # check stock availability first
@@ -185,15 +190,18 @@ def create_venta():
         for pid, qty in requested:
             p = prod_map.get(pid)
             if not p:
-                flash(f"El producto con ID {pid} no existe.", "danger")
+                msg = f"El producto con ID {pid} no existe."
+                if is_ajax:
+                    return jsonify({"success": False, "message": msg}), 400
+                flash(msg, "danger")
                 return redirect(url_for("ventas.create_venta"))
 
             # Validar stock usando el nuevo método del modelo
             if qty > p.obtener_stock(sucursal_id):
-                flash(
-                    f'Stock insuficiente para "{p.nombre}" en esta sucursal. Disponible: {p.obtener_stock(sucursal_id)}.',
-                    "danger",
-                )
+                msg = f'Stock insuficiente para "{p.nombre}" en esta sucursal. Disponible: {p.obtener_stock(sucursal_id)}.'
+                if is_ajax:
+                    return jsonify({"success": False, "message": msg}), 400
+                flash(msg, "danger")
                 return redirect(url_for("ventas.create_venta"))
 
         # create venta and detalles inside try/except
@@ -237,10 +245,16 @@ def create_venta():
             v.monto_total = total_calc
             db.session.add(v)
             db.session.commit()
+            
+            if is_ajax:
+                return jsonify({"success": True, "message": "Venta registrada exitosamente", "venta_id": v.id}), 200
             return redirect(url_for("ventas.list_ventas"))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
-            flash("Ocurrió un error inesperado al registrar la venta.", "danger")
+            msg = "Ocurrió un error inesperado al registrar la venta."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg, "error": str(e)}), 500
+            flash(msg, "danger")
             raise
     # GET: provide products list for building sale
     productos = (

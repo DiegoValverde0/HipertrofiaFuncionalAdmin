@@ -151,7 +151,7 @@
       }
       @keyframes contentSlideIn {
         from { opacity: 0; transform: translateY(12px); }
-        to { opacity: 1; transform: translateY(0); }
+        to { opacity: 1; transform: none; }
       }
 
       /* Notification bell ring on hover */
@@ -168,7 +168,7 @@
       }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-900 flex h-screen overflow-hidden antialiased font-sans" x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true', tooltipText: '', tooltipY: 0, tooltipShow: false, activeMenu: null, hoverMenu: null, hoverTimer: null, activeTop: 0, toggleSidebarCollapsed() { this.sidebarCollapsed = !this.sidebarCollapsed; this.sidebarOpen = false; this.activeMenu = null; this.hoverMenu = null; this.tooltipShow = false; if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; } }, scheduleSidebarHover(menu, el) { if (!this.sidebarCollapsed) return; if (this.hoverTimer) clearTimeout(this.hoverTimer); this.tooltipShow = false; this.hoverTimer = setTimeout(() => { this.hoverMenu = menu; this.activeTop = el.getBoundingClientRect().top; this.hoverTimer = null; }, 110); }, keepHoverMenu() { if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; } this.tooltipShow = false; }, cancelSidebarHover() { if (this.hoverTimer) clearTimeout(this.hoverTimer); this.hoverTimer = setTimeout(() => { this.hoverMenu = null; this.hoverTimer = null; }, 120); }, showSidebarTooltip(label, el) { if (!this.sidebarCollapsed || this.hoverMenu) return; this.tooltipText = label; this.tooltipY = el.getBoundingClientRect().top + (el.offsetHeight / 2) - 12; this.tooltipShow = true; }, hideSidebarTooltip() { this.tooltipShow = false; } }" x-init="$watch('sidebarCollapsed', val => { localStorage.setItem('sidebarCollapsed', val); if (val) { activeMenu = null; hoverMenu = null; tooltipShow = false; if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } } })">
+  <body class="bg-slate-50 text-slate-900 flex h-screen antialiased font-sans" x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true', tooltipText: '', tooltipY: 0, tooltipShow: false, activeMenu: null, hoverMenu: null, hoverTimer: null, activeTop: 0, toggleSidebarCollapsed() { this.sidebarCollapsed = !this.sidebarCollapsed; this.sidebarOpen = false; this.activeMenu = null; this.hoverMenu = null; this.tooltipShow = false; if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; } }, scheduleSidebarHover(menu, el) { if (!this.sidebarCollapsed) return; if (this.hoverTimer) clearTimeout(this.hoverTimer); this.tooltipShow = false; this.hoverTimer = setTimeout(() => { this.hoverMenu = menu; this.activeTop = el.getBoundingClientRect().top; this.hoverTimer = null; }, 110); }, keepHoverMenu() { if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; } this.tooltipShow = false; }, cancelSidebarHover() { if (this.hoverTimer) clearTimeout(this.hoverTimer); this.hoverTimer = setTimeout(() => { this.hoverMenu = null; this.hoverTimer = null; }, 120); }, showSidebarTooltip(label, el) { if (!this.sidebarCollapsed || this.hoverMenu) return; this.tooltipText = label; this.tooltipY = el.getBoundingClientRect().top + (el.offsetHeight / 2) - 12; this.tooltipShow = true; }, hideSidebarTooltip() { this.tooltipShow = false; } }" x-init="$watch('sidebarCollapsed', val => { localStorage.setItem('sidebarCollapsed', val); if (val) { activeMenu = null; hoverMenu = null; tooltipShow = false; if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } } })">
 
     <!-- Global Tooltip for Collapsed Sidebar -->
     <div x-show="tooltipShow" class="fixed z-[100] px-3 py-1.5 bg-slate-800 text-white text-[13px] font-medium rounded-md shadow-lg pointer-events-none whitespace-nowrap transition-opacity duration-150" :style="'left: 88px; top: ' + tooltipY + 'px;'" x-text="tooltipText" x-cloak></div>
@@ -364,7 +364,10 @@
           <div class="flex-1 min-w-0" :class="sidebarCollapsed ? 'hidden' : 'block'">
             {% if current_user.is_authenticated %}
               <p class="text-[13px] font-bold text-white truncate">{{ current_user.nombre or current_user.correo }}</p>
-              <a href="javascript:void(0)" @click.prevent="globalLogout()" class="text-[11px] text-slate-400 hover:text-white transition-colors flex items-center gap-1 mt-0.5"><i class="ti ti-logout text-xs"></i> Cerrar sesión</a>
+              <div class="flex items-center gap-3 mt-0.5">
+                <a href="{{ url_for('auth.profile') }}" class="text-[11px] text-slate-400 hover:text-white transition-colors flex items-center gap-1"><i class="ti ti-user text-xs"></i> Perfil</a>
+                <a href="javascript:void(0)" @click.prevent="globalLogout()" class="text-[11px] text-slate-400 hover:text-white transition-colors flex items-center gap-1"><i class="ti ti-logout text-xs"></i> Salir</a>
+              </div>
             {% else %}
               <a href="{{ url_for('auth.login') }}" class="text-[13px] font-bold text-brand-400 hover:text-brand-300">Iniciar sesión</a>
             {% endif %}
@@ -464,6 +467,7 @@
             {% block content %}{% endblock %}
           </div>
           <!-- FIN DE CONTENIDO FLASK -->
+          {% block modals %}{% endblock %}
 
 {% if not request.headers.get("HX-Request") %}
         </div> <!-- Fin htmx-content -->
@@ -486,69 +490,71 @@
       <div id="toast-container"></div>
     </div>
 
-    <div class="modal fade" id="confirmModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-xl rounded-2xl overflow-hidden">
-          <div class="modal-header bg-slate-50 border-b border-slate-100 px-6 py-4">
-            <h5 class="modal-title text-slate-800 font-semibold text-lg">Confirmar acción</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body px-6 py-5 text-slate-600">¿Estás seguro?</div>
-          <div class="modal-footer bg-slate-50 border-t border-slate-100 px-6 py-4">
-            <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg px-4" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-danger bg-red-600 hover:bg-red-700 border-0 rounded-lg px-4" id="confirmOk">Eliminar</button>
-          </div>
+    <!-- Modal de confirmación (Tailwind CSS) -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
+      <div class="bg-white rounded-lg shadow-xl max-w-sm w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
+        <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+          <h5 class="text-lg font-semibold text-slate-900">Confirmar acción</h5>
+          <button type="button" class="confirm-modal-close text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors" data-modal="confirmModal">&times;</button>
+        </div>
+        <div class="p-6 text-slate-700 font-medium" id="confirmModalMessage">¿Estás seguro?</div>
+        <div class="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
+          <button type="button" class="confirm-modal-close px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors" data-modal="confirmModal">Cancelar</button>
+          <button type="button" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium transition-colors" id="confirmOk">Eliminar</button>
         </div>
       </div>
     </div>
 
-    <div class="modal fade" id="confirmEditModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-xl rounded-2xl overflow-hidden">
-          <div class="modal-header bg-slate-50 border-b border-slate-100 px-6 py-4">
-            <h5 class="modal-title text-slate-800 font-semibold text-lg">Confirmar edición</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body px-6 py-5 text-slate-600">
-            <p class="mb-4">Estás a punto de modificar este registro. Revisa los cambios abajo y confirma para continuar.</p>
-            <div id="confirm-edit-summary" class="text-sm bg-slate-100 p-4 rounded-xl border border-slate-200 overflow-auto"></div>
-          </div>
-          <div class="modal-footer bg-slate-50 border-t border-slate-100 px-6 py-4">
-            <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg px-4" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-primary bg-brand-600 hover:bg-brand-700 border-0 rounded-lg px-4" id="confirmEditOk">Confirmar cambios</button>
-          </div>
+    <!-- Modal de confirmación de edición (Tailwind CSS) -->
+    <div id="confirmEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
+        <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+          <h5 class="text-lg font-semibold text-slate-900">Confirmar edición</h5>
+          <button type="button" class="confirm-modal-close text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors" data-modal="confirmEditModal">&times;</button>
+        </div>
+        <div class="p-6 space-y-4 text-slate-700">
+          <p>Estás a punto de modificar este registro. Revisa los cambios abajo y confirma para continuar.</p>
+          <div id="confirm-edit-summary" class="text-sm bg-slate-100 p-4 rounded-lg border border-slate-200 overflow-auto max-h-64"></div>
+        </div>
+        <div class="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
+          <button type="button" class="confirm-modal-close px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors" data-modal="confirmEditModal">Cancelar</button>
+          <button type="button" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors" id="confirmEditOk">Confirmar cambios</button>
         </div>
       </div>
     </div>
 
-    <div class="modal fade" id="confirmDiscardModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-          <div class="modal-header bg-slate-50">
-            <h5 class="modal-title text-slate-800">Descartar cambios</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" id="confirmDiscardClose"></button>
-          </div>
-          <div class="modal-body">
-            <p class="text-slate-600 mb-0">Tienes cambios sin guardar. ¿Deseas descartarlos?</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100" data-bs-dismiss="modal" id="confirmDiscardCancel">Cancelar</button>
-            <button type="button" class="btn btn-danger" id="confirmDiscardOk">Descartar</button>
-          </div>
+    <!-- Modal de descartar cambios (Tailwind CSS) -->
+    <div id="confirmDiscardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
+      <div class="bg-white rounded-lg shadow-xl max-w-sm w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
+        <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+          <h5 class="text-lg font-semibold text-slate-900">Descartar cambios</h5>
+          <button type="button" class="confirm-modal-close text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors" id="confirmDiscardClose" data-modal="confirmDiscardModal">&times;</button>
+        </div>
+        <div class="p-6 text-slate-700">
+          <p>Tienes cambios sin guardar. ¿Deseas descartarlos?</p>
+        </div>
+        <div class="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
+          <button type="button" class="confirm-modal-close px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors" id="confirmDiscardCancel" data-modal="confirmDiscardModal">Cancelar</button>
+          <button type="button" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium transition-colors" id="confirmDiscardOk">Descartar</button>
         </div>
       </div>
     </div>
 
-    <div class="offcanvas offcanvas-end border-l-0 shadow-2xl" tabindex="-1" id="notificationsCanvas">
-      <div class="offcanvas-header border-b border-slate-100 px-6 py-4">
-        <h5 class="offcanvas-title font-semibold text-slate-800">Notificaciones</h5>
-        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
-      </div>
-      <div class="offcanvas-body px-6 py-4 bg-slate-50">
-        <div id="notifications-list">
-          <div class="text-center py-8">
-            <i class="bi bi-bell-slash text-4xl text-slate-300 mb-3 block"></i>
-            <p class="text-slate-500 text-sm">Sin notificaciones por el momento.</p>
+    <!-- Modal Notificaciones (Tailwind Slide-over) -->
+    <div id="notificationsCanvas" class="fixed inset-0 z-[60] hidden pointer-events-none">
+      <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-auto" id="notif-overlay"></div>
+      <div class="absolute inset-y-0 right-0 w-full max-w-sm bg-slate-50/95 backdrop-blur-md shadow-2xl transform transition-transform duration-300 translate-x-full pointer-events-auto flex flex-col" id="notif-panel">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200/50 bg-white/50 shadow-sm z-10 shrink-0">
+          <h5 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="ti ti-bell-ringing text-brand-600 text-xl"></i> Notificaciones</h5>
+          <button type="button" class="notif-close text-slate-400 hover:text-slate-700 hover:bg-slate-200 p-1.5 rounded-lg transition-colors"><i class="ti ti-x text-lg"></i></button>
+        </div>
+        <div class="overflow-y-auto flex-1 custom-scrollbar p-4 relative" id="notifications-list">
+          <div class="text-center py-12">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-200/50 text-slate-400 mb-4">
+              <i class="ti ti-bell-off text-3xl"></i>
+            </div>
+            <p class="text-slate-600 font-semibold">Sin notificaciones</p>
+            <p class="text-slate-500 text-sm mt-1">Estás al día por el momento.</p>
           </div>
         </div>
       </div>
@@ -667,8 +673,8 @@
       })();
     </script>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/modal-form.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=1.2"></script>
+    <script src="{{ url_for('static', filename='js/modal-form.js') }}?v=1.2"></script>
 {% endif %}
 
     {% block scripts %}{% endblock %}

@@ -28,6 +28,16 @@ def create_app(config_object: str | None = None):
     if getattr(extensions, "limiter", None):
         extensions.limiter.init_app(app)
 
+    # Context processor para CSRF token - siempre disponible en templates
+    @app.context_processor
+    def inject_csrf_token():
+        try:
+            from flask_wtf.csrf import generate_csrf
+            return dict(csrf_token=generate_csrf)
+        except ImportError:
+            # Fallback si flask-wtf no está disponible
+            return dict(csrf_token=lambda: "")
+
     # register blueprints
     from .blueprints.auth import auth_bp
     from .blueprints.api_auth import api_auth_bp

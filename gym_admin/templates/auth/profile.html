@@ -3,30 +3,92 @@
 {% block title %}Mi perfil{% endblock %}
 
 {% block content %}
-  <h2>Mi perfil</h2>
-  <div class="card mb-4">
-    <div class="card-body">
-      <p><strong>Nombre:</strong> {{ user.nombre }}</p>
-      <p><strong>Correo:</strong> {{ user.correo }}</p>
-      <p><strong>Rol:</strong> {{ user.rol.nombre if user.rol else 'N/A' }}</p>
+  <div class="max-w-4xl mx-auto py-8">
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+        <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600">
+          <i class="ti ti-user-circle text-2xl"></i>
+        </div>
+        Mi Perfil
+      </h2>
+      <p class="text-sm text-slate-500 mt-1">Gestiona tu información personal y seguridad de la cuenta.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Información del usuario -->
+      <div class="md:col-span-1">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
+          <div class="p-6 text-center border-b border-slate-100 bg-slate-50/50">
+            <div class="w-20 h-20 mx-auto rounded-full bg-brand-100 flex items-center justify-center text-brand-600 mb-4 shadow-sm border-4 border-white">
+              <i class="ti ti-user text-4xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">{{ user.nombre or 'Usuario' }}</h3>
+            <p class="text-sm text-slate-500 font-medium">{{ user.rol.nombre if user.rol else 'Sin Rol' }}</p>
+          </div>
+          <div class="p-4 bg-white">
+            <div class="flex items-center gap-3 py-2 text-sm">
+              <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                <i class="ti ti-mail text-lg"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Correo</p>
+                <p class="text-slate-900 font-medium truncate">{{ user.correo }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cambiar Contraseña -->
+      <div class="md:col-span-2">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+            <i class="ti ti-shield-lock text-brand-500 text-xl"></i>
+            <h3 class="text-lg font-semibold text-slate-900">Seguridad</h3>
+          </div>
+          <div class="p-6">
+            <form method="post" class="space-y-5">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña actual</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="ti ti-lock-open text-slate-400"></i>
+                  </div>
+                  <input class="appearance-none block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-colors" name="current_password" type="password" required placeholder="Tu contraseña actual">
+                </div>
+              </div>
+              
+              <div class="border-t border-slate-100 pt-5">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="ti ti-lock text-slate-400"></i>
+                  </div>
+                  <input class="appearance-none block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-colors" name="new_password" type="password" required placeholder="Ingresa la nueva contraseña">
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar nueva contraseña</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="ti ti-lock-check text-slate-400"></i>
+                  </div>
+                  <input class="appearance-none block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-colors" name="confirm_password" type="password" required placeholder="Reescribe la contraseña">
+                </div>
+              </div>
+              
+              <div class="pt-2 flex justify-end">
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-200">
+                  <i class="ti ti-device-floppy"></i>
+                  Actualizar contraseña
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-
-  <h3>Cambiar contraseña</h3>
-  <form method="post">
-    <div class="mb-3">
-      <label class="form-label">Contraseña actual</label>
-      <input class="form-control" name="current_password" type="password" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Nueva contraseña</label>
-      <input class="form-control" name="new_password" type="password" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Reescribe la nueva contraseña</label>
-      <input class="form-control" name="confirm_password" type="password" required>
-    </div>
-    <button class="btn btn-primary" type="submit">Cambiar contraseña</button>
-  </form>
 
 {% endblock %}

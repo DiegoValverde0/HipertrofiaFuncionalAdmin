@@ -3,14 +3,43 @@
 {% block title %}Rol - Gym Admin{% endblock %}
 
 {% block content %}
-  <h2>{{ 'Editar' if role else 'Crear' }} rol</h2>
-  <form method="post" class="confirm-edit">
-    {% if role %}<input type="hidden" name="id" value="{{ role.id }}">{% endif %}
-    <div class="mb-3">
-      <label class="form-label">Nombre</label>
-      <input class="form-control" name="nombre" value="{{ role.nombre if role else '' }}" required>
+<div class="max-w-xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800 tracking-tight">{{ 'Editar' if role else 'Crear' }} rol</h2>
+      <p class="text-sm text-slate-500 mt-1">
+        {% if role %}Modifica el nombre del rol.{% else %}Registra un nuevo rol de sistema.{% endif %}
+      </p>
     </div>
-    <button class="btn btn-primary" type="submit">Guardar</button>
-    <a class="btn btn-secondary" href="{{ url_for('roles.list_roles') }}">Cancelar</a>
-  </form>
+    <a href="{{ url_for('roles.list_roles') }}" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+      <i class="ti ti-x text-xl"></i>
+    </a>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <form method="post" class="confirm-edit p-6 sm:p-8">
+      {% if role %}<input type="hidden" name="id" value="{{ role.id }}">{% endif %}
+      
+      <div class="space-y-6">
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-slate-700">Nombre del rol</label>
+          <input type="text" name="nombre" value="{{ role.nombre if role else '' }}" 
+                 class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
+                 placeholder="Ej. Administrador, Vendedor, etc." required>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+        <a href="{{ url_for('roles.list_roles') }}" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-colors">
+          Cancelar
+        </a>
+        <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-all">
+          <i class="ti ti-device-floppy mr-2"></i> Guardar rol
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

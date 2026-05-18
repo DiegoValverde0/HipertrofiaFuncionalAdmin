@@ -1,59 +1,92 @@
 {% extends 'base.html' %}
 
-{% block title %}Gastos{% endblock %}
+{% block title %}Gastos - Gym Admin{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Gastos</h2>
+<div class="space-y-6">
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-  <a class="btn btn-secondary me-2" id="export-gastos-csv" href="#">Exportar CSV</a>
-  <a class="btn btn-secondary me-2" id="print-gastos-view" href="#">Imprimir</a>
-      <a class="btn btn-primary" href="{{ url_for('gastos.gastos_create') }}">Nuevo gasto</a>
+      <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Gastos</h2>
+      <p class="text-sm text-slate-500 mt-1">Control de egresos, categorías y cuentas</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="#" id="export-gastos-csv" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+        <i class="ti ti-file-spreadsheet mr-2 text-lg"></i>
+        Exportar CSV
+      </a>
+      <a href="#" id="print-gastos-view" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+        <i class="ti ti-printer mr-2 text-lg"></i>
+        Imprimir
+      </a>
+      <a href="{{ url_for('gastos.gastos_create') }}" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 shadow-sm transition-all focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+        <i class="ti ti-plus mr-2 text-lg"></i>
+        Nuevo gasto
+      </a>
     </div>
   </div>
 
-  <form id="gastos-filters" class="row g-2 mb-3" method="get" onsubmit="return false;">
-    <div class="col-md-3"><input name="q" value="{{ q or '' }}" class="form-control" placeholder="Descripción..."></div>
-    <div class="col-md-2">
-      <select name="categoria" class="form-select">
-        <option value="">Todas las categorías</option>
-        {% for c in categorias %}
-          <option value="{{ c.id }}" {% if categoria and categoria==c.id %}selected{% endif %}>{{ c.nombre }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2">
-      <select name="cuenta" class="form-select">
-        <option value="">Todas las cuentas</option>
-        {% for c in cuentas %}
-          <option value="{{ c.id }}" {% if cuenta and cuenta==c.id %}selected{% endif %}>{{ c.nombre }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2">
-      <select name="usuario" class="form-select">
-        <option value="">Todos los usuarios</option>
-        {% for u in usuarios %}
-          <option value="{{ u.id }}" {% if usuario and usuario==u.id %}selected{% endif %}>{{ u.nombre or u.correo }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3 d-flex gap-2">
-      <select name="periodo" class="form-select w-auto">
-        <option value="">Periodo</option>
-        <option value="day" {% if periodo=='day' %}selected{% endif %}>Día</option>
-        <option value="week" {% if periodo=='week' %}selected{% endif %}>Semana</option>
-        <option value="month" {% if periodo=='month' %}selected{% endif %}>Mes</option>
-        <option value="year" {% if periodo=='year' %}selected{% endif %}>Año</option>
-        <option value="custom" {% if periodo=='custom' %}selected{% endif %}>Personalizado</option>
-      </select>
-      <input type="date" name="fecha_desde" value="{{ fecha_desde or '' }}" class="form-control">
-      <input type="date" name="fecha_hasta" value="{{ fecha_hasta or '' }}" class="form-control">
-      <button class="btn btn-primary">Filtrar</button>
-    </div>
-  </form>
+  <!-- Filters Section -->
+  <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+    <form id="gastos-filters" method="get" onsubmit="return false;" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 items-end">
+      
+      <div class="space-y-1.5 xl:col-span-2">
+        <label class="text-xs font-medium text-slate-600 uppercase tracking-wider">Búsqueda</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="ti ti-search text-slate-400"></i>
+          </div>
+          <input name="q" value="{{ q or '' }}" type="text" class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm transition-colors" placeholder="Buscar por descripción...">
+        </div>
+      </div>
 
-  <div id="gastos-table">
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-600 uppercase tracking-wider">Categoría</label>
+        <select name="categoria" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm transition-colors">
+          <option value="">Todas las categorías</option>
+          {% for c in categorias %}
+            <option value="{{ c.id }}" {% if categoria and categoria==c.id %}selected{% endif %}>{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-600 uppercase tracking-wider">Cuenta</label>
+        <select name="cuenta" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm transition-colors">
+          <option value="">Todas las cuentas</option>
+          {% for c in cuentas %}
+            <option value="{{ c.id }}" {% if cuenta and cuenta==c.id %}selected{% endif %}>{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="space-y-1.5 xl:col-span-2">
+        <label class="text-xs font-medium text-slate-600 uppercase tracking-wider">Periodo</label>
+        <div class="flex gap-2">
+          <select name="periodo" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm transition-colors min-w-[110px]">
+            <option value="">Periodo...</option>
+            <option value="day" {% if periodo=='day' %}selected{% endif %}>Día</option>
+            <option value="week" {% if periodo=='week' %}selected{% endif %}>Semana</option>
+            <option value="month" {% if periodo=='month' %}selected{% endif %}>Mes</option>
+            <option value="year" {% if periodo=='year' %}selected{% endif %}>Año</option>
+            <option value="custom" {% if periodo=='custom' %}selected{% endif %}>Personalizado</option>
+          </select>
+          <input type="date" name="fecha_desde" value="{{ fecha_desde or '' }}" class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm transition-colors" title="Desde">
+          <input type="date" name="fecha_hasta" value="{{ fecha_hasta or '' }}" class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm transition-colors" title="Hasta">
+        </div>
+      </div>
+      
+      <div class="space-y-1.5 xl:col-span-6 flex justify-end">
+        <button class="px-5 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-2">
+          <i class="ti ti-filter"></i> Filtrar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Table Container -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="gastos-table">
     {% include 'gastos/_table.html' %}
   </div>
+</div>
 {% endblock %}

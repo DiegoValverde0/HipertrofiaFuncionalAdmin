@@ -1,24 +1,69 @@
 {% extends 'base.html' %}
 
-{% block title %}Categorías de gasto{% endblock %}
+{% block title %}Categorías de gasto - Gym Admin{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Categorías</h2>
-    <a class="btn btn-primary" href="{{ url_for('gastos.categorias_create') }}">Nueva categoría</a>
+<div class="space-y-6">
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Categorías de gasto</h2>
+      <p class="text-sm text-slate-500 mt-1">Clasificación para los egresos de las sucursales</p>
+    </div>
+    <div>
+      <a href="{{ url_for('gastos.categorias_create') }}" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 shadow-sm transition-all focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+        <i class="ti ti-plus mr-2 text-lg"></i>
+        Nueva categoría
+      </a>
+    </div>
   </div>
-  <table class="table">
-    <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
-    <tbody>
-      {% for c in categorias %}
-        <tr><td>{{ c.nombre }}</td><td>
-          {% if current_user and current_user.rol_id == 1 %}
-            <form method="post" action="{{ url_for('gastos.categorias_delete', cat_id=c.id) }}" style="display:inline" class="confirm-delete-form" data-name="{{ c.nombre }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+
+  <!-- Table Section -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto custom-scrollbar">
+      <table class="w-full text-left text-sm whitespace-nowrap">
+        <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+          <tr>
+            <th class="px-6 py-4 font-medium">Nombre de la Categoría</th>
+            <th class="px-6 py-4 font-medium text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for c in categorias %}
+          <tr class="hover:bg-slate-50/50 transition-colors group">
+            <td class="px-6 py-4">
+              <span class="inline-flex items-center px-2.5 py-1.5 rounded-md text-sm font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                <i class="ti ti-tag mr-2 text-amber-500"></i>{{ c.nombre }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-right">
+              {% if current_user and current_user.rol_id == 1 %}
+              <div class="flex items-center justify-end gap-2">
+                <!-- If edit category route existed, it would go here. -->
+                <form method="post" action="{{ url_for('gastos.categorias_delete', cat_id=c.id) }}" class="inline-block m-0 p-0 confirm-delete-form" data-name="{{ c.nombre }}">
+                  <button type="submit" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                    <i class="ti ti-trash text-lg"></i>
+                  </button>
+                </form>
+              </div>
+              {% else %}
+                <span class="text-slate-400 text-xs italic">—</span>
+              {% endif %}
+            </td>
+          </tr>
           {% else %}
-            <span class="text-muted">—</span>
-          {% endif %}
-        </td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          <tr>
+            <td colspan="2" class="px-6 py-12 text-center text-slate-500">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 mb-3">
+                <i class="ti ti-tags text-2xl text-slate-400"></i>
+              </div>
+              <p>No se encontraron categorías registradas.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {% endblock %}

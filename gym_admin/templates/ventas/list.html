@@ -90,19 +90,18 @@
     </div>
   </div>
 
-  <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content border-0 shadow-lg">
-        <div class="modal-header bg-slate-50">
-          <h5 class="modal-title" id="detailModalLabel">Detalle de Venta</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" id="detailModalBody">
-          <!-- Contenido cargado por AJAX -->
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100" data-bs-dismiss="modal">Cerrar</button>
-        </div>
+  <!-- Modal de detalle de venta (Tailwind CSS) -->
+  <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
+      <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+        <h5 class="text-lg font-semibold text-slate-900">Detalle de Venta</h5>
+        <button type="button" class="detail-modal-close text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors" data-modal="detailModal">&times;</button>
+      </div>
+      <div id="detailModalBody" class="p-6 pointer-events-auto">
+        <!-- Contenido cargado por AJAX -->
+      </div>
+      <div class="flex justify-end p-6 border-t border-slate-200 bg-slate-50">
+        <button type="button" class="detail-modal-close px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors" data-modal="detailModal">Cerrar</button>
       </div>
     </div>
   </div>
@@ -247,8 +246,24 @@
             .then(function(r) { return r.text(); })
             .then(function(html) {
               document.getElementById('detailModalBody').innerHTML = html;
-              new bootstrap.Modal(document.getElementById('detailModal')).show();
+              const modal = document.getElementById('detailModal');
+              modal.classList.remove('hidden');
             });
+        }
+      });
+
+      // Cerrar modal de detalle
+      document.querySelectorAll('.detail-modal-close').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const modal = document.getElementById('detailModal');
+          modal.classList.add('hidden');
+        });
+      });
+
+      // Cerrar modal al hacer click fuera
+      document.getElementById('detailModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.add('hidden');
         }
       });
 

@@ -3,20 +3,49 @@
 {% block title %}Recuperar contraseña{% endblock %}
 
 {% block content %}
-  <div class="row justify-content-center">
-    <div class="col-md-5">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <h3 class="card-title mb-3">Recuperar contraseña</h3>
-          <form method="post">
-            <div class="mb-3">
-              <label class="form-label">Correo</label>
-              <input class="form-control" name="correo" required>
-            </div>
-            <button class="btn btn-primary">Enviar nueva contraseña</button>
-            <a class="btn btn-link" href="{{ url_for('auth.login') }}">Volver</a>
-          </form>
+  <div class="min-h-[80vh] flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="flex justify-center">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/30">
+          <i class="ti ti-lock-open text-white text-3xl"></i>
         </div>
+      </div>
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+        Recuperar contraseña
+      </h2>
+      <p class="mt-2 text-center text-sm text-slate-500 px-4">
+        Ingresa tu correo y te enviaremos una contraseña temporal.
+      </p>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="bg-white py-8 px-4 shadow-xl shadow-slate-200/50 sm:rounded-2xl sm:px-10 border border-slate-100 relative overflow-hidden">
+        <!-- Decoración de fondo -->
+        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-brand-50/50 blur-2xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 rounded-full bg-emerald-50/50 blur-2xl pointer-events-none"></div>
+        
+        <form class="space-y-6 relative z-10" method="post">
+          <div>
+            <label for="correo" class="block text-sm font-medium text-slate-700">
+              Correo electrónico
+            </label>
+            <div class="mt-1 relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="ti ti-mail text-slate-400"></i>
+              </div>
+              <input id="correo" name="correo" type="email" autocomplete="email" required class="appearance-none block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-colors" placeholder="tu@correo.com">
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-3 mt-6">
+            <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-200">
+              Enviar nueva contraseña
+            </button>
+            <a href="{{ url_for('auth.login') }}" class="w-full flex justify-center py-2.5 px-4 border border-slate-300 rounded-xl shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-200">
+              Volver al inicio de sesión
+            </a>
+          </div>
+        </form>
       </div>
     </div>
   </div>

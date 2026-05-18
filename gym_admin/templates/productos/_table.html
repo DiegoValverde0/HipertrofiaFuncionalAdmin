@@ -44,7 +44,7 @@
           </td>
           <td class="px-4 py-3 text-right text-nowrap">
             {% if sucursal_actual_id %}
-            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 btn-stock-adjust" data-producto-id="{{ producto.id }}" data-producto-nombre="{{ producto.nombre }}">
+            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 btn-stock-adjust" data-producto-id="{{ producto.id }}" data-producto-nombre="{{ producto.nombre }}" data-producto-stock="{{ stock_por_producto.get(producto.id, 0) }}">
               Ajustar Stock
             </button>
             {% endif %}

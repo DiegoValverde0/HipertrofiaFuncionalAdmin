@@ -87,8 +87,7 @@ class ModalForm {
   _hideDiscardModal() {
     if (!this.discardModalEl) return;
     try {
-      var m = bootstrap?.Modal?.getInstance?.(this.discardModalEl);
-      if (m) m.hide();
+      window.ModalManager.close('confirmDiscardModal');
     } catch (e) {}
   }
 
@@ -134,6 +133,11 @@ class ModalForm {
 
       // Ejecutar scripts incluidos en el HTML inyectado (inline & externals)
       try { await this.executeScripts(this.formContainer); } catch(e){ console.error('Error ejecutando scripts del formulario:', e); }
+
+      // Inicializar snapshots para confirmación de edición
+      if (typeof window.initFormSnapshots === 'function') {
+        window.initFormSnapshots(this.formContainer);
+      }
 
       // Reset state
       this.isDirty = false;
@@ -306,9 +310,7 @@ class ModalForm {
     if (this.pendingClose) return;
     this.pendingClose = true;
     try {
-      // Use getOrCreateInstance to avoid stacking modal instances
-      const m = bootstrap.Modal.getOrCreateInstance(this.discardModalEl);
-      m.show();
+      window.ModalManager.open('confirmDiscardModal');
     } catch (e) {
       // Fallback if bootstrap is not available
       this.pendingClose = false;

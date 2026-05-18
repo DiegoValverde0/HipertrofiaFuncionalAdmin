@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+
+# Docs / Markdown / Tests
+*.md
+
+# Docker related (Omitidos para no sobreescribir configuraciones de producción)
+Dockerfile
+docker-compose.yml
+docker-compose*.yml
+entrypoint.sh
+.dockerignore
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and local DBs
+*.log
+*.sqlite3
+gym_admin.db
+instance/

@@ -1,21 +1,78 @@
+// Sistema de modales personalizado (Tailwind CSS)
+window.ModalManager = {
+  getModal: function(modalId) {
+    return document.getElementById(modalId);
+  },
+  
+  open: function(modalId) {
+    const modal = this.getModal(modalId);
+    if (modal) {
+      modal.classList.remove('hidden');
+    } else {
+      console.error('Modal no encontrado:', modalId);
+    }
+  },
+  
+  close: function(modalId) {
+    const modal = this.getModal(modalId);
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  },
+  
+  init: function() {
+    // Cerrar modales al hacer click en botones confirm-modal-close
+    document.querySelectorAll('.confirm-modal-close').forEach(btn => {
+      if(btn.__modalBound) return;
+      btn.__modalBound = true;
+      btn.addEventListener('click', (e) => {
+        const modalId = btn.dataset.modal;
+        if (modalId) {
+          this.close(modalId);
+        }
+      });
+    });
+    
+    // Cerrar modal al hacer click fuera del contenedor
+    ['confirmModal', 'confirmEditModal', 'confirmDiscardModal'].forEach(id => {
+      const modal = this.getModal(id);
+      if (modal && !modal.__bgBound) {
+        modal.__bgBound = true;
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            this.close(id);
+          }
+        });
+      }
+    });
+  }
+};
+
+// Inicializar sistema de modales
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => window.ModalManager.init());
+} else {
+  window.ModalManager.init();
+}
+
 document.addEventListener('DOMContentLoaded', function(){
-  // Confirm delete buttons (delegated)
   document.body.addEventListener('click', function(e){
-    if(e.target.closest('.btn-delete')){
+    var btn = e.target.closest('.btn-delete');
+    if(btn){
       e.preventDefault();
-      var btn = e.target.closest('.btn-delete');
+      e.stopPropagation();
       var action = btn.dataset.action;
       var name = btn.dataset.name || 'este elemento';
-      var modal = document.getElementById('confirmModal');
-      modal.querySelector('.modal-body').textContent = '¿Eliminar "'+name+'"? Esta acción no se puede deshacer.';
-      var ok = modal.querySelector('#confirmOk');
-      ok.dataset.action = action;
-      var m = new bootstrap.Modal(modal);
-      m.show();
+      var msgEl = document.getElementById('confirmModalMessage');
+      if(msgEl) msgEl.textContent = '¿Eliminar "' + name + '"? Esta acción no se puede deshacer.';
+      var ok = document.getElementById('confirmOk');
+      if(ok) ok.dataset.action = action;
+      window.ModalManager.open('confirmModal');
     }
-  });
+  }, true);
 
   document.getElementById('confirmOk')?.addEventListener('click', function(){
+    window.ModalManager.close('confirmModal');
     var action = this.dataset.action;
     // If a form was stored for submission, submit it using the original submit to avoid re-interception
     if(window.__formToSubmit){
@@ -46,16 +103,17 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!(f && f.tagName && f.tagName.toLowerCase() === 'form')) return;
     if(f.classList.contains('confirm-delete-form') || f.dataset.confirmDelete === '1'){
       e.preventDefault();
+      e.stopPropagation(); // prevent HTMX or others from submitting immediately
       // store form to submit on confirm
       window.__formToSubmit = f;
       var name = f.dataset.name || f.querySelector('[name="nombre"]')?.value || f.querySelector('[name="id"]')?.value || 'este elemento';
-      var modal = document.getElementById('confirmModal');
-      modal.querySelector('.modal-body').textContent = '¿Eliminar "'+name+'"? Esta acción no se puede deshacer.';
-      modal.querySelector('#confirmOk').dataset.action = '';
-      var m = new bootstrap.Modal(modal);
-      m.show();
+      var msgEl = document.getElementById('confirmModalMessage');
+      if(msgEl) msgEl.textContent = '¿Eliminar "' + name + '"? Esta acción no se puede deshacer.';
+      var ok = document.getElementById('confirmOk');
+      if(ok) ok.dataset.action = '';
+      window.ModalManager.open('confirmModal');
     }
-  });
+  }, true); // use capture phase
 
   // Toasts from window.FLASH_MESSAGES
   if(Array.isArray(window.FLASH_MESSAGES)){
@@ -147,25 +205,40 @@ document.addEventListener('DOMContentLoaded', function(){
 
     function buildItemHtml(n){
       var d = new Date(n.fecha).toLocaleString();
-      var unreadCls = n.leido ? ' text-muted' : '';
+      var unreadCls = n.leido ? '' : 'bg-brand-50/50';
+      var indicator = n.leido ? '<span class="inline-block h-2 w-2 rounded-full bg-slate-300 mt-1"></span>' : '<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-brand-500"></span></span>';
+      var btnHtml = n.leido ? '' : `<button class="btn-mark-read inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-md transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100" data-notif-id="${n.id}">Leída</button>`;
+      
       return `
-        <div class="list-group-item d-flex justify-content-between align-items-start p-3 notif-row${unreadCls}" data-notif-id="${n.id}">
-          <div>
-            <div class="small text-muted">${d}</div>
-            <div class="fw-semibold">${n.tipo}</div>
-            <div class="small text-truncate" style="max-width:42ch">${n.mensaje}</div>
-          </div>
-          <div class="btns">
-            ${n.leido ? '' : `<button class="btn btn-sm btn-outline-primary btn-mark-read" data-notif-id="${n.id}">Marcar leída</button>`}
+        <div class="p-4 flex gap-4 transition-colors hover:bg-slate-50 cursor-pointer group notif-row border-b border-slate-100 last:border-0 ${unreadCls}" data-notif-id="${n.id}">
+          <div class="shrink-0 mt-1">${indicator}</div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <p class="text-sm font-bold text-slate-900 truncate">${escapeHtml(n.tipo)}</p>
+              <span class="text-[11px] text-slate-500 whitespace-nowrap">${d}</span>
+            </div>
+            <p class="text-sm text-slate-600 line-clamp-2">${escapeHtml(n.mensaje)}</p>
+            <div class="mt-2 flex justify-end">${btnHtml}</div>
           </div>
         </div>`;
     }
 
     function renderNotifications(items){
       if(!listEl) return;
-      if(!items || items.length===0){ listEl.innerHTML = '<p class="text-muted">Sin notificaciones por el momento.</p>'; if(badge) badge.style.display='none'; return; }
+      if(!items || items.length===0){ 
+        listEl.innerHTML = `
+          <div class="text-center py-12">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-300 mb-4">
+              <i class="ti ti-bell-off text-3xl"></i>
+            </div>
+            <p class="text-slate-600 font-semibold">Sin notificaciones</p>
+            <p class="text-slate-500 text-sm mt-1">Estás al día por el momento.</p>
+          </div>`;
+        if(badge) badge.style.display='none'; 
+        return; 
+      }
       var unread = 0;
-      var html = '<div class="list-group">';
+      var html = '<div class="divide-y divide-slate-100 -mx-4 -mt-4">';
       items.forEach(function(n){ if(!n.leido) unread += 1; html += buildItemHtml(n); });
       html += '</div>';
       listEl.innerHTML = html;
@@ -176,6 +249,7 @@ document.addEventListener('DOMContentLoaded', function(){
       Array.from(listEl.querySelectorAll('.btn-mark-read')).forEach(function(btn){
         btn.addEventListener('click', async function(e){
           e.stopPropagation();
+          e.preventDefault();
           var nid = this.getAttribute('data-notif-id');
           try{
             await fetch('/notificaciones/api/mark_read/' + nid, { method: 'POST', credentials: 'same-origin' });
@@ -222,28 +296,64 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     // nicer modal builders
+    function escapeHtml(s){ if(s===null || s===undefined) return ''; return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+
     function showGenericNotifModal(detail){
       var html = `
-        <div class="modal fade" id="notifDetailModal" tabindex="-1">
-          <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow-lg border-0">
-              <div class="modal-header bg-light">
-                <h5 class="modal-title">${detail.tipo}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body">
-                <p class="small text-muted">${new Date(detail.fecha).toLocaleString()}</p>
-                <div>${detail.mensaje}</div>
-              </div>
-              <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-              </div>
+        <div id="tailwindNotifDetailModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" id="tailwindNotifOverlay"></div>
+          <div class="bg-white rounded-2xl shadow-xl w-full max-w-md relative z-10 transform transition-all scale-100 opacity-100">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100">
+              <h5 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="ti ti-info-circle text-brand-600"></i> ${escapeHtml(detail.tipo)}</h5>
+              <button type="button" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors" onclick="document.getElementById('tailwindNotifDetailModal').remove()"><i class="ti ti-x text-lg"></i></button>
+            </div>
+            <div class="p-6">
+              <p class="text-xs font-medium text-slate-400 mb-3">${new Date(detail.fecha).toLocaleString()}</p>
+              <div class="text-slate-600 text-sm leading-relaxed">${escapeHtml(detail.mensaje)}</div>
+            </div>
+            <div class="p-6 border-t border-slate-50 bg-slate-50/50 rounded-b-2xl flex justify-end">
+              <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg text-sm font-medium transition-colors shadow-sm" onclick="document.getElementById('tailwindNotifDetailModal').remove()">Cerrar</button>
             </div>
           </div>
         </div>`;
       var wrapper = document.createElement('div'); wrapper.innerHTML = html; document.body.appendChild(wrapper);
-      var modalEl = document.getElementById('notifDetailModal'); var m = new bootstrap.Modal(modalEl); m.show();
-      modalEl.addEventListener('hidden.bs.modal', function(){ wrapper.remove(); });
+      document.getElementById('tailwindNotifOverlay').addEventListener('click', function() {
+        document.getElementById('tailwindNotifDetailModal').remove();
+      });
+    }
+
+    // slide-over controls
+    var notifBtn = document.getElementById('btn-notifications');
+    var canvas = document.getElementById('notificationsCanvas');
+    var overlay = document.getElementById('notif-overlay');
+    var panel = document.getElementById('notif-panel');
+    var closes = document.querySelectorAll('.notif-close');
+
+    function openNotif(){
+      if(canvas) {
+        canvas.classList.remove('hidden', 'pointer-events-none');
+        // trigger animation
+        setTimeout(() => {
+          overlay.classList.remove('opacity-0');
+          panel.classList.remove('translate-x-full');
+        }, 10);
+        fetchAndRender();
+      }
+    }
+
+    function closeNotif(){
+      if(canvas) {
+        overlay.classList.add('opacity-0');
+        panel.classList.add('translate-x-full');
+        setTimeout(() => {
+          canvas.classList.add('hidden', 'pointer-events-none');
+        }, 300);
+      }
+    }
+
+    if(notifBtn) notifBtn.addEventListener('click', openNotif);
+    if(overlay) overlay.addEventListener('click', closeNotif);
+    closes.forEach(c => c.addEventListener('click', closeNotif));
 
   // --- Confirm-on-edit feature ---
   (function(){
@@ -286,138 +396,125 @@ document.addEventListener('DOMContentLoaded', function(){
       return false;
     }
 
-    // collect candidate forms: only forms that look like an edit (not create)
-    var forms = Array.from(document.querySelectorAll('form')).filter(function(f){
+    window.initFormSnapshots = function(container) {
+      var root = container || document;
+      var candidateForms = Array.from(root.querySelectorAll('form')).filter(function(f){
+        var candidate = false;
+        try{
+          candidate = f.classList.contains('confirm-edit') || f.dataset.confirmEdit === '1' || (f.action && f.action.indexOf('/edit') !== -1);
+        }catch(e){ candidate = false; }
+        return candidate && formLooksLikeEdit(f);
+      });
+      candidateForms.forEach(function(f){
+        try{
+          if(!initialSnapshots.has(f)) {
+            initialSnapshots.set(f, snapshotForm(f));
+          }
+        }catch(e){}
+      });
+    };
+    
+    // Initial call
+    window.initFormSnapshots();
+
+    document.body.addEventListener('submit', function(e){
+      var f = e.target;
+      if(!(f && f.tagName && f.tagName.toLowerCase() === 'form')) return;
       var candidate = false;
       try{
         candidate = f.classList.contains('confirm-edit') || f.dataset.confirmEdit === '1' || (f.action && f.action.indexOf('/edit') !== -1);
-      }catch(e){ candidate = false; }
-      // only require confirmation for forms that represent an edit of an existing record
-      return candidate && formLooksLikeEdit(f);
-    });
-
-    // Override HTMLFormElement.submit to catch programmatic submits for confirm-edit forms
-    try{
-    if(!HTMLFormElement.prototype.__submit_wrapped){
-      var _origSubmit = HTMLFormElement.prototype.submit;
-      try{ window.__origFormSubmit = _origSubmit; }catch(e){}
-      HTMLFormElement.prototype.submit = function(){
-          try{
-            var f = this;
-          // only require confirm if form looks like an edit (avoid asking on creates)
-          var isConfirm = (f.classList && (f.classList.contains('confirm-edit') || f.dataset.confirmEdit === '1' || (f.action && f.action.indexOf('/edit') !== -1))) && formLooksLikeEdit(f);
-            if(!isConfirm){
-              return _origSubmit.apply(f, arguments);
-            }
-            // compute diffs similar to submit handler
-            var before = initialSnapshots.get(f) || snapshotForm(f) || {};
-            var after = snapshotForm(f) || {};
-            var changes = [];
-            Object.keys(after).forEach(function(k){
-              var a = after[k] === undefined ? '' : after[k];
-              var b = before[k] === undefined ? '' : before[k];
-              if(a !== b){
-                if(k.toLowerCase().indexOf('csrf') === 0) return;
-                if(k.toLowerCase().indexOf('token') !== -1) return;
-                changes.push({ field: k, old: b, new: a });
-              }
-            });
-            if(changes.length === 0){
-              return _origSubmit.apply(f, arguments);
-            }
-            // store and show modal
-            window.__formToSubmit = f;
-            var recordId = f.querySelector('[name="id"]')?.value || f.dataset.recordId || '';
-            var summaryEl = document.getElementById('confirm-edit-summary');
-            if(summaryEl) summaryEl.innerHTML = buildDiffHtml(changes, recordId);
-            var emodal = document.getElementById('confirmEditModal');
-            var m = new bootstrap.Modal(emodal);
-            m.show();
-            return; // do not submit now
-          }catch(e){ console.error('submit override error', e); return _origSubmit.apply(this, arguments); }
-        };
-        HTMLFormElement.prototype.__submit_wrapped = true;
-      }
-    }catch(e){ console.error('Could not override form submit', e); }
-
-    forms.forEach(function(f){
-      try{
-        initialSnapshots.set(f, snapshotForm(f));
-        f.addEventListener('submit', function(e){
-          // on submit, compare snapshots
-          var before = initialSnapshots.get(f) || {};
-          var after = snapshotForm(f);
-          var changes = [];
-          Object.keys(after).forEach(function(k){
-            var a = after[k] === undefined ? '' : after[k];
-            var b = before[k] === undefined ? '' : before[k];
-            if(a !== b){
-              // only show if meaningful (ignore CSRF, timestamps, meta fields)
-              if(k.toLowerCase().indexOf('csrf') === 0) return;
-              if(k.toLowerCase().indexOf('token') !== -1) return;
-              changes.push({ field: k, old: b, new: a });
-            }
-          });
-          if(changes.length === 0){
-            // no changes: proceed
-            return true;
+      }catch(err){ candidate = false; }
+      
+      if(candidate && formLooksLikeEdit(f)){
+        // on submit, compare snapshots
+        var before = initialSnapshots.get(f) || {};
+        var after = snapshotForm(f);
+        var changes = [];
+        Object.keys(after).forEach(function(k){
+          var a = after[k] === undefined ? '' : after[k];
+          var b = before[k] === undefined ? '' : before[k];
+          if(a !== b){
+            // only show if meaningful (ignore CSRF, timestamps, meta fields)
+            if(k.toLowerCase().indexOf('csrf') === 0) return;
+            if(k.toLowerCase().indexOf('token') !== -1) return;
+            changes.push({ field: k, old: b, new: a });
           }
-          // prevent submit and show modal with summary
-          e.preventDefault();
-          var recordId = f.querySelector('[name="id"]')?.value || f.dataset.recordId || '';
-          var summaryEl = document.getElementById('confirm-edit-summary');
-          if(summaryEl) summaryEl.innerHTML = buildDiffHtml(changes, recordId);
-          // store form for final submit when user confirms
-          window.__formToSubmit = f;
-          var emodal = document.getElementById('confirmEditModal');
-          var m = new bootstrap.Modal(emodal);
-          m.show();
         });
-      }catch(e){ console.error('confirm-edit init error', e); }
-    });
+        if(changes.length === 0){
+          // no changes: proceed
+          return true;
+        }
+        // prevent submit and show modal with summary
+        e.preventDefault();
+        e.stopPropagation(); // Stop other listeners (like modal-form.js)
+        var recordId = f.querySelector('[name="id"]')?.value || f.dataset.recordId || '';
+        var summaryEl = document.getElementById('confirm-edit-summary');
+        if(summaryEl) summaryEl.innerHTML = buildDiffHtml(changes, recordId);
+        // store form for final submit when user confirms
+        window.__formToSubmit = f;
+        window.ModalManager.open('confirmEditModal');
+      }
+    }, true); // use capture phase to run before modal-form.js
 
     // when user confirms edit, submit stored form
     document.getElementById('confirmEditOk')?.addEventListener('click', function(){
       if(window.__formToSubmit){
-        try{ if(window.__origFormSubmit && typeof window.__origFormSubmit === 'function'){ window.__origFormSubmit.apply(window.__formToSubmit); } else { window.__formToSubmit.submit(); } }catch(e){ console.error(e); }
+        var f = window.__formToSubmit;
         window.__formToSubmit = null;
+        window.ModalManager.close('confirmEditModal');
+        var isModalForm = f.closest('#form-modal');
+        if(isModalForm && window.modalForm){
+          window.modalForm.submitForm(f);
+        } else {
+          try{ if(window.__origFormSubmit && typeof window.__origFormSubmit === 'function'){ window.__origFormSubmit.apply(f); } else { f.submit(); } }catch(err){ console.error(err); }
+        }
       }
     });
   })();
-    }
-
     function showBirthdayModal(list){
       var itemsHtml = '';
-      if(!list || !list.length){ itemsHtml = '<p class="text-muted">No hay cumpleañeros esta semana.</p>'; }
-      else{
-        itemsHtml = '<div class="list-group">';
+      if(!list || !list.length){ 
+        itemsHtml = `
+          <div class="text-center py-8">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 text-slate-300 mb-3"><i class="ti ti-cake text-2xl"></i></div>
+            <p class="text-sm font-medium text-slate-600">No hay cumpleañeros esta semana.</p>
+          </div>`; 
+      } else {
+        itemsHtml = '<div class="divide-y divide-slate-100">';
         list.forEach(function(c){
-          var wa = c.telefono ? `<a class="btn btn-sm btn-success me-2" target="_blank" href="https://wa.me/591${String(c.telefono).replace(/[^0-9]/g,'')}?text=${encodeURIComponent('¡Feliz cumpleaños '+c.nombre_completo+'!')}"><i class="bi bi-whatsapp"></i></a>` : '';
-          itemsHtml += `<div class="list-group-item d-flex justify-content-between align-items-center"><div><strong>${c.nombre_completo}</strong><div class="small text-muted">${c.fecha_nacimiento}</div></div><div>${wa}</div></div>`;
+          var wa = c.telefono ? `<a class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors" target="_blank" href="https://wa.me/591${String(c.telefono).replace(/[^0-9]/g,'')}?text=${encodeURIComponent('¡Feliz cumpleaños '+c.nombre_completo+'!')}"><i class="ti ti-brand-whatsapp text-lg"></i></a>` : '';
+          itemsHtml += `
+            <div class="py-3 flex items-center justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-sm font-bold text-slate-900 truncate">${escapeHtml(c.nombre_completo)}</p>
+                <p class="text-xs text-slate-500">${escapeHtml(c.fecha_nacimiento)}</p>
+              </div>
+              <div class="shrink-0">${wa}</div>
+            </div>`;
         });
         itemsHtml += '</div>';
       }
       var html = `
-        <div class="modal fade" id="notifDetailModal" tabindex="-1">
-          <div class="modal-dialog modal-dialog-scrollable modal-lg">
-            <div class="modal-content shadow-lg border-0">
-              <div class="modal-header bg-light">
-                <h5 class="modal-title">Cumpleañeros de la semana</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body p-0">
-                ${itemsHtml}
-              </div>
-              <div class="modal-footer">
-                <a class="btn btn-primary" href="/clientes?cumpleanos_week=1">Ver todos</a>
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-              </div>
+        <div id="tailwindBirthdayModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" id="tailwindBirthdayOverlay"></div>
+          <div class="bg-white rounded-2xl shadow-xl w-full max-w-md relative z-10 transform transition-all scale-100 opacity-100 flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+              <h5 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="ti ti-cake text-brand-600"></i> Cumpleañeros</h5>
+              <button type="button" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors" onclick="document.getElementById('tailwindBirthdayModal').remove()"><i class="ti ti-x text-lg"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+              ${itemsHtml}
+            </div>
+            <div class="p-6 border-t border-slate-50 bg-slate-50/50 rounded-b-2xl flex justify-end gap-3 shrink-0">
+              <a href="/clientes?cumpleanos_week=1" class="px-4 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-lg text-sm font-medium transition-colors shadow-sm text-center">Ver todos</a>
+              <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg text-sm font-medium transition-colors shadow-sm" onclick="document.getElementById('tailwindBirthdayModal').remove()">Cerrar</button>
             </div>
           </div>
         </div>`;
       var wrapper = document.createElement('div'); wrapper.innerHTML = html; document.body.appendChild(wrapper);
-      var modalEl = document.getElementById('notifDetailModal'); var m = new bootstrap.Modal(modalEl); m.show();
-      modalEl.addEventListener('hidden.bs.modal', function(){ wrapper.remove(); });
+      document.getElementById('tailwindBirthdayOverlay').addEventListener('click', function() {
+        document.getElementById('tailwindBirthdayModal').remove();
+      });
     }
 
   // Delegated handler: abrir modal de detalle de membresía
@@ -477,15 +574,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }catch(err){ console.error('Error preparando WhatsApp', err); alert('No se pudo abrir WhatsApp'); }
     });
 
-    var btn = document.getElementById('btn-notifications');
-    if(btn){
-      btn.addEventListener('click', function(){
-        var el = document.getElementById('notificationsCanvas');
-        var off = new bootstrap.Offcanvas(el);
-        off.show();
-        fetchAndRender();
-      });
-    }
+
     fetchAndRender();
     // poll every 30 seconds to keep UI in sync
     setInterval(fetchAndRender, 30*1000);

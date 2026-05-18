@@ -117,20 +117,25 @@ def index():
         ).filter(Membresia.sucursal_id == sucursal_id)
     total_membresias_pagadas = int(memb_count_q.scalar() or 0)
 
-    ventas_query = db.session.query(
-        func.coalesce(func.sum(Venta.monto_total), 0).label("total_ventas"),
-        func.count(Venta.id).label("count_ventas"),
-    )
-    ventas_filters = [Venta.fecha_venta >= start_dt, Venta.fecha_venta <= end_dt]
-    ventas_query = ventas_query.filter(*ventas_filters)
-    ventas_summary = ventas_query.one()
+    include_ventas = request.args.get("include_ventas") in ("1", "true", "True", "on")
+
+    ventas_summary = type("S", (), {"total_ventas": 0, "count_ventas": 0})()
+    if include_ventas:
+        ventas_query = db.session.query(
+            func.coalesce(func.sum(Venta.monto_total), 0).label("total_ventas"),
+            func.count(Venta.id).label("count_ventas"),
+        )
+        ventas_filters = [Venta.fecha_venta >= start_dt, Venta.fecha_venta <= end_dt]
+        if sucursal_id and sucursal_id != 0:
+            ventas_filters.append(Venta.sucursal_id == sucursal_id)
+        ventas_query = ventas_query.filter(*ventas_filters)
+        ventas_summary = ventas_query.one()
 
     total_ingresos = float(ingresos_summary.total_pagos or 0) + float(
-        ventas_summary.total_ventas or 0
+        getattr(ventas_summary, "total_ventas", 0) or 0
     )
-    # Para el contador, preferimos mostrar el número de membresías con pagos (+ ventas)
     total_ingresos_count = int(
-        total_membresias_pagadas + (ventas_summary.count_ventas or 0)
+        total_membresias_pagadas + (getattr(ventas_summary, "count_ventas", 0) or 0)
     )
 
     # Egresos: gastos
@@ -139,6 +144,8 @@ def index():
         func.count(Gasto.id).label("count_gastos"),
     )
     gastos_filters = [Gasto.fecha_gasto >= start_dt, Gasto.fecha_gasto <= end_dt]
+    if sucursal_id and sucursal_id != 0:
+        gastos_filters.append(Gasto.sucursal_id == sucursal_id)
     gastos_summary = gastos_query.filter(*gastos_filters).one()
 
     total_egresos = float(gastos_summary.total_gastos or 0)
@@ -184,6 +191,8 @@ def index():
         gc = gc.join(Gasto, Gasto.categoria_id == CategoriaGasto.id).filter(
             Gasto.fecha_gasto >= start_dt, Gasto.fecha_gasto <= end_dt
         )
+        if sucursal_id and sucursal_id != 0:
+            gc = gc.filter(Gasto.sucursal_id == sucursal_id)
         gc = gc.group_by(CategoriaGasto.nombre).order_by(func.sum(Gasto.monto).desc())
         gastos_by_cat = [{"categoria": r[0], "total": float(r[1])} for r in gc.all()]
     except Exception:
@@ -205,6 +214,7 @@ def index():
         end_dt=end_dt,
         selected_sucursal=sucursal_id,
         period=period,
+        include_ventas=include_ventas,
     )
 
     return render_template("finanzas/index.html", **context)
@@ -248,6 +258,8 @@ def _compute_finanzas(
             func.count(Venta.id).label("count_ventas"),
         )
         ventas_filters = [Venta.fecha_venta >= start_dt, Venta.fecha_venta <= end_dt]
+        if sucursal_id and sucursal_id != 0:
+            ventas_filters.append(Venta.sucursal_id == sucursal_id)
         ventas_query = ventas_query.filter(*ventas_filters)
         ventas_summary = ventas_query.one()
 
@@ -264,6 +276,8 @@ def _compute_finanzas(
         func.count(Gasto.id).label("count_gastos"),
     )
     gastos_filters = [Gasto.fecha_gasto >= start_dt, Gasto.fecha_gasto <= end_dt]
+    if sucursal_id and sucursal_id != 0:
+        gastos_filters.append(Gasto.sucursal_id == sucursal_id)
     if cuenta_id:
         gastos_query = gastos_query.filter(Gasto.cuenta_id == cuenta_id)
     gastos_summary = gastos_query.filter(*gastos_filters).one()
@@ -310,6 +324,8 @@ def _compute_finanzas(
         gc = gc.join(Gasto, Gasto.categoria_id == CategoriaGasto.id).filter(
             Gasto.fecha_gasto >= start_dt, Gasto.fecha_gasto <= end_dt
         )
+        if sucursal_id and sucursal_id != 0:
+            gc = gc.filter(Gasto.sucursal_id == sucursal_id)
         if cuenta_id:
             gc = gc.filter(Gasto.cuenta_id == cuenta_id)
         gc = gc.group_by(CategoriaGasto.nombre).order_by(func.sum(Gasto.monto).desc())

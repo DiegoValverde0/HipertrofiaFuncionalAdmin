@@ -1,32 +1,96 @@
 {% extends 'base.html' %}
-{% block title %}Registrar gasto{% endblock %}
+{% block title %}Registrar gasto - Gym Admin{% endblock %}
 {% block content %}
-  <h2>Registrar gasto</h2>
-  <form method="post" class="confirm-edit">
-    {% if gasto %}<input type="hidden" name="id" value="{{ gasto.id }}">{% endif %}
-    <div class="mb-3"><label>Descripción</label><input name="descripcion" class="form-control" required></div>
-    <div class="mb-3"><label>Monto</label><input name="monto" class="form-control" required></div>
-    <div class="mb-3"><label>Cuenta</label>
-      <select name="cuenta_id" class="form-select">
-        <option value="">-- Seleccionar --</option>
-        {% for c in cuentas %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
-      </select>
+<div class="max-w-4xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Registrar gasto</h2>
+      <p class="text-sm text-slate-500 mt-1">Registra un nuevo egreso de la sucursal asignándolo a una cuenta y categoría.</p>
     </div>
-    <div class="mb-3"><label>Sucursal</label>
-      <select name="sucursal_id" class="form-select" required>
-        <option value="">-- Seleccionar sucursal --</option>
-        {% for s in sucursales %}
-          <option value="{{ s.id }}" {% if session.get('sucursal_id') and session.get('sucursal_id') == s.id %}selected{% endif %}>{{ s.nombre }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="mb-3"><label>Categoría</label>
-      <select name="categoria_id" class="form-select">
-        <option value="">-- Seleccionar --</option>
-        {% for c in categorias %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
-      </select>
-    </div>
+    <a href="{{ url_for('gastos.gastos_index') }}" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+      <i class="ti ti-x text-xl"></i>
+    </a>
+  </div>
 
-    <button class="btn btn-primary">Guardar</button>
-  </form>
+  <!-- Form Card -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <form method="post" class="confirm-edit p-6 sm:p-8">
+      {% if gasto %}<input type="hidden" name="id" value="{{ gasto.id }}">{% endif %}
+      
+      <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2 md:col-span-2">
+            <label class="block text-sm font-medium text-slate-700">Descripción del gasto</label>
+            <input name="descripcion" value="{{ gasto.descripcion if gasto else '' }}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors" placeholder="Ej. Compra de suministros de limpieza" required>
+          </div>
+          
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">Monto (Bs.)</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                Bs.
+              </div>
+              <input name="monto" type="number" step="0.01" value="{{ gasto.monto if gasto else '' }}" class="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors font-medium text-slate-900" placeholder="0.00" required>
+            </div>
+          </div>
+          
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">Cuenta de origen</label>
+            <div class="relative">
+              <select name="cuenta_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors" required>
+                <option value="">-- Seleccionar cuenta --</option>
+                {% for c in cuentas %}
+                  <option value="{{ c.id }}" {% if gasto and gasto.cuenta_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+              </select>
+              <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                <i class="ti ti-chevron-down"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">Categoría</label>
+            <div class="relative">
+              <select name="categoria_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors" required>
+                <option value="">-- Seleccionar categoría --</option>
+                {% for c in categorias %}
+                  <option value="{{ c.id }}" {% if gasto and gasto.categoria_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+              </select>
+              <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                <i class="ti ti-chevron-down"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">Sucursal</label>
+            <div class="relative">
+              <select name="sucursal_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors" required>
+                <option value="">-- Seleccionar sucursal --</option>
+                {% for s in sucursales %}
+                  <option value="{{ s.id }}" {% if (gasto and gasto.sucursal_id == s.id) or (not gasto and session.get('sucursal_id') == s.id) %}selected{% endif %}>{{ s.nombre }}</option>
+                {% endfor %}
+              </select>
+              <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                <i class="ti ti-chevron-down"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+        <a href="{{ url_for('gastos.gastos_index') }}" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-colors">
+          Cancelar
+        </a>
+        <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-all">
+          <i class="ti ti-device-floppy mr-2"></i> Guardar gasto
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

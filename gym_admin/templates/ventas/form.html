@@ -107,28 +107,40 @@
       </div>
     </form>
   </div>
+{% endblock %}
 
-  <!-- Modal de Confirmación -->
-  <div class="modal fade" id="confirm-sale-modal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content border-0 shadow-lg">
-        <div class="modal-header bg-slate-50">
-          <h5 class="modal-title" id="confirmModalLabel">Confirmar Venta</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" id="sale-summary">
-          <!-- El resumen de la venta se inyectará aquí -->
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light text-slate-700 bg-white border border-slate-200 hover:bg-slate-100" data-bs-dismiss="modal" id="cancel-sale-btn">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="confirm-sale-btn">Confirmar Venta</button>
-        </div>
+{% block modals %}
+  <!-- Modal de Confirmación - Tailwind CSS -->
+  <div id="confirm-sale-modal-custom" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
+      <!-- Header -->
+      <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+        <h5 class="text-lg font-semibold text-slate-900">Confirmar Venta</h5>
+        <button type="button" id="close-sale-modal" class="text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors">&times;</button>
+      </div>
+      <!-- Body -->
+      <div id="sale-summary" class="p-6 text-slate-700 pointer-events-auto">
+        <!-- El resumen de la venta se inyectará aquí -->
+      </div>
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
+        <button type="button" id="cancel-sale-btn-custom" class="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors">Cancelar</button>
+        <button type="button" id="confirm-sale-btn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors">Confirmar Venta</button>
       </div>
     </div>
   </div>
+{% endblock %}
+
+{% block scripts %}
 
   <script>
+    // ============================================
+    // SCRIPT DE DIAGNÓSTICO - VER CONSOLA (F12)
+    // ============================================
+    console.log('✅ Script de ventas cargado');
+    
     document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM Content Loaded');
       const productSearch = document.getElementById('product-search');
       const productResults = document.getElementById('product-results');
       const cartItems = document.getElementById('cart-items');
@@ -136,12 +148,23 @@
       const descuentoInput = document.getElementById('descuento-input');
       const totalDisplay = document.getElementById('total-display');
       const ventaForm = document.getElementById('venta-form');
-      const confirmModal = new bootstrap.Modal(document.getElementById('confirm-sale-modal'));
+      const confirmModalElement = document.getElementById('confirm-sale-modal-custom');
+      
+      // Modal personalizado (sin Bootstrap)
+      const confirmModal = {
+        show: function() {
+          confirmModalElement.classList.remove('hidden');
+        },
+        hide: function() {
+          confirmModalElement.classList.add('hidden');
+        }
+      };
+      
       const clienteSearch = document.getElementById('cliente-search');
       const clienteResults = document.getElementById('cliente-results');
       const clienteIdInput = document.getElementById('cliente_id_input');
       const selectedClienteDiv = document.getElementById('selected-cliente');
-      const cancelBtn = document.getElementById('cancel-sale-btn');
+      const cancelBtn = document.getElementById('cancel-sale-btn-custom');
       let allProducts = [];
       let searchTimeout;
 
@@ -288,6 +311,7 @@
 
       // Lógica del Modal de Confirmación
       ventaForm.addEventListener('submit', function(e) {
+        console.log('🟢 Form submit preventado - abriendo modal de confirmación');
         e.preventDefault();
         const summaryContainer = document.getElementById('sale-summary');
         let summaryHtml = '<h6>Resumen de la Venta:</h6><ul class="list-group">';
@@ -314,10 +338,89 @@
         setTimeout(() => cancelBtn.focus(), 500);
       });
 
-      document.getElementById('confirm-sale-btn').addEventListener('click', function() {
-        // Si se confirma, se envía el formulario
-        ventaForm.submit();
+      document.getElementById('confirm-sale-btn').addEventListener('click', async function() {
+        console.log('🔵 Botón Confirmar Venta clickeado');
+        // Si se confirma, se envía el formulario via AJAX
+        const confirmBtn = this;
+        const originalText = confirmBtn.textContent;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Procesando...';
+        console.log('⏳ Enviando solicitud AJAX...');
+
+        try {
+          const formData = new FormData(ventaForm);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000); // 30 segundo timeout
+          
+          const response = await fetch(ventaForm.action || window.location.pathname, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+
+          clearTimeout(timeout);
+
+          if (!response.ok) {
+            throw new Error(`Error del servidor: ${response.status}`);
+          }
+
+          const contentType = response.headers.get('content-type');
+          const isJSON = contentType && contentType.includes('application/json');
+          
+          console.log('✅ Tipo de respuesta:', isJSON ? 'JSON' : 'HTML', 'Status:', response.status);
+
+          if (isJSON) {
+            const data = await response.json();
+            if (data.success) {
+              confirmModal.hide();
+              showAlert('success', data.message || 'Venta registrada exitosamente');
+              setTimeout(() => {
+                window.location.href = "{{ url_for('ventas.list_ventas') }}";
+              }, 1500);
+            } else {
+              showAlert('error', data.message || 'Error al registrar la venta');
+            }
+          } else {
+            // Si es HTML (redirección), redirigir directamente
+            window.location.href = "{{ url_for('ventas.list_ventas') }}";
+          }
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            showAlert('error', 'La solicitud tardó demasiado. Intenta de nuevo.');
+          } else {
+            showAlert('error', `Error: ${error.message}`);
+          }
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = originalText;
+        }
       });
+
+      // Event listeners para el modal personalizado
+      document.getElementById('cancel-sale-btn-custom').addEventListener('click', function() {
+        confirmModal.hide();
+      });
+
+      document.getElementById('close-sale-modal').addEventListener('click', function() {
+        confirmModal.hide();
+      });
+
+      // Cerrar modal al hacer click en el overlay (fuera del contenedor)
+      confirmModalElement.addEventListener('click', function(e) {
+        if (e.target === confirmModalElement) {
+          confirmModal.hide();
+        }
+      });
+
+      function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-3`;
+        alertDiv.style.zIndex = '9999';
+        alertDiv.textContent = message;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => alertDiv.remove(), 4000);
+      }
 
     });
   </script>

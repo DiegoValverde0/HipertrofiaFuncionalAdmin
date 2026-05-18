@@ -126,17 +126,25 @@ def delete_producto(pid):
 @productos_bp.route("/<int:producto_id>/ajustar_stock", methods=["POST"])
 @admin_required
 def ajustar_stock(producto_id):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    
     producto = Producto.query.get_or_404(producto_id)
     sucursal_id = request.form.get("sucursal_id", type=int)
     cantidad = request.form.get("cantidad", type=int)
     operacion = request.form.get("operacion")
 
     if not sucursal_id:
-        flash("No se ha especificado una sucursal para el ajuste de stock.", "danger")
+        msg = "No se ha especificado una sucursal para el ajuste de stock."
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 400
+        flash(msg, "danger")
         return redirect(url_for("productos.list_productos"))
 
     if cantidad is None or cantidad < 0:
-        flash("La cantidad debe ser un número positivo.", "danger")
+        msg = "La cantidad debe ser un número positivo."
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 400
+        flash(msg, "danger")
         return redirect(url_for("productos.list_productos"))
 
     try:
@@ -149,15 +157,26 @@ def ajustar_stock(producto_id):
         else:
             producto.actualizar_stock(sucursal_id, cantidad, operacion=operacion)
         db.session.commit()
-        flash(f'Stock de "{producto.nombre}" actualizado en la sucursal.', "success")
+        msg = f'Stock de "{producto.nombre}" actualizado en la sucursal.'
+        if is_ajax:
+            return jsonify({"success": True, "message": msg}), 200
+        flash(msg, "success")
     except ValueError as e:
         db.session.rollback()
-        flash(str(e), "danger")
+        error_msg = str(e)
+        if is_ajax:
+            return jsonify({"success": False, "message": error_msg}), 400
+        flash(error_msg, "danger")
     except Exception as e:
         db.session.rollback()
-        flash(f"Error al actualizar el stock: {e}", "danger")
+        error_msg = f"Error al actualizar el stock: {e}"
+        if is_ajax:
+            return jsonify({"success": False, "message": error_msg}), 500
+        flash(error_msg, "danger")
 
-    return redirect(url_for("productos.list_productos"))
+    if not is_ajax:
+        return redirect(url_for("productos.list_productos"))
+    return jsonify({"success": False, "message": "Error desconocido"}), 500
 
 
 @productos_bp.route("/api/list")
