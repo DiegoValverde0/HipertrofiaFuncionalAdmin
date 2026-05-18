@@ -43,7 +43,7 @@
             <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-0.5 text-xs font-semibold">{{ producto.estado }}</span>
           </td>
           <td class="px-4 py-3 text-right text-nowrap">
-            {% if sucursal_actual_id %}
+            {% if sucursal_actual_id and current_user and current_user.rol_id == 1 %}
             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 btn-stock-adjust" data-producto-id="{{ producto.id }}" data-producto-nombre="{{ producto.nombre }}" data-producto-stock="{{ stock_por_producto.get(producto.id, 0) }}">
               Ajustar Stock
             </button>
