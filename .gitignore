@@ -48,3 +48,7 @@ tmp/
 *.db
 *.sqlite3
 instance/
+
+# Volcados de base de datos y respaldos de editores
+*.sql
+*.save
