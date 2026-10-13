@@ -2,7 +2,7 @@
 de entorno DATABASE_URL si no existe. Usa PyMySQL.
 
 Uso:
-  setx DATABASE_URL "mysql+pymysql://root:Aa1234567*@localhost:3306/pruebagymdb"
+  setx DATABASE_URL "mysql+pymysql://usuario:contraseña@localhost:3306/gym_db"
   python .\scripts\create_database.py
 """
 
@@ -53,7 +53,7 @@ def main():
     if not database_url:
         print("Por favor exporta la variable DATABASE_URL. Ejemplo:")
         print(
-            ' setx DATABASE_URL "mysql+pymysql://root:Aa1234567*@localhost:3306/pruebagymdb"'
+            ' setx DATABASE_URL "mysql+pymysql://usuario:contraseña@localhost:3306/gym_db"'
         )
         sys.exit(1)
 

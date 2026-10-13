@@ -10,6 +10,8 @@ venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Environment
 .env
@@ -39,8 +41,10 @@ entrypoint.sh
 ehthumbs.db
 Thumbs.db
 
-# Logs and local DBs
+# Logs, runtime dirs and local DBs
 *.log
+logs/
+tmp/
+*.db
 *.sqlite3
-gym_admin.db
 instance/
