@@ -323,7 +323,7 @@ def api_planes_populares():
         rows = q.all()
         items = []
         for pid, cnt in rows:
-            plan = Plan.query.get(pid)
+            plan = db.session.get(Plan, pid)
             items.append(
                 dict(
                     plan_id=pid,

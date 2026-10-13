@@ -1,10 +1,11 @@
-from datetime import datetime, date
+from datetime import date
 from decimal import Decimal
 from .extensions import db
 from .models import Membresia, APIKey
 from flask import current_app, request, jsonify, g, session, abort
 from functools import wraps
 from flask import redirect, url_for
+from .utils_timezone import utcnow
 
 
 def get_user_sucursal_id():
@@ -122,7 +123,7 @@ def admin_required(func):
                             ):
                                 # permitir acceso y exponer el usuario en g
                                 try:
-                                    api_key.ultimo_uso = datetime.utcnow()
+                                    api_key.ultimo_uso = utcnow()
                                     db.session.commit()
                                 except Exception:
                                     try:
@@ -238,7 +239,7 @@ def api_key_required(func):
 
             # Actualizar último uso
             try:
-                api_key.ultimo_uso = datetime.utcnow()
+                api_key.ultimo_uso = utcnow()
                 db.session.commit()
             except Exception:
                 try:
@@ -340,7 +341,7 @@ def ensure_membership_state_after_payment(membresia_id: int):
     Retorna el nuevo estado_id (o None si no hubo cambio).
     """
     try:
-        m = Membresia.query.get(membresia_id)
+        m = db.session.get(Membresia, membresia_id)
         if not m:
             return None
         total_due = _compute_monto_total_for_membresia(m)

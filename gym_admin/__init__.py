@@ -126,7 +126,7 @@ def create_app(config_object: str | None = None):
         @extensions.login_manager.user_loader
         def load_user(user_id):
             try:
-                return Usuario.query.get(int(user_id))
+                return extensions.db.session.get(Usuario, int(user_id))
             except Exception:
                 return None
 

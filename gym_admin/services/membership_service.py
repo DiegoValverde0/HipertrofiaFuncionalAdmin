@@ -8,11 +8,12 @@ from ..extensions import db
 from ..models import Membresia, Cliente, Plan, EstadoMembresia
 from ..utils import _compute_monto_total_for_membresia
 from ..utils_timezone import to_bolivia
+from ..utils_timezone import utcnow
 
 
 def local_today():
     """Fecha actual en hora de Bolivia (el servidor corre en UTC)."""
-    return to_bolivia(datetime.utcnow()).date()
+    return to_bolivia(utcnow()).date()
 
 
 def is_paid_in_full(membresia):
@@ -277,7 +278,7 @@ def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=Non
                 }
         
         # Obtener plan
-        plan = Plan.query.get(plan_id)
+        plan = db.session.get(Plan, plan_id)
         if not plan or plan.estado != 'Activo':
             return {
                 'estado': 'error',
@@ -410,12 +411,12 @@ def create_membership(
     """
     try:
         # Validate cliente
-        cliente = Cliente.query.get(cliente_id)
+        cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
             return False, None, "Cliente no existe"
 
         # Validate plan
-        plan = Plan.query.get(plan_id)
+        plan = db.session.get(Plan, plan_id)
         if not plan or plan.estado != 'Activo':
             return False, None, "Plan no existe o inactivo"
 
@@ -427,7 +428,7 @@ def create_membership(
 
         # Validate estado
         try:
-            estado = EstadoMembresia.query.get(estado_id)
+            estado = db.session.get(EstadoMembresia, estado_id)
             if not estado:
                 return False, None, "Estado de membresía no válido"
         except Exception:
@@ -485,7 +486,7 @@ def update_membership(membresia_id, **kwargs):
     Returns (success: bool, error_msg: str or None)
     """
     try:
-        membresia = Membresia.query.get(membresia_id)
+        membresia = db.session.get(Membresia, membresia_id)
         if not membresia:
             return False, "Membresía no existe"
 
@@ -494,7 +495,7 @@ def update_membership(membresia_id, **kwargs):
 
         new_plan = membresia.plan
         if "plan_id" in updates and updates.get("plan_id"):
-            new_plan = Plan.query.get(updates.get("plan_id"))
+            new_plan = db.session.get(Plan, updates.get("plan_id"))
             if not new_plan or getattr(new_plan, "estado", None) != "Activo":
                 return False, "Plan no válido o inactivo"
             tipo_uso, cupo_marcajes = _resolve_usage_config(new_plan)
@@ -531,7 +532,7 @@ def update_membership(membresia_id, **kwargs):
             return False, "Fecha fin debe ser posterior a fecha inicio"
 
         if "estado_id" in updates and updates.get("estado_id"):
-            estado = EstadoMembresia.query.get(updates.get("estado_id"))
+            estado = db.session.get(EstadoMembresia, updates.get("estado_id"))
             if not estado:
                 return False, "Estado no válido"
 

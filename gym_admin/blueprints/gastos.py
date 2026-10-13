@@ -39,6 +39,7 @@ except Exception:
 
 
 from ..utils import admin_required
+from ..utils_timezone import utcnow
 
 gastos_bp = Blueprint("gastos", __name__, template_folder="../templates/gastos")
 
@@ -409,7 +410,6 @@ def gastos_print():
 
     # include filters header
     rows = query.order_by(Gasto.fecha_gasto.desc()).all()
-    from datetime import datetime as _dt
 
     filters = dict(
         q=q,
@@ -427,7 +427,7 @@ def gastos_print():
     return render_template(
         "gastos/gastos_print.html",
         gastos=rows,
-        now=_dt.utcnow(),
+        now=utcnow(),
         filters=filters,
         cuentas_map=cuentas_map,
         categorias_map=categorias_map,

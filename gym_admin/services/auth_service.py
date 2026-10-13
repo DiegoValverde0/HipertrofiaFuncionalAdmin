@@ -163,7 +163,9 @@ def trigger_post_login_tasks(user, background=True):
     except Exception:
         sucursal = None
 
-    if not background:
+    # POST_LOGIN_TASKS_ASYNC=False (tests) ejecuta las tareas en el mismo hilo
+    # para que no compitan con la petición por la base de datos.
+    if not background or not current_app.config.get("POST_LOGIN_TASKS_ASYNC", True):
         _post_login_worker(getattr(user, "id", None), sucursal_id=sucursal)
         return
 

@@ -333,14 +333,14 @@ def create_membresia():
                     flash(v)
                 return redirect(url_for("membresias.create_membresia"))
 
-        cliente = Cliente.query.get(cliente_id)
+        cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
             if is_ajax:
                 return jsonify({"success": False, "message": "Cliente no encontrado"}), 400
             flash("Cliente no encontrado")
             return redirect(url_for("membresias.create_membresia"))
 
-        plan = Plan.query.get(plan_id)
+        plan = db.session.get(Plan, plan_id)
         if not plan or getattr(plan, "estado", None) != "Activo":
             if is_ajax:
                 return jsonify({"success": False, "message": "Plan no encontrado o inactivo"}), 400
@@ -348,7 +348,7 @@ def create_membresia():
             return redirect(request.referrer or url_for("membresias.create_membresia"))
 
         if promocion_id:
-            promo = Promocion.query.get(promocion_id)
+            promo = db.session.get(Promocion, promocion_id)
             if not promo or getattr(promo, "estado", None) != "Activo":
                 if is_ajax:
                     return jsonify({"success": False, "message": "Promoción no encontrada o inactiva"}), 400
@@ -477,7 +477,7 @@ def create_membresia():
         return redirect(url_for("membresias.list_membresias"))
 
     # GET
-    cliente = Cliente.query.get(cliente_id) if cliente_id else None
+    cliente = db.session.get(Cliente, cliente_id) if cliente_id else None
     client_status = _client_membership_status(cliente) if cliente else None
     # default opcion: si el cliente tiene membresía válida, preseleccionar 'extend'
     default_opcion = "extend" if client_status and client_status.get("has") else "new"

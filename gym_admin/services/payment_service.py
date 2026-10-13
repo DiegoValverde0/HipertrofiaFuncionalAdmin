@@ -14,7 +14,7 @@ def create_payment(membresia_id, monto_total, metodo_pago="", comentarios=""):
     """
     try:
         # Validate membership exists and is in Pendiente state
-        membresia = Membresia.query.get(membresia_id)
+        membresia = db.session.get(Membresia, membresia_id)
         if not membresia:
             return False, None, "Membresía no existe"
 
@@ -62,7 +62,7 @@ def add_payment_history(pago_id, abono, metodo_pago="", comentarios=""):
     Returns (success: bool, historial: HistorialPago or None, error_msg: str or None)
     """
     try:
-        pago = Pago.query.get(pago_id)
+        pago = db.session.get(Pago, pago_id)
         if not pago:
             return False, None, "Pago no existe"
 
@@ -118,7 +118,7 @@ def ensure_membership_state_after_payment(membresia_id):
     Returns (success: bool, new_estado_id: int or None, error_msg: str or None)
     """
     try:
-        membresia = Membresia.query.get(membresia_id)
+        membresia = db.session.get(Membresia, membresia_id)
         if not membresia:
             return False, None, "Membresía no existe"
 
@@ -170,7 +170,7 @@ def get_payment_with_history(pago_id):
     Returns dict with pago info and historial records ordered by date DESC.
     """
     try:
-        pago = Pago.query.get(pago_id)
+        pago = db.session.get(Pago, pago_id)
         if not pago:
             return None
 

@@ -34,7 +34,7 @@ def get_client_with_flags(cliente_id):
     - age: int or None
     """
     try:
-        cliente = Cliente.query.get(cliente_id)
+        cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
             return None
 
@@ -143,7 +143,7 @@ def update_client(cliente_id, **kwargs):
     Returns (success: bool, error_msg: str or None)
     """
     try:
-        cliente = Cliente.query.get(cliente_id)
+        cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
             return False, "Cliente no existe"
 
@@ -210,7 +210,7 @@ def delete_client(cliente_id):
     Returns (success: bool, error_msg: str or None)
     """
     try:
-        cliente = Cliente.query.get(cliente_id)
+        cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
             return False, "Cliente no existe"
 

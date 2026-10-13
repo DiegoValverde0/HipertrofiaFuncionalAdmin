@@ -8,6 +8,15 @@ except Exception:
 BOLIVIA = ZoneInfo("America/La_Paz")
 
 
+def utcnow():
+    """Hora actual en UTC como datetime naive (sin tzinfo).
+
+    Reemplaza a ``datetime.utcnow()`` (obsoleto desde Python 3.12) y conserva
+    el formato con el que se guardan las columnas DATETIME de la base.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def now_utc():
     """Return current time as timezone-aware UTC datetime."""
     return datetime.now(timezone.utc)

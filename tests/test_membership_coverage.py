@@ -87,7 +87,7 @@ def test_renovacion_en_espera_sin_pagar_no_cuenta(
 
 
 @pytest.fixture
-def logged_client(app, db_session, sucursal):
+def logged_client(app, db_session, sucursal, estados_membresia):
     db.session.add(Role(id=1, nombre="admin"))
     db.session.add(
         Usuario(

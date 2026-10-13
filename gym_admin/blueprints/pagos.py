@@ -266,13 +266,13 @@ def create_pago():
     membresia_id = request.args.get("membresia_id", type=int) or request.form.get(
         "membresia_id", type=int
     )
-    membresia = Membresia.query.get(membresia_id) if membresia_id else None
+    membresia = db.session.get(Membresia, membresia_id) if membresia_id else None
     if membresia:
         verify_sucursal_access(membresia)
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     if request.method == "POST":
         membresia_id = request.form.get("membresia_id", type=int)
-        membresia = Membresia.query.get(membresia_id)
+        membresia = db.session.get(Membresia, membresia_id)
         if not membresia:
             if is_ajax:
                 return jsonify({"success": False, "message": "Membresía no encontrada"}), 400
@@ -456,7 +456,7 @@ def search_membresias():
     try:
         # si q es numérico, buscar por id
         if q.isdigit():
-            m = Membresia.query.get(int(q))
+            m = db.session.get(Membresia, int(q))
             if m and getattr(m, "is_pendiente", False):
                 monto = float(_compute_monto_total_for_membresia(m))
                 pagado = 0.0

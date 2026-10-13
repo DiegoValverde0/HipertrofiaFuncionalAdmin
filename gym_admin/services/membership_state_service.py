@@ -87,7 +87,7 @@ def process_membership_states(target_membresia_id=None, client_id=None):
     # 3) Process payment completion and update states
     targets = []
     if target_membresia_id:
-        mm = Membresia.query.get(target_membresia_id)
+        mm = db.session.get(Membresia, target_membresia_id)
         if mm:
             targets.append(mm)
     elif client_id:
@@ -160,7 +160,7 @@ def process_membership_states(target_membresia_id=None, client_id=None):
     try:
         clients_to_check = set()
         if target_membresia_id:
-            m0 = Membresia.query.get(target_membresia_id)
+            m0 = db.session.get(Membresia, target_membresia_id)
             if m0:
                 clients_to_check.add(m0.cliente_id)
         if client_id:
@@ -195,7 +195,7 @@ def sync_client_states(target_ids=None):
 
         if target_ids:
             for cid in target_ids:
-                cliente = Cliente.query.get(cid)
+                cliente = db.session.get(Cliente, cid)
                 if not cliente:
                     continue
                 desired = "Activo" if cid in active_ids else "Inactivo"

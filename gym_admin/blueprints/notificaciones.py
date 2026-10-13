@@ -111,7 +111,7 @@ def api_force_create():
 @notif_bp.route("/api/mark_read/<int:notif_id>", methods=["POST"])
 def api_mark_read(notif_id):
     """Mark a notification as read and return success."""
-    n = Notificacion.query.get(notif_id)
+    n = db.session.get(Notificacion, notif_id)
     if not n:
         return jsonify({"ok": False, "error": "not found"}), 404
     try:
@@ -131,7 +131,7 @@ def api_unread_count():
 
 @notif_bp.route("/api/detail/<int:notif_id>")
 def api_detail(notif_id):
-    n = Notificacion.query.get(notif_id)
+    n = db.session.get(Notificacion, notif_id)
     if not n:
         return jsonify({"ok": False, "error": "not found"}), 404
     return jsonify(
@@ -175,7 +175,7 @@ def create_birthday_notifications_for_week(
         target_sucursales = []
         if sucursal_id:
             try:
-                s = Sucursal.query.get(int(sucursal_id))
+                s = db.session.get(Sucursal, int(sucursal_id))
                 if s:
                     target_sucursales = [s]
             except Exception:

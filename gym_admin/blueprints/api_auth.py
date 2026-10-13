@@ -206,7 +206,7 @@ def revoke_api_key(key_id):
         )
 
     try:
-        api_key = APIKey.query.get(key_id)
+        api_key = db.session.get(APIKey, key_id)
 
         if not api_key:
             return (

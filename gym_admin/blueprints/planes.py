@@ -2,8 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..models import Plan
 from ..extensions import db
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
 from ..utils import admin_required
+from ..utils_timezone import utcnow
 
 planes_bp = Blueprint("planes", __name__)
 
@@ -183,7 +183,7 @@ def create_plan():
             precio=precio,
             tipo=tipo,
             estado=estado,
-            fecha_creacion=datetime.utcnow(),
+            fecha_creacion=utcnow(),
         )
         db.session.add(p)
         db.session.commit()

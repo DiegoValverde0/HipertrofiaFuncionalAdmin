@@ -38,7 +38,7 @@ except Exception:
 
             uid = session.get("user_id")
             if uid:
-                u = Usuario.query.get(int(uid))
+                u = db.session.get(Usuario, int(uid))
                 if u:
                     return u
         except Exception:
@@ -299,7 +299,7 @@ def profile():
 
     # reload user from DB to have up-to-date object (supports LocalProxy fallback)
     try:
-        user = Usuario.query.get(int(getattr(current_user, "id")))
+        user = db.session.get(Usuario, int(getattr(current_user, "id")))
     except Exception:
         user = current_user
 

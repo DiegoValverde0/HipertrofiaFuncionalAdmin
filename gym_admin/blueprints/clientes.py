@@ -26,6 +26,7 @@ from ..utils import (
 )
 from sqlalchemy import or_
 from datetime import date, datetime, timedelta
+from ..utils_timezone import utcnow
 
 clientes_bp = Blueprint("clientes", __name__)
 
@@ -440,9 +441,8 @@ def print_clientes():
         query = query.filter_by(sucursal_id=sucursal_id)
 
     rows = query.order_by(Cliente.nombre.asc(), Cliente.apellido.asc()).all()
-    from datetime import datetime as _dt
 
-    return render_template("clientes/print.html", clientes=rows, now=_dt.utcnow())
+    return render_template("clientes/print.html", clientes=rows, now=utcnow())
 
 
 @clientes_bp.route("/create", methods=["GET", "POST"])

@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import date
 from .extensions import db
 
 try:
@@ -14,6 +14,7 @@ from sqlalchemy import event
 from sqlalchemy.orm.attributes import get_history
 import json
 from flask import g
+from .utils_timezone import utcnow
 
 try:
     from flask_login import current_user
@@ -78,7 +79,7 @@ class APIKey(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=True)
     activo = db.Column(db.Boolean, default=True)
-    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_creacion = db.Column(db.DateTime, default=utcnow)
     ultimo_uso = db.Column(db.DateTime, nullable=True)
 
     sucursal = db.relationship("Sucursal", backref="api_keys")
@@ -146,7 +147,7 @@ class Plan(db.Model):
     precio = db.Column(db.Numeric(10, 2), nullable=False)
     tipo = db.Column(db.String(20), nullable=False)
     fecha_creacion = db.Column(
-        db.DateTime, default=datetime.utcnow, server_default=None
+        db.DateTime, default=utcnow, server_default=None
     )
     estado = db.Column(db.String(10), default="Activo", nullable=False)
 
@@ -287,7 +288,7 @@ class Pago(db.Model):
     membresia_id = db.Column(db.Integer, db.ForeignKey("membresias.id"), nullable=False)
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
     monto_total = db.Column(db.Numeric(10, 2))
-    fecha_pago = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_pago = db.Column(db.DateTime, default=utcnow)
     metodo_pago = db.Column(db.String(20))
     comentarios = db.Column(db.String(255))
 
@@ -304,7 +305,7 @@ class HistorialPago(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     pago_id = db.Column(db.Integer, db.ForeignKey("pagos.id"), nullable=False)
     monto_pagado = db.Column(db.Numeric(10, 2), nullable=False)
-    fecha_pago = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_pago = db.Column(db.DateTime, default=utcnow)
     metodo_pago = db.Column(db.String(50))
     comentarios = db.Column(db.String(255))
 
@@ -321,7 +322,7 @@ class MarcajeAsistencia(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey("clientes.id"), nullable=False)
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
-    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    fecha_registro = db.Column(db.DateTime, default=utcnow, nullable=False)
     tipo_registro = db.Column(db.String(20), nullable=False, default="manual")
     observacion = db.Column(db.String(255), nullable=True)
 
@@ -360,7 +361,7 @@ class Gasto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descripcion = db.Column(db.String(255))
     monto = db.Column(db.Numeric(10, 2))
-    fecha_gasto = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_gasto = db.Column(db.DateTime, default=utcnow)
     categoria_id = db.Column(db.Integer, db.ForeignKey("categorias_gasto.id"))
     cuenta_id = db.Column(db.Integer, db.ForeignKey("cuentas.id"))
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
@@ -451,7 +452,7 @@ class Venta(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
     monto_total = db.Column(db.Numeric(10, 2))
-    fecha_venta = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_venta = db.Column(db.DateTime, default=utcnow)
     metodo_pago = db.Column(db.String(20))
 
     detalles = db.relationship("DetalleVenta", backref="venta", lazy=True)
@@ -480,7 +481,7 @@ class Notificacion(db.Model):
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
     tipo = db.Column(db.String(50))
     mensaje = db.Column(db.Text)
-    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_creacion = db.Column(db.DateTime, default=utcnow)
     leido = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
@@ -493,7 +494,7 @@ class Auditoria(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
     tabla_afectada = db.Column(db.String(100))
     operacion = db.Column(db.String(20))
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, default=utcnow)
     descripcion = db.Column(db.Text)
 
     def __repr__(self):
@@ -711,7 +712,7 @@ def _after_flush_persist(session, flush_context):
                         "tabla_afectada": item.get("tabla"),
                         "operacion": item.get("action"),
                         "descripcion": descripcion,
-                        "fecha": datetime.utcnow(),
+                        "fecha": utcnow(),
                     }
                 )
             except Exception:

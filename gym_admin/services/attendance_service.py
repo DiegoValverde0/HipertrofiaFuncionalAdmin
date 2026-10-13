@@ -5,11 +5,12 @@ from flask import current_app
 from ..extensions import db
 from ..models import Membresia, MarcajeAsistencia, Usuario
 from ..utils_timezone import to_bolivia, to_utc_naive
+from ..utils_timezone import utcnow
 
 
 def _local_today():
     """Fecha actual en hora de Bolivia."""
-    return to_bolivia(datetime.utcnow()).date()
+    return to_bolivia(utcnow()).date()
 
 
 def manual_attendance_summary(membresia, today=None):
@@ -74,13 +75,13 @@ def register_manual_attendance(membresia_id, usuario_id=None, sucursal_id=None, 
     Returns (success, payload, error_message).
     """
     try:
-        membresia = Membresia.query.get(membresia_id)
+        membresia = db.session.get(Membresia, membresia_id)
         if not membresia:
             return False, None, "Membresía no existe"
 
         # fecha_registro se guarda como UTC naive; los límites diarios se
         # calculan sobre el día local (Bolivia) para no partir el día a las 20:00.
-        mark_at = registered_at or datetime.utcnow()
+        mark_at = registered_at or utcnow()
         if isinstance(mark_at, date) and not isinstance(mark_at, datetime):
             mark_at = datetime.combine(mark_at, datetime.min.time())
         local_day = to_bolivia(mark_at).date()
@@ -91,7 +92,7 @@ def register_manual_attendance(membresia_id, usuario_id=None, sucursal_id=None, 
         if not summary["puede_marcar"]:
             return False, summary, summary.get("motivo") or "No se puede registrar asistencia"
 
-        user = Usuario.query.get(usuario_id) if usuario_id else None
+        user = db.session.get(Usuario, usuario_id) if usuario_id else None
         is_admin = bool(user and user.rol_id == 1)
 
         day_start = to_utc_naive(datetime.combine(local_day, datetime.min.time()))
