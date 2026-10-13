@@ -28,8 +28,6 @@ db = SQLAlchemy() if SQLAlchemy else None
 migrate = Migrate() if Migrate else None
 login_manager = LoginManager() if LoginManager else None
 csrf = CSRFProtect() if CSRFProtect else None
-limiter = (
-    Limiter(key_func=get_remote_address, default_limits=[], storage_uri="memory://")
-    if Limiter
-    else None
-)
+# El almacenamiento se define en Config.RATELIMIT_STORAGE_URI (Redis en producción
+# para que los procesos de Gunicorn compartan los contadores).
+limiter = Limiter(key_func=get_remote_address, default_limits=[]) if Limiter else None

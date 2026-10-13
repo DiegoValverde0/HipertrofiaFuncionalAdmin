@@ -7,6 +7,7 @@ class TestConfig:
     TESTING = True
     SECRET_KEY = "test-secret"
     POST_LOGIN_TASKS_ASYNC = False
+    RATELIMIT_STORAGE_URI = "memory://"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
     SERVER_NAME = "localhost.localdomain"

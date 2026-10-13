@@ -41,6 +41,15 @@ class Config:
     SESSION_COOKIE_NAME = "gym_session"    # Nombre no-default reduce fingerprinting
     PERMANENT_SESSION_LIFETIME = timedelta(hours=12)  # 12 horas de sesión permanente
 
+    # --- Límite de intentos (Flask-Limiter) ---
+    # En producción usar Redis (p. ej. redis://redis:6379/0) para que los
+    # procesos de Gunicorn compartan los contadores; en memoria cada proceso
+    # cuenta por separado. Si Redis no responde se usa memoria y el login
+    # sigue funcionando.
+    RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
+    RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = True
+    RATELIMIT_SWALLOW_ERRORS = True
+
     # --- CSRF ---
     WTF_CSRF_TIME_LIMIT = 12 * 60 * 60      # 12 horas de validez del token CSRF
     WTF_CSRF_SSL_STRICT = os.getenv("FLASK_DEBUG", "0") != "1"
