@@ -7,7 +7,7 @@ from gym_admin.services.payment_service import (
     ensure_membership_state_after_payment,
     get_payment_with_history
 )
-from gym_admin.models import Membresia, Pago, HistorialPago
+from gym_admin.models import Membresia, Pago
 
 @pytest.fixture
 def membresia_pendiente(db_session, cliente, plan, estados_membresia):

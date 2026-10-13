@@ -18,7 +18,46 @@
 
       <!-- Body -->
       <div class="modal-body px-6 py-6">
-        
+        <!-- Manual Attendance Top Banner -->
+        {% if manual_attendance and manual_attendance.is_manual %}
+        <div class="bg-indigo-50/50 p-5 rounded-xl shadow-sm border border-indigo-100 mb-6 relative overflow-hidden">
+          <div class="absolute top-0 right-0 p-4 opacity-10">
+            <i class="ti ti-hand-click text-6xl text-indigo-900"></i>
+          </div>
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+            <div>
+              <h6 class="text-sm font-bold text-indigo-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="ti ti-click"></i> Control de Asistencia
+              </h6>
+              <div class="flex flex-wrap gap-4 text-sm">
+                <div class="flex flex-col">
+                  <span class="text-[11px] uppercase tracking-wider text-indigo-400 font-bold">Usados</span>
+                  <span class="font-semibold text-indigo-900">{{ manual_attendance.usados }}</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[11px] uppercase tracking-wider text-indigo-400 font-bold">Restantes</span>
+                  <span class="font-semibold text-indigo-900">{{ manual_attendance.restantes }}</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[11px] uppercase tracking-wider text-indigo-400 font-bold">Vence</span>
+                  <span class="font-semibold text-indigo-900">{{ manual_attendance.fecha_limite or '---' }}</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[11px] uppercase tracking-wider text-indigo-400 font-bold">Estado</span>
+                  <span class="font-semibold {% if manual_attendance.puede_marcar %}text-emerald-600{% else %}text-rose-600{% endif %}">{{ 'Disponible' if manual_attendance.puede_marcar else (manual_attendance.motivo or 'No disponible') }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="shrink-0">
+              <button type="button" class="btn btn-indigo bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl px-5 py-3 shadow-md hover:shadow-lg flex items-center gap-2 border-0 btn-memb-marcar transition-all" data-action="{{ manual_attendance.action_url }}" {% if not manual_attendance.puede_marcar %}disabled{% endif %}>
+                <i class="ti ti-checkbox text-xl"></i> Marcar asistencia
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
         <!-- Info Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           
@@ -38,6 +77,18 @@
                 <span class="text-slate-500">Plan</span>
                 <span class="font-semibold text-slate-900">{{ plan_nombre }}</span>
               </div>
+              {% if manual_attendance and manual_attendance.is_manual %}
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Modalidad</span>
+                <span class="font-medium text-indigo-700">Asistencia manual</span>
+              </div>
+              {% if manual_attendance.cupo %}
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Cupo</span>
+                <span class="font-medium text-slate-700">{{ manual_attendance.cupo }} marcajes</span>
+              </div>
+              {% endif %}
+              {% endif %}
               <div class="flex justify-between items-center">
                 <span class="text-slate-500">Duración</span>
                 <span class="font-medium text-slate-700">{{ plan_duracion or '---' }}</span>

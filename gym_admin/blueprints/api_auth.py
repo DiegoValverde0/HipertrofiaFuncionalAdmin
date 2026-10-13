@@ -7,11 +7,10 @@ from flask import (
     redirect,
     url_for,
 )
-from ..models import APIKey, Usuario, Sucursal
+from ..models import APIKey, Sucursal
 from ..extensions import db
 from ..utils import admin_required
 import secrets
-from datetime import datetime
 
 api_auth_bp = Blueprint(
     "api_auth",
@@ -47,12 +46,8 @@ def dashboard_api_keys():
         return redirect(url_for("auth.login"))
 
     try:
-        # Obtener las API keys del usuario
-        api_keys = (
-            APIKey.query.filter_by(usuario_id=current_user.id)
-            .order_by(APIKey.fecha_creacion.desc())
-            .all()
-        )
+        # Vista admin: mostrar todas las API keys del sistema.
+        api_keys = APIKey.query.order_by(APIKey.fecha_creacion.desc()).all()
 
         # Obtener todas las sucursales para el selector
         sucursales = Sucursal.query.order_by(Sucursal.nombre).all()

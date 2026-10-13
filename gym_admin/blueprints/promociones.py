@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..models import Promocion
 from ..extensions import db
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
 from ..utils import admin_required
 
 promociones_bp = Blueprint("promociones", __name__)

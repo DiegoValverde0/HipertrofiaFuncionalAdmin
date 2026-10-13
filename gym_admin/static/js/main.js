@@ -549,6 +549,62 @@ document.addEventListener('DOMContentLoaded', function(){
     }).catch(function(err){ console.error('Error cargando detalle', err); });
   });
 
+  document.body.addEventListener('click', function(e){
+    var btn = e.target.closest('.btn-memb-marcar');
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var action = btn.getAttribute('data-action');
+    if(!action) return;
+    btn.disabled = true;
+    fetch(action, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); }).then(function(result){
+      if(result.ok && result.data && result.data.success){
+        var msg = result.data.message || 'Marcaje registrado';
+        
+        var finishAction = function() {
+          if(typeof window._membLoadTable === 'function'){
+            window._membLoadTable({});
+          } else {
+            window.location.reload();
+          }
+        };
+
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: msg,
+            icon: 'success',
+            timer: 2500,
+            showConfirmButton: true
+          }).then(finishAction);
+        } else {
+          alert(msg);
+          finishAction();
+        }
+        return;
+      }
+      var errMsg = (result.data && result.data.message) ? result.data.message : 'No se pudo registrar el marcaje';
+      if (typeof Swal !== 'undefined') {
+        Swal.fire('Error', errMsg, 'error');
+      } else {
+        alert(errMsg);
+      }
+      btn.disabled = false;
+    }).catch(function(err){
+      console.error('Error registrando marcaje manual', err);
+      if (typeof Swal !== 'undefined') {
+        Swal.fire('Error', 'No se pudo registrar el marcaje', 'error');
+      } else {
+        alert('No se pudo registrar el marcaje');
+      }
+      btn.disabled = false;
+    });
+  });
+
     // Delegated handler: Enviar comprobante por WhatsApp desde el modal
     document.body.addEventListener('click', function(e){
       var btn = e.target.closest('#membDetailWhatsapp');

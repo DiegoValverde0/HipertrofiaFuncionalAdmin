@@ -118,6 +118,20 @@
         </td>
         <td class="px-6 py-4 text-right">
           <div class="flex items-center justify-end gap-2">
+            {% set manual_summary = manual_summaries.get(m.id) %}
+            {% if manual_summary and manual_summary.is_manual %}
+              {% if manual_summary.puede_marcar %}
+                <button type="button" class="btn-memb-marcar inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-sm" data-action="{{ url_for('membresias.register_manual_attendance_route', membresia_id=m.id) }}" title="Registrar asistencia">
+                  <i class="ti ti-hand-click text-base"></i> Marcar
+                </button>
+              {% else %}
+                <span class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed" title="{{ manual_summary.motivo or 'No disponible' }}">
+                  <i class="ti ti-hand-click text-base"></i> No disp.
+                </span>
+              {% endif %}
+              <div class="w-px h-6 bg-slate-200 mx-1"></div>
+            {% endif %}
+
             <button type="button" class="btn-memb-detalle p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" data-id="{{ m.id }}" title="Ver detalles">
               <i class="ti ti-eye text-lg"></i>
             </button>

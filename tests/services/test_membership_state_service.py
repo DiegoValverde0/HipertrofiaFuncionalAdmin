@@ -5,7 +5,7 @@ from gym_admin.services.membership_state_service import (
     sync_client_states,
     cancel_pending_memberships_with_past_start
 )
-from gym_admin.models import Membresia, Cliente
+from gym_admin.models import Membresia
 
 @pytest.fixture
 def base_data(db_session, cliente, plan, estados_membresia):

@@ -5,7 +5,6 @@ from flask import (
     redirect,
     url_for,
     flash,
-    current_app,
 )
 from flask import session
 from ..extensions import db
@@ -176,7 +175,7 @@ def gastos_list():
         query = query.filter_by(usuario_id=usuario)
 
     # manejo de periodos simples: interpretar en hora Bolivia y convertir límites a UTC-naive
-    from datetime import date, datetime, timedelta
+    from datetime import datetime, timedelta
 
     try:
         if periodo in ("day", "week", "month", "year"):
@@ -263,7 +262,7 @@ def gastos_table():
     if usuario:
         query = query.filter_by(usuario_id=usuario)
 
-    from datetime import date, datetime, timedelta
+    from datetime import datetime, timedelta
 
     try:
         if periodo in ("day", "week", "month", "year"):

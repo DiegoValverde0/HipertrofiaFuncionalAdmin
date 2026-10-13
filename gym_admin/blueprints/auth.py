@@ -56,6 +56,10 @@ except Exception:
 auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")
 
 
+def _mark_session_permanent():
+    session.permanent = True
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("10/minute") if limiter else lambda f: f
 def login():
@@ -98,6 +102,7 @@ def login():
         # Si la verificación con hash fue correcta, iniciar sesión y ejecutar
         # tareas de pos-login de forma segura (cada una con su manejo de errores).
         if hashed_ok:
+            _mark_session_permanent()
             login_user(user)
             if user.sucursal_id:
                 session["sucursal_id"] = user.sucursal_id
@@ -120,6 +125,7 @@ def login():
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+            _mark_session_permanent()
             login_user(user)
             if user.sucursal_id:
                 session["sucursal_id"] = user.sucursal_id

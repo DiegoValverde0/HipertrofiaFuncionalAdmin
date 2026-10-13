@@ -99,6 +99,18 @@ def process_membership_states(target_membresia_id=None, client_id=None):
         targets = Membresia.query.filter(Membresia.estado_id.notin_(exclusion)).all()
 
     for m in targets:
+        try:
+            if (getattr(m, "tipo_uso", "") or "").lower() == "asistencia_manual":
+                cupo = int(getattr(m, "cupo_marcajes", 0) or 0)
+                usados = int(getattr(m, "marcajes_usados", 0) or 0)
+                if cupo and usados >= cupo:
+                    if m.estado_id != 4:
+                        m.estado_id = 4
+                        db.session.add(m)
+                    continue
+        except Exception:
+            pass
+
         total_due = _compute_monto_total_for_membresia(m)
         total_paid = Decimal("0")
 

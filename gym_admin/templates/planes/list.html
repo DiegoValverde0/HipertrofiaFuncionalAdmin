@@ -63,6 +63,22 @@
             </div>
           </div>
           <div class="flex items-center text-sm text-slate-600 bg-slate-50 rounded-lg p-2.5">
+            <i class="ti ti-switch-horizontal mr-2.5 text-brand-500 text-[20px]"></i>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-none mb-0.5">Uso</p>
+              <p class="font-medium text-slate-700 leading-none">{{ 'Asistencia manual' if p.tipo_uso == 'asistencia_manual' else 'Tiempo continuo' }}</p>
+            </div>
+          </div>
+          {% if p.tipo_uso == 'asistencia_manual' and p.cupo_marcajes %}
+          <div class="flex items-center text-sm text-slate-600 bg-slate-50 rounded-lg p-2.5">
+            <i class="ti ti-repeat mr-2.5 text-brand-500 text-[20px]"></i>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-none mb-0.5">Cupo</p>
+              <p class="font-medium text-slate-700 leading-none">{{ p.cupo_marcajes }} marcajes</p>
+            </div>
+          </div>
+          {% endif %}
+          <div class="flex items-center text-sm text-slate-600 bg-slate-50 rounded-lg p-2.5">
             <i class="ti ti-users mr-2.5 text-brand-500 text-[20px]"></i>
             <div>
               <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-none mb-0.5">Modalidad</p>

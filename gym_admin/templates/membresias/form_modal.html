@@ -157,6 +157,15 @@
   <script>
     var isEditMode = {{ 'true' if (is_edit or membresia) else 'false' }};
 
+    function escapeHtml(value){
+      return String(value == null ? '' : value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
     (function(){
       var input = document.getElementById('m-search');
       var results = document.getElementById('m-search-results');
@@ -177,7 +186,7 @@
                 var soonBadge = item.soon ? '<span class="badge bg-warning text-dark ms-2">Vence pronto</span>' : '';
                 var badge = item.has_membresia ? '<span class="badge bg-success ms-2">Tiene</span>' : '<span class="badge bg-secondary ms-2">Sin</span>';
                 var attrs = ' data-id="'+item.id+'" data-has="'+item.has_membresia+'" data-soon="'+(item.soon||false)+'" data-last="'+(item.ultima_membresia||'')+'" data-ultima_fecha_fin="'+(item.ultima_fecha_fin||'')+'" data-sucursal="'+(item.sucursal_id||'')+'"';
-                html += '<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" '+attrs+'><div class="d-flex align-items-center">'+icon+'<div>'+item.text+'</div></div><div class="text-end">'+soonBadge+badge+'</div></button>';
+                html += '<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" '+attrs+'><div class="d-flex align-items-center">'+icon+'<div>'+escapeHtml(item.text)+'</div></div><div class="text-end">'+soonBadge+badge+'</div></button>';
               });
               html += '</div>';
               if(results){
@@ -197,9 +206,9 @@
                     var alertBox = document.getElementById('m-last');
                     if(alertBox){
                       if(has){
-                        var fechaTxt = ultimaFin ? (' - Vencimiento: ' + ultimaFin) : '';
+                        var fechaTxt = ultimaFin ? (' - Vencimiento: ' + escapeHtml(ultimaFin)) : '';
                         var soonTxt = soon ? ' <strong>(vence pronto)</strong>' : '';
-                        alertBox.innerHTML = '<div class="alert alert-info">Cliente tiene membresía activa (ID: '+lastId+')'+fechaTxt+soonTxt+'. Puedes elegir extenderla o crear una nueva.</div>';
+                        alertBox.innerHTML = '<div class="alert alert-info">Cliente tiene membresía activa (ID: '+escapeHtml(lastId)+')'+fechaTxt+soonTxt+'. Puedes elegir extenderla o crear una nueva.</div>';
                         var opcionSel = document.querySelector('select[name="opcion"]');
                         if(opcionSel) opcionSel.value = 'extend';
                         if(ultimaFin){
@@ -294,8 +303,8 @@
           <div class="alert alert-info d-flex align-items-center" role="alert">
             <i class="bi bi-info-circle me-2"></i>
             <div>
-              <strong>Vigencia:</strong> ${diasTxt}<br>
-              <small>${data.fecha_inicio} a ${data.fecha_fin}</small>
+              <strong>Vigencia:</strong> ${escapeHtml(diasTxt)}<br>
+              <small>${escapeHtml(data.fecha_inicio)} a ${escapeHtml(data.fecha_fin)}</small>
             </div>
           </div>
         `;
@@ -305,14 +314,14 @@
     function showFechaWarning(msg) {
       const container = document.getElementById('m-fecha-preview');
       if (container) {
-        container.innerHTML = `<div class="alert alert-warning d-flex align-items-center" role="alert"><i class="bi bi-exclamation-triangle me-2"></i><div>${msg}</div></div>`;
+        container.innerHTML = `<div class="alert alert-warning d-flex align-items-center" role="alert"><i class="bi bi-exclamation-triangle me-2"></i><div>${escapeHtml(msg)}</div></div>`;
       }
     }
 
     function showFechaError(msg) {
       const container = document.getElementById('m-fecha-preview');
       if (container) {
-        container.innerHTML = `<div class="alert alert-danger d-flex align-items-center" role="alert"><i class="bi bi-x-circle me-2"></i><div>${msg}</div></div>`;
+        container.innerHTML = `<div class="alert alert-danger d-flex align-items-center" role="alert"><i class="bi bi-x-circle me-2"></i><div>${escapeHtml(msg)}</div></div>`;
       }
     }
 

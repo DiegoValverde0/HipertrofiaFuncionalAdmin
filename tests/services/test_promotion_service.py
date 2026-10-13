@@ -1,4 +1,3 @@
-import pytest
 from datetime import date, timedelta
 from gym_admin.services.promotion_service import sync_promociones_by_date
 from gym_admin.models import Promocion

@@ -2,7 +2,6 @@ import pytest
 from gym_admin import create_app
 from gym_admin.extensions import db
 from gym_admin.models import Sucursal, Cliente, Plan, EstadoMembresia, Promocion
-from datetime import date
 
 class TestConfig:
     TESTING = True

@@ -42,6 +42,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Bootstrap CSS (kept for legacy components until fully migrated) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -200,8 +202,8 @@
       <!-- Navigation Links -->
        <nav 
          @click.outside="activeMenu = null; hoverMenu = null" 
-         @scroll.passive="activeMenu = null; hoverMenu = null"
-           class="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar" 
+         @scroll.passive="if(sidebarCollapsed) { hoverMenu = null; tooltipShow = false; }"
+           class="flex-1 py-6 space-y-1 overflow-y-auto overscroll-contain custom-scrollbar" 
            :class="sidebarCollapsed ? 'px-2' : 'px-3'" 
            hx-boost="true" 
            hx-target="#htmx-content" 
@@ -234,7 +236,6 @@
                    class="pl-11 pr-3 py-1 space-y-1"
                    x-collapse.duration.200ms>
                <a href="{{ url_for('usuarios.list_usuarios') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Usuarios</a>
-               <a href="{{ url_for('roles.list_roles') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Roles</a>
                <a href="{{ url_for('finanzas.index') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Finanzas</a>
             </div>
             <template x-if="sidebarCollapsed && hoverMenu === 'config'">
@@ -242,7 +243,6 @@
                     @mouseenter="keepHoverMenu()" @mouseleave="cancelSidebarHover()"
                    :style="'top: ' + activeTop + 'px;'">
                 <a href="{{ url_for('usuarios.list_usuarios') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Usuarios</a>
-                <a href="{{ url_for('roles.list_roles') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Roles</a>
                 <a href="{{ url_for('finanzas.index') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Finanzas</a>
               </div>
             </template>
@@ -303,7 +303,6 @@
                <a href="{{ url_for('pagos.list_pagos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Pagos</a>
                <a href="{{ url_for('ventas.list_ventas') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Cafetería / Ventas</a>
                <a href="{{ url_for('productos.list_productos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Productos</a>
-               <a href="{{ url_for('estados_membresias.list_estados') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="if(sidebarCollapsed) hoverMenu = null">Estados Membresía</a>
             </div>
             <template x-if="sidebarCollapsed && hoverMenu === 'operaciones'">
                   <div class="fixed left-[76px] bg-slate-900 border border-slate-800 rounded-lg shadow-xl w-56 py-2 z-[90] ml-1"
@@ -313,7 +312,6 @@
                 <a href="{{ url_for('pagos.list_pagos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Pagos</a>
                 <a href="{{ url_for('ventas.list_ventas') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Cafetería / Ventas</a>
                 <a href="{{ url_for('productos.list_productos') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Productos</a>
-                <a href="{{ url_for('estados_membresias.list_estados') }}" class="block px-3 py-2 text-[13px] rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors" @click="hoverMenu = null">Estados Membresía</a>
               </div>
             </template>
           </div>
@@ -686,7 +684,7 @@
           el.addEventListener('click', function(e){
             e.preventDefault();
             var id = el.getAttribute('data-sucursal-id');
-            fetch('/sucursales/select/' + id, { method: 'GET', credentials: 'same-origin' })
+            fetch('/sucursales/select/' + id, { method: 'POST', credentials: 'same-origin' })
               .then(function(response){
                 if (response.ok) window.location.reload();
               }).catch(function(){

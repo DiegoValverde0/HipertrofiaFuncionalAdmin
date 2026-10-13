@@ -12,7 +12,7 @@ from ..models import (
     HistorialPago,
 )
 from ..extensions import db
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from datetime import datetime, date, timedelta
 from ..utils_timezone import now_utc, to_bolivia, to_utc_naive
 
@@ -80,7 +80,6 @@ def index():
     period = request.args.get("period", "month")
     fecha_desde = request.args.get("fecha_desde")
     fecha_hasta = request.args.get("fecha_hasta")
-    tipo = request.args.get("tipo", "both")  # ingresos, egresos, both
 
     start_dt, end_dt = _parse_period(period, fecha_desde, fecha_hasta)
 

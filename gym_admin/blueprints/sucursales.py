@@ -84,7 +84,7 @@ def delete_sucursal(sucursal_id):
     return redirect(url_for("sucursales.list_sucursales"))
 
 
-@sucursales_bp.route("/select/<int:sucursal_id>")
+@sucursales_bp.route("/select/<int:sucursal_id>", methods=["POST"])
 def select_sucursal(sucursal_id):
     # store selected sucursal in session; 0 means 'all' -> remove key
     if int(sucursal_id) == 0:

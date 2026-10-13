@@ -1,13 +1,11 @@
-import pytest
 from datetime import date, timedelta
-from decimal import Decimal
 from gym_admin.services.membership_service import (
     create_membership, 
     compute_end_date, 
     get_membership_status,
     update_membership,
 )
-from gym_admin.models import Membresia, EstadoMembresia, Plan
+from gym_admin.models import Membresia, Plan
 
 def test_compute_fecha_fin():
     """Test the duration parser and end date calculation."""
@@ -29,6 +27,26 @@ def test_compute_fecha_fin():
     # 1 year (anual)
     fin = compute_end_date(start, "Anual")
     assert fin.year == 2024
+
+
+def test_compute_fecha_fin_custom_days(db_session):
+    """Test the new configurable day-based duration."""
+    plan_custom = Plan(
+        nombre="Pack 15 días",
+        descripcion="Plan flexible",
+        duracion="15 días",
+        duracion_tipo="dias",
+        duracion_valor=15,
+        precio=50.00,
+        tipo="Basico",
+    )
+    db_session.add(plan_custom)
+    db_session.commit()
+
+    start = date(2026, 7, 1)
+    fin = compute_end_date(start, plan_custom)
+
+    assert fin == date(2026, 7, 15)
 
 def test_create_membership_success(db_session, cliente, plan, estados_membresia):
     """Test successful membership creation."""

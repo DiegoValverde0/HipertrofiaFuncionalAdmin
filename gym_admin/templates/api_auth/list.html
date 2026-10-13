@@ -3,126 +3,130 @@
 {% block title %}API Keys - Gym Admin{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Gestión de API Keys</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateKeyModal">
-      <i class="bi bi-plus-circle"></i> Nueva API Key
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+        <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 inline-flex items-center justify-center">
+          <i class="ti ti-key text-2xl"></i>
+        </span>
+        Gestión de API Keys
+      </h2>
+      <p class="text-sm text-slate-500 mt-1">Administra credenciales para integraciones externas de forma segura.</p>
+    </div>
+    <button type="button" data-open-modal="generateKeyModal" class="h-10 inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors">
+      <i class="ti ti-plus mr-1.5"></i> Nueva API Key
     </button>
   </div>
 
-  <!-- Alert si no hay keys -->
-  {% if not api_keys %}
-  <div class="alert alert-info" role="alert">
-    <i class="bi bi-info-circle"></i> No tienes API keys generadas. Crea una para conectar WATI o integradores externos.
+  {% if error %}
+  <div class="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-4 text-sm">
+    {{ error }}
   </div>
   {% endif %}
 
-  <!-- Tabla de API Keys -->
+  {% if not api_keys %}
+  <div class="bg-sky-50 border border-sky-200 text-sky-800 rounded-xl p-4 text-sm">
+    No tienes API keys generadas. Crea una para conectar WATI o integradores externos.
+  </div>
+  {% endif %}
+
   {% if api_keys %}
-  <div class="table-responsive shadow-sm bg-white rounded">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>Nombre</th>
-          <th>API Key</th>
-          <th>Sucursal</th>
-          <th>Estado</th>
-          <th>Creado</th>
-          <th>Último uso</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for key in api_keys %}
-        <tr>
-          <td>
-            <strong>{{ key.nombre }}</strong>
-          </td>
-          <td>
-            <code class="text-muted small">
-              <span class="key-display" data-key-id="{{ key.id }}">{{ key.key[:15] }}...{{ key.key[-8:] }}</span>
-              <button class="btn btn-sm btn-outline-secondary ms-2 copy-key-btn" data-key="{{ key.key }}" title="Copiar API key completa">
-                <i class="bi bi-clipboard"></i>
-              </button>
-            </code>
-          </td>
-          <td>
-            {% if key.sucursal %}
-              <span class="badge bg-info">{{ key.sucursal.nombre }}</span>
-            {% else %}
-              <span class="text-muted small">Todas</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if key.activo %}
-              <span class="badge bg-success">Activa</span>
-            {% else %}
-              <span class="badge bg-danger">Revocada</span>
-            {% endif %}
-          </td>
-          <td>
-            <small class="text-muted">{{ key.fecha_creacion.strftime('%d/%m/%Y %H:%M') if key.fecha_creacion else '-' }}</small>
-          </td>
-          <td>
-            {% if key.ultimo_uso %}
-              <small class="text-muted">{{ key.ultimo_uso.strftime('%d/%m/%Y %H:%M') }}</small>
-            {% else %}
-              <small class="text-muted text-warning">Nunca</small>
-            {% endif %}
-          </td>
-          <td>
-            {% if key.activo %}
-              <button class="btn btn-sm btn-outline-danger revoke-key-btn" data-key-id="{{ key.id }}" data-revoke-url="{{ url_for('api_auth.revoke_api_key', key_id=key.id) }}" data-key-name="{{ key.nombre }}" title="Revocar esta API key">
-                <i class="bi bi-shield-x"></i> Revocar
-              </button>
-            {% else %}
-              <span class="text-muted small">—</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-xs uppercase tracking-wide text-slate-600">
+            <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+            <th class="px-4 py-3 text-left font-semibold">API Key</th>
+            <th class="px-4 py-3 text-left font-semibold">Sucursal</th>
+            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+            <th class="px-4 py-3 text-left font-semibold">Creado</th>
+            <th class="px-4 py-3 text-left font-semibold">Último uso</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for key in api_keys %}
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="px-4 py-3 text-sm font-semibold text-slate-800">{{ key.nombre }}</td>
+            <td class="px-4 py-3 text-sm">
+              <div class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+                <code class="font-mono text-xs text-slate-700 key-display" data-key-id="{{ key.id }}">{{ key.key[:15] }}...{{ key.key[-8:] }}</code>
+                <button type="button" class="copy-key-btn h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-100" data-key="{{ key.key }}" title="Copiar API key completa">
+                  <i class="ti ti-copy text-sm"></i>
+                </button>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm">
+              {% if key.sucursal %}
+                <span class="inline-flex items-center rounded-full bg-cyan-50 border border-cyan-200 px-2.5 py-1 text-xs font-semibold text-cyan-700">{{ key.sucursal.nombre }}</span>
+              {% else %}
+                <span class="text-xs text-slate-500">Todas</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-sm">
+              {% if key.activo %}
+                <span class="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700">Activa</span>
+              {% else %}
+                <span class="inline-flex items-center rounded-full bg-rose-50 border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-700">Revocada</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-xs text-slate-500">{{ key.fecha_creacion.strftime('%d/%m/%Y %H:%M') if key.fecha_creacion else '-' }}</td>
+            <td class="px-4 py-3 text-xs">
+              {% if key.ultimo_uso %}
+                <span class="text-slate-500">{{ key.ultimo_uso.strftime('%d/%m/%Y %H:%M') }}</span>
+              {% else %}
+                <span class="text-amber-600">Nunca</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-right">
+              {% if key.activo %}
+                <button type="button" class="revoke-key-btn h-8 inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors" data-key-id="{{ key.id }}" data-revoke-url="{{ url_for('api_auth.revoke_api_key', key_id=key.id) }}" data-key-name="{{ key.nombre }}">
+                  <i class="ti ti-shield-x mr-1"></i> Revocar
+                </button>
+              {% else %}
+                <span class="text-xs text-slate-400">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   {% endif %}
 </div>
 
-<!-- Modal para generar nueva API Key -->
-<!-- Modal para generar API Key (Tailwind CSS) -->
-<div id="generateKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
-  <div class="bg-white rounded-lg shadow-xl max-w-md w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
-    <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+<div id="generateKeyModal" class="fixed inset-0 z-50 hidden bg-black/50 p-4">
+  <div class="mx-auto mt-10 w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
       <h5 class="text-lg font-semibold text-slate-900">Generar Nueva API Key</h5>
-      <button type="button" class="close-modal-btn text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors" data-modal="generateKeyModal">&times;</button>
+      <button type="button" class="close-modal-btn h-8 w-8 inline-flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-200" data-modal="generateKeyModal">&times;</button>
     </div>
     <form id="generateKeyForm">
-      <div class="p-6 space-y-4">
+      <div class="space-y-4 p-5">
         <div>
-          <label for="keyName" class="block text-sm font-medium text-slate-700 mb-1">Nombre <span class="text-red-500">*</span></label>
-          <input type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" id="keyName" name="nombre" placeholder="ej: WATI Integration" required>
-          <p class="mt-1 text-xs text-slate-600">Nombre descriptivo para identificar el uso de esta API key</p>
+          <label for="keyName" class="mb-1 block text-sm font-medium text-slate-700">Nombre</label>
+          <input type="text" id="keyName" name="nombre" placeholder="ej: WATI Integration" required class="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
-
         <div>
-          <label for="keySucursal" class="block text-sm font-medium text-slate-700 mb-1">Sucursal <span class="text-amber-500">(Opcional)</span></label>
-          <select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" id="keySucursal" name="sucursal_id">
+          <label for="keySucursal" class="mb-1 block text-sm font-medium text-slate-700">Sucursal (opcional)</label>
+          <select id="keySucursal" name="sucursal_id" class="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <option value="">Todas las sucursales</option>
             {% for sucursal in sucursales %}
             <option value="{{ sucursal.id }}">{{ sucursal.nombre }}</option>
             {% endfor %}
           </select>
-          <p class="mt-1 text-xs text-slate-600">Si dejas vacío, la API key tendrá acceso a todas las sucursales</p>
         </div>
-
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p class="text-sm text-blue-900"><strong>Importante:</strong> La API key se mostrará una sola vez. Guárdala en un lugar seguro.</p>
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          Importante: la API key se mostrará una sola vez. Guárdala en un lugar seguro.
         </div>
       </div>
-      <div class="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
-        <button type="button" class="close-modal-btn px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors" data-modal="generateKeyModal">Cancelar</button>
-        <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors flex items-center gap-2">
-          <span class="spinner-border spinner-border-sm hidden" id="generateSpinner" role="status"></span>
+      <div class="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+        <button type="button" class="close-modal-btn h-9 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-100" data-modal="generateKeyModal">Cancelar</button>
+        <button type="submit" id="generateKeyBtn" class="h-9 inline-flex items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700">
+          <span id="generateSpinner" class="mr-2 hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
           Generar API Key
         </button>
       </div>
@@ -130,242 +134,179 @@
   </div>
 </div>
 
-<!-- Modal para mostrar la API Key generada (Tailwind CSS) -->
-<div id="keyGeneratedModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
-  <div class="bg-white rounded-lg shadow-xl max-w-md w-11/12 max-h-[90vh] overflow-y-auto pointer-events-auto">
-    <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-emerald-600 text-white">
-      <h5 class="text-lg font-semibold">✓ API Key Generada Exitosamente</h5>
+<div id="keyGeneratedModal" class="fixed inset-0 z-50 hidden bg-black/50 p-4">
+  <div class="mx-auto mt-10 w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-2xl">
+    <div class="border-b border-slate-200 bg-emerald-600 px-5 py-4">
+      <h5 class="text-lg font-semibold text-white">API Key Generada Exitosamente</h5>
     </div>
-    <div class="p-6 space-y-4">
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-        <p class="text-sm text-amber-900"><strong>Esta es la única vez que verás esta API key.</strong> Cópiala ahora y guárdala en un lugar seguro.</p>
+    <div class="space-y-4 p-5">
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        Esta es la única vez que verás esta API key. Cópiala ahora y guárdala.
       </div>
-
       <div>
-        <label for="generatedKey" class="block text-sm font-medium text-slate-700 mb-2">Tu API Key:</label>
+        <label for="generatedKey" class="mb-2 block text-sm font-medium text-slate-700">Tu API Key</label>
         <div class="flex gap-2">
-          <input type="text" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm" id="generatedKey" readonly>
-          <button class="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors" type="button" id="copyGeneratedKeyBtn">
-            📋 Copiar
-          </button>
+          <input type="text" id="generatedKey" readonly class="h-10 flex-1 rounded-lg border border-slate-300 px-3 font-mono text-xs focus:outline-none">
+          <button id="copyGeneratedKeyBtn" type="button" class="h-10 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700">Copiar</button>
         </div>
       </div>
-
-      <div>
-        <h6 class="font-semibold text-sm text-slate-900 mb-2">Usar en WATI o integradores:</h6>
-        <pre class="bg-slate-100 p-3 rounded-lg text-xs overflow-x-auto"><code>Authorization: Bearer &lt;tu_api_key&gt;</code></pre>
-      </div>
-
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <p class="text-xs font-semibold text-blue-900 mb-2">Ejemplo cURL:</p>
-        <pre class="text-xs overflow-x-auto"><code>curl -H "Authorization: Bearer &lt;tu_api_key&gt;" \
-  "https://tudominio.com/clientes/api/list?estado=Activo"</code></pre>
-      </div>
+      <pre class="rounded-lg bg-slate-100 p-3 text-xs overflow-x-auto"><code>Authorization: Bearer &lt;tu_api_key&gt;</code></pre>
     </div>
-    <div class="flex justify-end p-6 border-t border-slate-200 bg-slate-50">
-      <button type="button" class="close-modal-btn px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors" data-modal="keyGeneratedModal">Entendido</button>
+    <div class="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-4">
+      <button type="button" class="close-modal-btn h-9 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700" data-modal="keyGeneratedModal">Entendido</button>
     </div>
   </div>
 </div>
 
-<!-- Modal para revocar API Key (Tailwind CSS) -->
-<div id="revokeKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-auto hidden">
-  <div class="bg-white rounded-lg shadow-xl max-w-sm w-11/12 pointer-events-auto">
-    <div class="flex justify-between items-center p-6 border-b border-slate-200 bg-slate-50">
+<div id="revokeKeyModal" class="fixed inset-0 z-50 hidden bg-black/50 p-4">
+  <div class="mx-auto mt-20 w-full max-w-sm rounded-xl border border-slate-200 bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
       <h5 class="text-lg font-semibold text-slate-900">Revocar API Key</h5>
-      <button type="button" class="close-modal-btn text-slate-400 hover:text-slate-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 transition-colors" data-modal="revokeKeyModal">&times;</button>
+      <button type="button" class="close-modal-btn h-8 w-8 inline-flex items-center justify-center rounded-md text-slate-500 hover:bg-slate-200" data-modal="revokeKeyModal">&times;</button>
     </div>
-    <div class="p-6">
-      <p class="text-slate-700 mb-4">¿Estás seguro de que deseas revocar esta API Key? Esta acción no se puede deshacer.</p>
-      <p class="text-sm text-slate-600">Las integraciones que usen esta API Key dejarán de funcionar inmediatamente.</p>
+    <div class="p-5 text-sm text-slate-700">
+      ¿Estás seguro de que deseas revocar esta API Key? Las integraciones dejarán de funcionar de inmediato.
     </div>
-    <div class="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
-      <button type="button" class="close-modal-btn px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium transition-colors" data-modal="revokeKeyModal">Cancelar</button>
-      <button type="button" id="confirmRevokeBtn" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium transition-colors">Revocar</button>
-    </div>
-  </div>
-</div>
+    <div class="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+      <button type="button" class="close-modal-btn h-9 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-100" data-modal="revokeKeyModal">Cancelar</button>
+      <button type="button" id="confirmRevokeBtn" class="h-9 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700">Revocar</button>
     </div>
   </div>
 </div>
 
 <script>
-// Sistema de modales personalizados (Tailwind)
 const modals = {
-  'generateKeyModal': document.getElementById('generateKeyModal'),
-  'keyGeneratedModal': document.getElementById('keyGeneratedModal'),
-  'revokeKeyModal': document.getElementById('revokeKeyModal')
+  generateKeyModal: document.getElementById('generateKeyModal'),
+  keyGeneratedModal: document.getElementById('keyGeneratedModal'),
+  revokeKeyModal: document.getElementById('revokeKeyModal')
 };
 
-// Cerrar modales al hacer click en botones close-modal-btn
-document.querySelectorAll('.close-modal-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    const modalId = this.dataset.modal;
-    if (modals[modalId]) {
-      modals[modalId].classList.add('hidden');
-    }
-  });
-});
-
-// Cerrar modal al hacer click fuera del contenedor
-Object.values(modals).forEach(modal => {
-  if (modal) {
-    modal.addEventListener('click', function(e) {
-      if (e.target === modal) {
-        modal.classList.add('hidden');
-      }
-    });
-  }
-});
-
 function openModal(modalId) {
-  if (modals[modalId]) {
-    modals[modalId].classList.remove('hidden');
-  }
+  if (modals[modalId]) modals[modalId].classList.remove('hidden');
 }
 
 function closeModal(modalId) {
-  if (modals[modalId]) {
-    modals[modalId].classList.add('hidden');
-  }
+  if (modals[modalId]) modals[modalId].classList.add('hidden');
 }
 
+document.querySelectorAll('[data-open-modal]').forEach((btn) => {
+  btn.addEventListener('click', function() {
+    openModal(this.getAttribute('data-open-modal'));
+  });
+});
+
+document.querySelectorAll('.close-modal-btn').forEach((btn) => {
+  btn.addEventListener('click', function() {
+    closeModal(this.dataset.modal);
+  });
+});
+
+Object.values(modals).forEach((modal) => {
+  if (!modal) return;
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) modal.classList.add('hidden');
+  });
+});
+
 document.addEventListener('DOMContentLoaded', function() {
-  // Copiar API key completa
-  document.querySelectorAll('.copy-key-btn').forEach(btn => {
+  document.querySelectorAll('.copy-key-btn').forEach((btn) => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
       const key = this.dataset.key;
       navigator.clipboard.writeText(key).then(() => {
-        const originalText = this.innerHTML;
-        this.innerHTML = '✓';
-        this.classList.add('text-green-600');
-        setTimeout(() => {
-          this.innerHTML = originalText;
-          this.classList.remove('text-green-600');
-        }, 2000);
-      }).catch(err => {
+        const original = this.innerHTML;
+        this.innerHTML = '<i class="ti ti-check text-emerald-600"></i>';
+        setTimeout(() => { this.innerHTML = original; }, 1800);
+      }).catch((err) => {
         alert('Error al copiar: ' + err);
       });
     });
   });
 
-  // Generar nueva API Key
-  document.getElementById('generateKeyForm').addEventListener('submit', function(e) {
+  const generateForm = document.getElementById('generateKeyForm');
+  const spinner = document.getElementById('generateSpinner');
+
+  generateForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const nombre = document.getElementById('keyName').value;
     const sucursal_id = document.getElementById('keySucursal').value || null;
-    
-    const spinner = document.getElementById('generateSpinner');
     spinner.classList.remove('hidden');
 
     fetch('{{ url_for("api_auth.generate_api_key") }}', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        nombre: nombre,
-        sucursal_id: sucursal_id
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: nombre, sucursal_id: sucursal_id })
     })
-    .then(response => response.json())
-    .then(data => {
-      spinner.classList.add('hidden');
-      if (data.success) {
-        // Mostrar la key generada
+      .then((response) => response.json())
+      .then((data) => {
+        spinner.classList.add('hidden');
+        if (!data.success) {
+          alert('Error: ' + (data.error || 'Error desconocido'));
+          return;
+        }
+
         document.getElementById('generatedKey').value = data.data.key;
-        
-        // Cerrar modal anterior y abrir el de éxito
         closeModal('generateKeyModal');
         openModal('keyGeneratedModal');
-        
-        // Limpiar formulario
-        document.getElementById('generateKeyForm').reset();
-        
-        // Recargar la página después de 5 segundos
+        generateForm.reset();
+
         setTimeout(() => {
           location.reload();
         }, 5000);
-      } else {
-        alert('Error: ' + (data.error || 'Error desconocido'));
-      }
-    })
-    .catch(error => {
-      spinner.classList.add('hidden');
-      alert('Error: ' + error);
-    });
+      })
+      .catch((error) => {
+        spinner.classList.add('hidden');
+        alert('Error: ' + error);
+      });
   });
 
-  // Copiar API key generada
   document.getElementById('copyGeneratedKeyBtn').addEventListener('click', function() {
     const key = document.getElementById('generatedKey').value;
     navigator.clipboard.writeText(key).then(() => {
-      const originalText = this.textContent;
-      this.textContent = '✓ Copiado!';
-      this.classList.add('bg-green-600');
-      setTimeout(() => {
-        this.textContent = originalText;
-        this.classList.remove('bg-green-600');
-      }, 2000);
+      const original = this.textContent;
+      this.textContent = 'Copiado';
+      setTimeout(() => { this.textContent = original; }, 1800);
     });
   });
 
-  // Revocar API Key
-  let revokeKeyId = null;
   let revokeUrl = null;
-  document.querySelectorAll('.revoke-key-btn').forEach(btn => {
+  document.querySelectorAll('.revoke-key-btn').forEach((btn) => {
     btn.addEventListener('click', function() {
-      revokeKeyId = this.dataset.keyId;
       revokeUrl = this.dataset.revokeUrl;
       openModal('revokeKeyModal');
     });
   });
 
-  document.getElementById('confirmRevokeBtn').addEventListener('click', function() {
+  const confirmRevokeBtn = document.getElementById('confirmRevokeBtn');
+  confirmRevokeBtn.addEventListener('click', function() {
     if (!revokeUrl) return;
-    
+
     this.disabled = true;
-    const originalText = this.textContent;
+    const original = this.textContent;
     this.textContent = 'Procesando...';
 
     fetch(revokeUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      headers: { 'Content-Type': 'application/json' }
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.success) {
+          alert('Error: ' + (data.error || 'Error desconocido'));
+          return;
+        }
         closeModal('revokeKeyModal');
         alert('API key revocada correctamente');
         location.reload();
-      } else {
-        alert('Error: ' + (data.error || 'Error desconocido'));
-      }
-    })
-    .catch(error => {
-      alert('Error: ' + error);
-    })
-    .finally(() => {
-      this.disabled = false;
-      this.textContent = originalText;
-    });
+      })
+      .catch((error) => {
+        alert('Error: ' + error);
+      })
+      .finally(() => {
+        this.disabled = false;
+        this.textContent = original;
+      });
   });
 });
 </script>
-
-<style>
-.table-hover tbody tr:hover {
-  background-color: #f8f9fa;
-}
-code {
-  font-size: 0.85rem;
-}
-.copy-key-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-</style>
 {% endblock %}

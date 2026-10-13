@@ -2,7 +2,7 @@
 from datetime import datetime, date
 from flask import current_app
 from ..extensions import db
-from ..models import Cliente, Membresia, Pago
+from ..models import Cliente, Membresia
 from .membership_service import get_membership_status
 
 
@@ -70,6 +70,7 @@ def get_client_with_flags(cliente_id):
 
 def create_client(
     nombre,
+    apellido=None,
     correo=None,
     telefono=None,
     fecha_nacimiento=None,
@@ -110,6 +111,7 @@ def create_client(
         # Create client (always starts Inactivo)
         cliente = Cliente(
             nombre=nombre.strip(),
+            apellido=apellido.strip() if apellido else None,
             correo=correo.strip() if correo else None,
             telefono=telefono.strip() if telefono else None,
             fecha_nacimiento=fecha_nacimiento,
@@ -147,6 +149,7 @@ def update_client(cliente_id, **kwargs):
 
         allowed_fields = {
             "nombre",
+            "apellido",
             "correo",
             "telefono",
             "fecha_nacimiento",
@@ -161,6 +164,9 @@ def update_client(cliente_id, **kwargs):
                 value = value.strip()
                 if not value:
                     return False, "Nombre no puede estar vacío"
+
+            if key == "apellido" and value:
+                value = value.strip()
 
             if key == "correo" and value:
                 value = value.strip()

@@ -1,4 +1,5 @@
 import os
+import ssl
 import threading
 import smtplib
 from email.message import EmailMessage
@@ -6,11 +7,15 @@ from flask import current_app
 
 
 def send_email(to_email: str, subject: str, body: str) -> bool:
-    smtp_server = os.getenv("SMTP_SERVER", "hipertrofiafuncional.online")
-    smtp_port = int(os.getenv("SMTP_PORT", "465"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    email_from = os.getenv("EMAIL_FROM", smtp_user)
+    smtp_server = (os.getenv("SMTP_SERVER") or "mail.hipertrofiafuncional.online").strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = (os.getenv("SMTP_USER") or "").strip()
+    smtp_password = (os.getenv("SMTP_PASSWORD") or "").strip()
+    email_from = (os.getenv("EMAIL_FROM") or smtp_user or "").strip()
+    use_ssl = str(os.getenv("SMTP_USE_SSL", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    use_tls = str(os.getenv("SMTP_USE_TLS", "1")).strip().lower() in {"1", "true", "yes", "on"}
+    skip_tls_verify = str(os.getenv("SMTP_TLS_SKIP_VERIFY", "1")).strip().lower() in {"1", "true", "yes", "on"}
+    timeout = int(os.getenv("SMTP_TIMEOUT", "10"))
 
     if not smtp_user or not smtp_password:
         try:
@@ -19,24 +24,47 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
             pass
         return False
 
+    msg = EmailMessage()
+    msg["From"] = email_from or smtp_user
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.set_content(body, subtype="plain", charset="utf-8")
+
+    server = None
     try:
-        msg = EmailMessage()
-        msg["From"] = email_from
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        msg.set_content(body, subtype="plain", charset="utf-8")
+        tls_context = ssl.create_default_context()
+        if skip_tls_verify:
+            tls_context.check_hostname = False
+            tls_context.verify_mode = ssl.CERT_NONE
 
-        with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10) as server:
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
+        if smtp_port == 465 or use_ssl:
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=timeout, context=tls_context)
+        else:
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=timeout)
 
+        if hasattr(server, "ehlo"):
+            server.ehlo()
+
+        if use_tls and not isinstance(server, smtplib.SMTP_SSL) and hasattr(server, "has_extn") and server.has_extn("STARTTLS"):
+            server.starttls(context=tls_context)
+            if hasattr(server, "ehlo"):
+                server.ehlo()
+
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
         return True
     except Exception as e:
         try:
-            current_app.logger.exception("Error sending email: %s", str(e))
+            current_app.logger.exception("Error sending email to %s: %s", to_email, str(e))
         except Exception:
             pass
         return False
+    finally:
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                pass
 
 
 def _post_login_worker(user_id, sucursal_id=None):

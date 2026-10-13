@@ -1,8 +1,12 @@
 import os
+from datetime import timedelta
+from pathlib import Path
 
 try:
     from dotenv import load_dotenv
 
+    project_root = Path(__file__).resolve().parent.parent
+    load_dotenv(project_root / ".env")
     load_dotenv()
 except Exception:
     # python-dotenv no está instalado o .env no es necesario; continuar
@@ -21,14 +25,16 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///gym.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2MB por request
 
     # --- Seguridad de cookies de sesión ---
     SESSION_COOKIE_HTTPONLY = True          # Previene acceso desde JavaScript (XSS)
     SESSION_COOKIE_SECURE = os.getenv("FLASK_DEBUG", "0") != "1"  # True en producción (HTTPS)
     SESSION_COOKIE_SAMESITE = "Lax"        # Protección CSRF adicional
     SESSION_COOKIE_NAME = "gym_session"    # Nombre no-default reduce fingerprinting
-    PERMANENT_SESSION_LIFETIME = 3600      # 1 hora de inactividad máxima
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=12)  # 12 horas de sesión permanente
 
     # --- CSRF ---
-    WTF_CSRF_TIME_LIMIT = 3600             # 1 hora de validez del token CSRF
+    WTF_CSRF_TIME_LIMIT = 12 * 60 * 60      # 12 horas de validez del token CSRF
+    WTF_CSRF_SSL_STRICT = os.getenv("FLASK_DEBUG", "0") != "1"
 

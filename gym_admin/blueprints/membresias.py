@@ -14,24 +14,24 @@ from flask_login import current_user
 from ..models import Membresia, Cliente, Plan, Promocion, EstadoMembresia
 from ..services.membership_service import (
     get_membership_status,
-    compute_end_date,
     create_membership,
     update_membership,
+)
+from ..services.attendance_service import (
+    manual_attendance_summary,
+    register_manual_attendance as register_manual_attendance_service,
 )
 from ..utils import (
     _compute_monto_total_for_membresia,
     admin_required,
-    api_key_required,
     verify_sucursal_access,
     process_membership_states,
 )
 from ..extensions import db
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
-from ..utils import process_membership_states, _compute_monto_total_for_membresia
-from ..utils import admin_required
 
 membresias_bp = Blueprint("membresias", __name__)
 
@@ -56,7 +56,11 @@ def list_membresias():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
     q = request.args.get("q", type=str)
+    tipo_uso = request.args.get("tipo_uso", type=str)
     query = Membresia.query
+
+    if tipo_uso == "asistencia_manual":
+        query = query.filter(Membresia.tipo_uso == "asistencia_manual")
 
     # --- LÓGICA DE FILTRADO POR SUCURSAL ---
     sucursal_id = None
@@ -98,8 +102,10 @@ def list_membresias():
 
     # calcular membresías próximas a vencer (estado Activa=2 y fecha_fin <= hoy+7)
     expiring = {}
+    manual_summaries = {}
     try:
         from datetime import date as _d, timedelta
+        from ..services.attendance_service import manual_attendance_summary
 
         horizon = _d.today() + timedelta(days=7)
         for m in items:
@@ -111,6 +117,13 @@ def list_membresias():
             except Exception:
                 soon = False
             expiring[m.id] = soon
+            
+            # calculate manual summary
+            try:
+                if getattr(m, "is_manual_asistencia", False):
+                    manual_summaries[m.id] = manual_attendance_summary(m)
+            except Exception:
+                pass
     except Exception:
         expiring = {}
 
@@ -126,7 +139,9 @@ def list_membresias():
             membresias=items,
             pendientes=pendientes,
             expiring=expiring,
+            manual_summaries=manual_summaries,
             q=q,
+            tipo_uso=tipo_uso,
             per_page=per_page,
         )
     return render_template(
@@ -135,7 +150,9 @@ def list_membresias():
         membresias=items,
         pendientes=pendientes,
         expiring=expiring,
+        manual_summaries=manual_summaries,
         q=q,
+        tipo_uso=tipo_uso,
         per_page=per_page,
     )
 
@@ -734,6 +751,9 @@ def membresia_info(membresia_id):
         "id": m.id,
         "cliente_id": m.cliente_id,
         "plan": m.plan.nombre if m.plan else None,
+        "tipo_uso": getattr(m, "tipo_uso", None),
+        "cupo_marcajes": getattr(m, "cupo_marcajes", None),
+        "marcajes_usados": getattr(m, "marcajes_usados", 0),
         "promocion": m.promocion.nombre if m.promocion else None,
         "precio_base": precio,
         "descuento": descuento,
@@ -824,6 +844,8 @@ def membresia_detail(membresia_id):
     # plan info
     plan_nombre = m.plan.nombre if m.plan else None
     plan_duracion = getattr(m.plan, "duracion", None) if m.plan else None
+    manual_attendance = manual_attendance_summary(m)
+    manual_attendance["action_url"] = url_for("membresias.register_manual_attendance_route", membresia_id=m.id)
 
     # sucursal nombre (best-effort)
     sucursal_nombre = None
@@ -873,10 +895,44 @@ def membresia_detail(membresia_id):
         estado_nombre=estado_nombre,
         plan_nombre=plan_nombre,
         plan_duracion=plan_duracion,
+        manual_attendance=manual_attendance,
         sucursal_nombre=sucursal_nombre,
         generated_at=generated_at,
         pdf_url=pdf_url,
     )
+
+
+@membresias_bp.route("/<int:membresia_id>/marcajes/manual", methods=["POST"])
+def register_manual_attendance_route(membresia_id):
+    m = Membresia.query.get_or_404(membresia_id)
+    verify_sucursal_access(m)
+
+    observacion = (request.form.get("observacion") or "").strip() or None
+    usuario_id = getattr(current_user, "id", None) if current_user and current_user.is_authenticated else None
+    sucursal_id = getattr(current_user, "sucursal_id", None) if current_user and current_user.is_authenticated else None
+
+    ok, payload, err = register_manual_attendance_service(
+        membresia_id=m.id,
+        usuario_id=usuario_id,
+        sucursal_id=sucursal_id,
+        observacion=observacion,
+    )
+
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    if ok:
+        message = "Marcaje manual registrado exitosamente."
+        if payload and payload.get("cupo"):
+            restantes = payload.get("restantes", 0)
+            message = f"Marcaje exitoso. Quedan {restantes} clases restantes."
+        if is_ajax:
+            return jsonify({"success": True, "message": message, "attendance": payload})
+        flash(message)
+        return redirect(request.referrer or url_for("membresias.list_membresias"))
+
+    if is_ajax:
+        return jsonify({"success": False, "message": err or "No se pudo registrar el marcaje", "attendance": payload}), 400
+    flash(err or "No se pudo registrar el marcaje")
+    return redirect(request.referrer or url_for("membresias.list_membresias"))
 
 
 @membresias_bp.route("/<int:membresia_id>/pdf")

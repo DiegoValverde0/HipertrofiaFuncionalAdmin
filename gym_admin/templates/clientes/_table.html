@@ -1,17 +1,20 @@
 {# Helper macro to build pagination URL preserving all filters #}
 {% macro page_url(page_num) -%}
-  ?page={{ page_num }}&per_page={{ pagination.per_page }}
-  {%- if q %}&q={{ q|urlencode }}{% endif -%}
-  {%- if estado %}&estado={{ estado|urlencode }}{% endif -%}
-  {%- if tipo %}&tipo={{ tipo|urlencode }}{% endif -%}
-  {%- if expiring_days %}&expiring={{ expiring_days }}{% endif -%}
+?page={{ page_num }}&per_page={{ pagination.per_page }}
+{%- if q %}&q={{ q|urlencode }}{% endif -%}
+{%- if estado %}&estado={{ estado|urlencode }}{% endif -%}
+{%- if tipo %}&tipo={{ tipo|urlencode }}{% endif -%}
+{%- if expiring_days %}&expiring={{ expiring_days }}{% endif -%}
 {%- endmacro %}
 
 <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
   {% if total is defined %}
   <div class="px-4 py-3 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><i class="ti ti-users text-sm"></i> Registros Totales</span>
-    <span class="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm font-medium">{{ clientes|length }} de {{ total }}</span>
+    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><i
+        class="ti ti-users text-sm"></i> Registros Totales</span>
+    <span
+      class="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm font-medium">{{
+      clientes|length }} de {{ total }}</span>
   </div>
   {% endif %}
   <div class="w-full overflow-x-auto">
@@ -30,161 +33,214 @@
         {% set flags = (reminders.get(c.id) if reminders else None) %}
         {% set tr_class = "hover:bg-slate-50/80 transition-colors group" %}
         {% if flags and flags['soon'] %}
-          {% set tr_class = tr_class ~ " bg-amber-50/30 hover:bg-amber-100/40" %}
+        {% set tr_class = tr_class ~ " bg-amber-50/30 hover:bg-amber-100/40" %}
         {% endif %}
-        
-        <tr class="{{ tr_class }}" 
-            data-nombre="{{ (c.nombre ~ ' ' ~ c.apellido)|lower }}" 
-            data-correo="{{ (c.correo or '')|lower }}" 
-            data-telefono="{{ (c.telefono or '')|lower }}" 
-            data-tipo="{{ (c.tipo_cliente or '')|lower }}" 
-            data-estado="{{ (c.estado or '')|lower }}">
-            
+
+        <tr class="{{ tr_class }}" data-nombre="{{ (c.nombre ~ ' ' ~ c.apellido)|lower }}"
+          data-correo="{{ (c.correo or '')|lower }}" data-telefono="{{ (c.telefono or '')|lower }}"
+          data-tipo="{{ (c.tipo_cliente or '')|lower }}" data-estado="{{ (c.estado or '')|lower }}">
+
           <td class="px-5 py-3.5 whitespace-nowrap">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
+              <div
+                class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
                 {{ c.nombre[:1] }}{{ c.apellido[:1] if c.apellido else '' }}
               </div>
               <div class="flex flex-col">
                 <div class="font-semibold text-slate-900">{{ c.nombre }} {{ c.apellido }}</div>
                 {% if c.fecha_nacimiento %}
-                  {% set years = today.year - c.fecha_nacimiento.year - ((today.month, today.day) < (c.fecha_nacimiento.month, c.fecha_nacimiento.day)) %}
-                  <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1"><i class="ti ti-cake text-[13px]"></i> {{ years }} años</div>
-                {% else %}
-                  <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ti ti-cake text-[13px]"></i> Sin registrar</div>
-                {% endif %}
+                {% set years = today.year - c.fecha_nacimiento.year - ((today.month, today.day) <
+                  (c.fecha_nacimiento.month, c.fecha_nacimiento.day)) %} <div
+                  class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1"><i
+                    class="ti ti-cake text-[13px]"></i> {{ years }} años
               </div>
-            </div>
-          </td>
-          
-          <td class="px-4 py-3.5 whitespace-nowrap">
-            <div class="flex flex-col gap-1.5">
-              <div class="text-[13px] font-medium text-slate-700 flex items-center gap-1.5"><i class="ti ti-phone text-[16px] text-slate-400"></i> {{ c.telefono }}</div>
-              {% if c.correo %}
-                <div class="text-[11px] text-slate-500 flex items-center gap-1.5"><i class="ti ti-mail text-[16px] text-slate-400"></i> {{ c.correo }}</div>
-              {% endif %}
-            </div>
-          </td>
-          
-          <td class="px-4 py-3.5 whitespace-nowrap">
-            {% if c.estado == 'Activo' %}
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm"><i class="ti ti-point-filled text-[14px] text-emerald-500 animate-pulse"></i> Activo</span>
-            {% elif c.estado == 'Inactivo' %}
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm"><i class="ti ti-circle-off text-[14px] text-slate-400"></i> Inactivo</span>
-            {% else %}
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm"><i class="ti ti-alert-circle text-[14px] text-amber-500"></i> {{ c.estado }}</span>
-            {% endif %}
-          </td>
-          
-          <td class="px-4 py-3.5 whitespace-nowrap">
-            <div class="flex items-center gap-2">
-              {% if flags and flags['has_active'] %}
-                <div class="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2.5 py-1 rounded-md shadow-sm border border-emerald-600 font-bold text-[11px] uppercase tracking-wide">
-                  <i class="ti ti-rosette-discount-check-filled text-[16px] text-emerald-100"></i> Activa
-                </div>
               {% else %}
-                <div class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-500 px-2.5 py-1 rounded-md border border-slate-200 font-bold text-[11px] uppercase tracking-wide shadow-sm">
-                  <i class="ti ti-credit-card-off text-[16px]"></i> Ninguna
-                </div>
-              {% endif %}
-
-              {% if flags and flags['soon'] %}
-                <div class="ml-1">
-                  {% set fecha_fin = flags['fecha_fin'] %}
-                  {% set telefono = c.telefono %}
-                  {% set nombre_display = c.nombre ~ ' ' ~ c.apellido %}
-                  {% include '_expiring_cta.html' %}
-                </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i
+                  class="ti ti-cake text-[13px]"></i> Sin registrar</div>
               {% endif %}
             </div>
-          </td>
-          
-          <td class="px-4 py-3.5 whitespace-nowrap text-right">
-            <div class="flex items-center justify-end gap-1.5">
-              {% if not (flags and flags['has_active']) %}
-                <a href="{{ url_for('membresias.create_membresia') }}?cliente_id={{ c.id }}" class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-all bg-white hover:bg-brand-50 hover:text-brand-700 text-slate-600 border border-slate-200 hover:border-brand-200 h-8 px-2.5 shadow-sm group/btn" title="Crear nueva membresía">
-                  <i class="ti ti-plus group-hover/btn:scale-110 transition-transform mr-1 text-[16px]"></i> Membresía
-                </a>
-              {% endif %}
-              
-              <a href="{{ url_for('membresias.list_by_cliente', cliente_id=c.id) }}" class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-all bg-white hover:bg-slate-100 hover:text-slate-900 text-slate-600 border border-slate-200 h-8 w-8 shadow-sm group/btn" title="Historial de membresías">
-                <i class="ti ti-history text-[18px] group-hover/btn:-rotate-45 transition-transform"></i>
-              </a>
-
-              <!-- Dropdown Action -->
-              <div x-data="{ open: false }" class="relative inline-block text-left">
-                <button @click="open = !open; $event.stopPropagation()" @click.outside="open = false" type="button" class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-all bg-slate-900 hover:bg-slate-800 text-white h-8 w-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">
-                  <i class="ti ti-dots-vertical text-[18px]"></i>
-                </button>
-
-                <div x-show="open" x-transition.opacity.duration.200ms class="absolute right-0 z-50 mt-1.5 w-48 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-slate-900/5 focus:outline-none overflow-hidden" style="display: none;">
-                  <div class="p-1.5">
-                    <a href="{{ url_for('clientes.view_cliente', cliente_id=c.id) }}" class="flex items-center rounded-md text-slate-700 px-3 py-2 text-[13px] font-medium hover:bg-slate-100 transition-colors">
-                      <i class="ti ti-eye mr-2.5 text-[18px] text-slate-400"></i> Ver perfil
-                    </a>
-                    {% if current_user and current_user.rol_id == 1 %}
-                      <button onclick="openClienteModal('edit', {{ c.id }})" class="flex w-full items-center rounded-md text-slate-700 px-3 py-2 text-[13px] font-medium hover:bg-slate-100 transition-colors">
-                        <i class="ti ti-edit mr-2.5 text-[18px] text-slate-400"></i> Editar datos
-                      </button>
-                      <div class="my-1.5 border-t border-slate-100"></div>
-                      <form method="post" action="{{ url_for('clientes.delete_cliente', cliente_id=c.id) }}" class="m-0 p-0 confirm-delete-form" data-name="{{ c.nombre }} {{ c.apellido }}">
-                        <button type="submit" class="flex w-full items-center rounded-md text-red-600 px-3 py-2 text-[13px] font-medium hover:bg-red-50 transition-colors">
-                          <i class="ti ti-trash mr-2.5 text-[18px] text-red-400"></i> Eliminar
-                        </button>
-                      </form>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </div>
+  </td>
+
+  <td class="px-4 py-3.5 whitespace-nowrap">
+    <div class="flex flex-col gap-1.5">
+      <div class="text-[13px] font-medium text-slate-700 flex items-center gap-1.5"><i
+          class="ti ti-phone text-[16px] text-slate-400"></i> {{ c.telefono }}</div>
+      {% if c.correo %}
+      <div class="text-[11px] text-slate-500 flex items-center gap-1.5"><i
+          class="ti ti-mail text-[16px] text-slate-400"></i> {{ c.correo }}</div>
+      {% endif %}
+    </div>
+  </td>
+
+  <td class="px-4 py-3.5 whitespace-nowrap">
+    {% if c.estado == 'Activo' %}
+    <span
+      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm"><i
+        class="ti ti-point-filled text-[14px] text-emerald-500 animate-pulse"></i> Activo</span>
+    {% elif c.estado == 'Inactivo' %}
+    <span
+      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-sm"><i
+        class="ti ti-circle-off text-[14px] text-slate-400"></i> Inactivo</span>
+    {% else %}
+    <span
+      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm"><i
+        class="ti ti-alert-circle text-[14px] text-amber-500"></i> {{ c.estado }}</span>
+    {% endif %}
+  </td>
+
+  <td class="px-4 py-3.5 whitespace-nowrap">
+    <div class="flex items-center gap-2">
+      {% if flags and flags['has_active'] %}
+      <div
+        class="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2.5 py-1 rounded-md shadow-sm border border-emerald-600 font-bold text-[11px] uppercase tracking-wide">
+        <i class="ti ti-rosette-discount-check-filled text-[16px] text-emerald-100"></i> Activa
+      </div>
+      {% else %}
+      <div
+        class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-500 px-2.5 py-1 rounded-md border border-slate-200 font-bold text-[11px] uppercase tracking-wide shadow-sm">
+        <i class="ti ti-credit-card-off text-[16px]"></i> Ninguna
+      </div>
+      {% endif %}
+
+      {% if flags and flags['has_manual'] %}
+      <div
+        class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md border border-indigo-200 font-semibold text-[10px] uppercase tracking-wide shadow-sm"
+        title="Membresía de asistencia manual">
+        <i class="ti ti-hand-click text-[13px]"></i> Manual
+      </div>
+      {% endif %}
+
+      {% if flags and flags['soon'] %}
+      <div class="ml-1">
+        {% set fecha_fin = flags['fecha_fin'] %}
+        {% set telefono = c.telefono %}
+        {% set nombre_display = c.nombre ~ ' ' ~ c.apellido %}
+        {% include '_expiring_cta.html' %}
+      </div>
+      {% endif %}
+    </div>
+  </td>
+
+  <td class="px-4 py-3.5 whitespace-nowrap text-right">
+    <div class="flex items-center justify-end gap-1.5">
+      {% if flags and flags['has_manual'] %}
+      <button type="button"
+        class="btn-memb-marcar inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-sm h-8"
+        data-action="{{ url_for('membresias.register_manual_attendance_route', membresia_id=flags['manual_membresia_id']) }}"
+        title="Registrar asistencia manual">
+        <i class="ti ti-hand-click text-[16px]"></i> Marcar
+      </button>
+      <div class="w-px h-5 bg-slate-200 mx-0.5"></div>
+      {% endif %}
+
+      {% if not (flags and flags['has_active']) %}
+      <a href="{{ url_for('membresias.create_membresia') }}?cliente_id={{ c.id }}"
+        class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-all bg-white hover:bg-brand-50 hover:text-brand-700 text-slate-600 border border-slate-200 hover:border-brand-200 h-8 px-2.5 shadow-sm group/btn"
+        title="Crear nueva membresía">
+        <i class="ti ti-plus group-hover/btn:scale-110 transition-transform mr-1 text-[16px]"></i> Membresía
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('membresias.list_by_cliente', cliente_id=c.id) }}"
+        class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-all bg-white hover:bg-slate-100 hover:text-slate-900 text-slate-600 border border-slate-200 h-8 w-8 shadow-sm group/btn"
+        title="Historial de membresías">
+        <i class="ti ti-history text-[18px] group-hover/btn:-rotate-45 transition-transform"></i>
+      </a>
+
+      <!-- Dropdown Action -->
+      <div x-data="{ open: false }" class="relative inline-block text-left">
+        <button @click="open = !open; $event.stopPropagation()" @click.outside="open = false" type="button"
+          class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-all bg-slate-900 hover:bg-slate-800 text-white h-8 w-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">
+          <i class="ti ti-dots-vertical text-[18px]"></i>
+        </button>
+
+        <div x-show="open" x-transition.opacity.duration.200ms
+          class="absolute right-0 z-50 mt-1.5 w-48 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-slate-900/5 focus:outline-none overflow-hidden"
+          style="display: none;">
+          <div class="p-1.5">
+            <a href="{{ url_for('clientes.view_cliente', cliente_id=c.id) }}"
+              class="flex items-center rounded-md text-slate-700 px-3 py-2 text-[13px] font-medium hover:bg-slate-100 transition-colors">
+              <i class="ti ti-eye mr-2.5 text-[18px] text-slate-400"></i> Ver perfil
+            </a>
+            {% if current_user and current_user.rol_id == 1 %}
+            <button onclick="openClienteModal('edit', '{{ c.id }}')"
+              class="flex w-full items-center rounded-md text-slate-700 px-3 py-2 text-[13px] font-medium hover:bg-slate-100 transition-colors">
+              <i class="ti ti-edit mr-2.5 text-[18px] text-slate-400"></i> Editar datos
+            </button>
+            <div class="my-1.5 border-t border-slate-100"></div>
+            <form method="post" action="{{ url_for('clientes.delete_cliente', cliente_id=c.id) }}"
+              class="m-0 p-0 confirm-delete-form" data-name="{{ c.nombre }} {{ c.apellido }}">
+              <button type="submit"
+                class="flex w-full items-center rounded-md text-red-600 px-3 py-2 text-[13px] font-medium hover:bg-red-50 transition-colors">
+                <i class="ti ti-trash mr-2.5 text-[18px] text-red-400"></i> Eliminar
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+  </table>
+</div>
 </div>
 
 <!-- Paginación -->
 <div class="flex items-center justify-between px-2 py-4">
   <div class="flex-1 flex justify-between sm:hidden">
     {% if pagination.has_prev %}
-    <a href="{{ page_url(pagination.prev_num) }}" class="page-link relative inline-flex items-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm"><i class="ti ti-chevron-left mr-1"></i> Anterior</a>
+    <a href="{{ page_url(pagination.prev_num) }}"
+      class="page-link relative inline-flex items-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm"><i
+        class="ti ti-chevron-left mr-1"></i> Anterior</a>
     {% endif %}
     {% if pagination.has_next %}
-    <a href="{{ page_url(pagination.next_num) }}" class="page-link relative ml-auto inline-flex items-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm">Siguiente <i class="ti ti-chevron-right ml-1"></i></a>
+    <a href="{{ page_url(pagination.next_num) }}"
+      class="page-link relative ml-auto inline-flex items-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm">Siguiente
+      <i class="ti ti-chevron-right ml-1"></i></a>
     {% endif %}
   </div>
   <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
     <div>
       <p class="text-[13px] text-slate-500">
-        Mostrando página <span class="font-semibold text-slate-900">{{ pagination.page }}</span> de <span class="font-semibold text-slate-900">{{ pagination.pages }}</span>
+        Mostrando página <span class="font-semibold text-slate-900">{{ pagination.page }}</span> de <span
+          class="font-semibold text-slate-900">{{ pagination.pages }}</span>
         <span class="text-slate-400 ml-1">({{ pagination.total }} resultados)</span>
       </p>
     </div>
     <div>
       <nav class="pagination isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
         {% if pagination.has_prev %}
-        <a href="{{ page_url(pagination.prev_num) }}" class="page-link relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 bg-white">
+        <a href="{{ page_url(pagination.prev_num) }}"
+          class="page-link relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 bg-white">
           <span class="sr-only">Anterior</span>
           <i class="ti ti-chevron-left h-4 w-4"></i>
         </a>
         {% endif %}
-        
+
         {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-          {% if p %}
-            {% if p == pagination.page %}
-              <a href="#" aria-current="page" class="page-link relative z-10 inline-flex items-center bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">{{ p }}</a>
-            {% else %}
-              <a href="{{ page_url(p) }}" class="page-link relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-900 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 bg-white">{{ p }}</a>
-            {% endif %}
-          {% else %}
-            <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-inset ring-slate-200 focus:outline-offset-0 bg-white">...</span>
-          {% endif %}
+        {% if p %}
+        {% if p == pagination.page %}
+        <a href="#" aria-current="page"
+          class="page-link relative z-10 inline-flex items-center bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">{{
+          p }}</a>
+        {% else %}
+        <a href="{{ page_url(p) }}"
+          class="page-link relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-900 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 bg-white">{{
+          p }}</a>
+        {% endif %}
+        {% else %}
+        <span
+          class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-inset ring-slate-200 focus:outline-offset-0 bg-white">...</span>
+        {% endif %}
         {% endfor %}
-        
+
         {% if pagination.has_next %}
-        <a href="{{ page_url(pagination.next_num) }}" class="page-link relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 bg-white">
+        <a href="{{ page_url(pagination.next_num) }}"
+          class="page-link relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 bg-white">
           <span class="sr-only">Siguiente</span>
           <i class="ti ti-chevron-right h-4 w-4"></i>
         </a>

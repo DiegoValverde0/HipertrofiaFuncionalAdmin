@@ -3,191 +3,422 @@
 {% block title %}Auditoría{% endblock %}
 
 {% block content %}
-  <h2>Auditoría</h2>
-  <div class="row mb-3">
-    <div class="col-md-3">
-      <label>Tabla</label>
-      <input id="f-tabla" class="form-control" placeholder="Nombre de tabla">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
+              <i class="ti ti-shield-search text-2xl"></i>
+            </span>
+            Auditoría de Cambios
+          </h2>
+          <p class="text-sm text-slate-500 mt-1">Consulta trazabilidad por tabla, usuario y rango de fechas con detalle campo a campo.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="export-csv" class="h-9 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 px-3 text-sm font-medium transition-colors">
+            <i class="ti ti-file-spreadsheet text-emerald-600 mr-1.5"></i> CSV
+          </button>
+          <button id="export-pdf" class="h-9 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 px-3 text-sm font-medium transition-colors">
+            <i class="ti ti-file-type-pdf text-rose-600 mr-1.5"></i> PDF
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="col-md-2">
-      <label>Operación</label>
-      <select id="f-operacion" class="form-select">
-        <option value="">-- Todas --</option>
-        <option value="INSERT">INSERT</option>
-        <option value="UPDATE">UPDATE</option>
-        <option value="DELETE">DELETE</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label>Usuario</label>
-      <input id="f-usuario" list="usuarios-list" class="form-control" placeholder="Seleccione usuario...">
-      <input type="hidden" id="f-usuario-id">
-      <datalist id="usuarios-list"></datalist>
-    </div>
-    <div class="col-md-2">
-      <label>Fecha desde</label>
-      <input id="f-fecha-min" class="form-control" placeholder="YYYY-MM-DD">
-    </div>
-    <div class="col-md-2">
-      <label>Fecha hasta</label>
-      <input id="f-fecha-max" class="form-control" placeholder="YYYY-MM-DD">
-    </div>
-  </div>
 
-  <div class="mb-3">
-    <input id="f-q" class="form-control" placeholder="Buscar texto en descripción...">
-  </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+        <div class="xl:col-span-2">
+          <label for="f-tabla" class="text-sm font-medium text-slate-700 block mb-1">Tabla</label>
+          <input id="f-tabla" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500" placeholder="Ej: clientes, membresias">
+        </div>
+        <div>
+          <label for="f-operacion" class="text-sm font-medium text-slate-700 block mb-1">Operación</label>
+          <select id="f-operacion" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+            <option value="">Todas</option>
+            <option value="INSERT">INSERT</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-usuario" class="text-sm font-medium text-slate-700 block mb-1">Usuario</label>
+          <input id="f-usuario" list="usuarios-list" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500" placeholder="Nombre del usuario">
+          <input type="hidden" id="f-usuario-id">
+          <datalist id="usuarios-list"></datalist>
+        </div>
+        <div>
+          <label for="f-fecha-min" class="text-sm font-medium text-slate-700 block mb-1">Fecha desde</label>
+          <input id="f-fecha-min" type="date" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+        </div>
+        <div>
+          <label for="f-fecha-max" class="text-sm font-medium text-slate-700 block mb-1">Fecha hasta</label>
+          <input id="f-fecha-max" type="date" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+        </div>
+      </div>
 
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <div>
-      <label class="form-label me-2">Por página</label>
-      <select id="f-per-page" class="form-select d-inline-block w-auto">
-        <option value="10">10</option>
-        <option value="25" selected>25</option>
-        <option value="50">50</option>
-      </select>
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div class="relative flex-1">
+          <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input id="f-q" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500" placeholder="Buscar texto dentro del detalle auditado...">
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="f-per-page" class="text-sm font-medium text-slate-700 whitespace-nowrap">Por página</label>
+          <select id="f-per-page" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
     </div>
-    <div>
-      <button id="export-csv" class="btn btn-sm btn-outline-secondary me-2">Exportar CSV</button>
-      <button id="export-pdf" class="btn btn-sm btn-outline-secondary">Exportar PDF</button>
-    </div>
+
+    <div id="auditoria-stats" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+    <div id="auditoria-results"></div>
   </div>
-  <div id="auditoria-results"></div>
 
   <script>
     (function(){
       var tabla = document.getElementById('f-tabla');
       var oper = document.getElementById('f-operacion');
       var usuario = document.getElementById('f-usuario');
+      var usuarioId = document.getElementById('f-usuario-id');
       var fmin = document.getElementById('f-fecha-min');
       var fmax = document.getElementById('f-fecha-max');
       var q = document.getElementById('f-q');
+      var per = document.getElementById('f-per-page');
       var out = document.getElementById('auditoria-results');
+      var statsEl = document.getElementById('auditoria-stats');
       var usuariosList = document.getElementById('usuarios-list');
-      // cargar lista de usuarios para datalist
-      fetch('/auditoria/users', { credentials:'same-origin' }).then(function(r){ return r.json(); }).then(function(data){
-        usuariosList.innerHTML = '';
-        data.forEach(function(u){ var opt = document.createElement('option'); opt.value = u.nombre; opt.setAttribute('data-id', u.id); usuariosList.appendChild(opt); });
-      }).catch(function(){ /* ignore */ });
-      var timer = null;
-      function fmtBolivia(iso){
-        try{
-          var d = new Date(iso);
-          return d.toLocaleString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-        }catch(e){ return iso || ''; }
-      }
-      function load(p){
-        p = p || 1;
-        var params = new URLSearchParams();
-      if(tabla && tabla.value) params.set('tabla', tabla.value);
-      if(oper && oper.value) params.set('operacion', oper.value);
-      // usuario puede ser nombre o id; preferimos el hidden usuario-id
-      var uid = document.getElementById('f-usuario-id').value;
-      if(uid) {
-        params.set('usuario_id', uid);
-      } else if(usuario && usuario.value) {
-        // allow search by usuario nombre
-        params.set('usuario_nombre', usuario.value);
-      }
-      // per_page
-      var per = document.getElementById('f-per-page'); if(per) params.set('per_page', per.value);
-        if(fmin && fmin.value) params.set('fecha_min', fmin.value);
-        if(fmax && fmax.value) params.set('fecha_max', fmax.value);
-        if(q && q.value) params.set('q', q.value);
-        params.set('page', p);
-        fetch('/auditoria/search?'+params.toString(), { credentials:'same-origin' })
-          .then(function(r){ return r.json(); })
-      .then(function(data){
-            var html = '';
-        html += '<div class="table-responsive"><table class="table table-sm table-striped">';
-        html += '<thead><tr><th>Fecha</th><th>Tabla</th><th>PK</th><th>Op</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody>';
-            data.items.forEach(function(it){
-              var usuarioTxt = it.usuario || (it.usuario_id ? ('#'+it.usuario_id) : '-');
-              var detalle = '';
-              try{ detalle = JSON.parse(it.descripcion); }catch(e){ detalle = it.descripcion; }
-              var detalleHtml = '';
-              if(typeof detalle === 'object' && detalle !== null){
-                if(detalle.accion === 'INSERT' || detalle.accion === 'DELETE'){
-                  var vals = detalle.valores || detalle.values || {};
-                  // merge pk into valores for display if present
-                  if(detalle.pk && typeof detalle.pk === 'object'){
-                    Object.keys(detalle.pk).forEach(function(k){ try{ if(!vals[k]) vals[k] = detalle.pk[k]; }catch(e){} });
-                  }
-                  detalleHtml += '<ul class="mb-0">';
-                  Object.keys(vals).forEach(function(k){ detalleHtml += '<li><strong>'+k+':</strong> '+(vals[k]===null?'<em>null</em>':vals[k])+'</li>'; });
-                  detalleHtml += '</ul>';
-                } else if(detalle.accion === 'UPDATE'){
-                  var changes = detalle.cambios || [];
-                  detalleHtml += '<ul class="mb-0">';
-                  changes.forEach(function(ch){ detalleHtml += '<li><strong>'+ch.columna+':</strong> <span class="text-muted">'+(ch.anterior===null?'<em>null</em>':ch.anterior)+'</span> &rarr; <span>'+(ch.nuevo===null?'<em>null</em>':ch.nuevo)+'</span></li>'; });
-                  detalleHtml += '</ul>';
-                } else {
-                  detalleHtml = JSON.stringify(detalle);
-                }
-              } else {
-                detalleHtml = String(detalle);
-              }
+      var exportCsv = document.getElementById('export-csv');
+      var exportPdf = document.getElementById('export-pdf');
 
-              var pkTxt = '';
-              try{ pkTxt = (it.pk && typeof it.pk === 'object') ? Object.values(it.pk).join(',') : (it.pk || ''); }catch(e){ pkTxt = it.pk || ''; }
-              html += '<tr><td>'+fmtBolivia(it.fecha)+'</td><td>'+it.tabla+'</td><td>'+pkTxt+'</td><td>'+it.operacion+'</td><td>'+usuarioTxt+'</td><td>'+detalleHtml+'</td></tr>';
-            });
-            html += '</tbody></table></div>';
-            // pager: numeric
-            html += '<div class="d-flex justify-content-between align-items-center">';
-            html += '<div>Mostrando '+data.items.length+' de '+data.total+'</div>';
-            html += '<nav aria-label="Page navigation"><ul class="pagination mb-0">';
-            var start = Math.max(1, data.page - 3);
-            var end = Math.min(data.pages, data.page + 3);
-            if(data.page>1) html += '<li class="page-item"><a class="page-link" href="#" data-page="'+(data.page-1)+'">&laquo;</a></li>';
-            for(var i=start;i<=end;i++){
-              html += '<li class="page-item '+(i===data.page? 'active':'')+'"><a class="page-link" href="#" data-page="'+i+'">'+i+'</a></li>';
-            }
-            if(data.page<data.pages) html += '<li class="page-item"><a class="page-link" href="#" data-page="'+(data.page+1)+'">&raquo;</a></li>';
-            html += '</ul></nav>';
-            html += '</div>';
-            out.innerHTML = html;
-            // attach pager handlers
-            var links = out.querySelectorAll('.page-link[data-page]') || [];
-            links.forEach(function(ln){ ln.addEventListener('click', function(e){ e.preventDefault(); var p = parseInt(this.dataset.page,10); load(p); }); });
-                // export buttons
-                var expCsv = document.getElementById('export-csv'); if(expCsv) expCsv.addEventListener('click', function(){
-                  // include usuario_nombre if no uid
-                  var qparams = new URLSearchParams(params);
-                  if(!qparams.get('usuario_id')){
-                    var uname = document.getElementById('f-usuario').value || '';
-                    if(uname) qparams.set('usuario_nombre', uname);
-                  }
-                  window.location = '/auditoria/export?'+qparams.toString();
-                });
-                var expPdf = document.getElementById('export-pdf'); if(expPdf) expPdf.addEventListener('click', function(){
-                  alert('Exportar PDF no implementado, descargando CSV en su lugar');
-                  var qparams = new URLSearchParams(params);
-                  if(!qparams.get('usuario_id')){
-                    var uname = document.getElementById('f-usuario').value || '';
-                    if(uname) qparams.set('usuario_nombre', uname);
-                  }
-                  window.location = '/auditoria/export?'+qparams.toString();
-                });
-          }).catch(function(err){ out.innerHTML = '<div class="alert alert-danger">Error cargando auditoría</div>'; console.error(err); });
+      var timer = null;
+      var currentPage = 1;
+      var lastParams = new URLSearchParams();
+
+      function escapeHtml(value){
+        return String(value == null ? '' : value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
       }
-      [tabla, oper, usuario, fmin, fmax, q].forEach(function(el){ if(!el) return; el.addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(function(){ // reset hidden id when user types
-            document.getElementById('f-usuario-id').value = '';
-            load(1); }, 250); }); });
-      // per-page selector
-      document.getElementById('f-per-page').addEventListener('change', function(){ load(1); });
-      // when user selects from datalist, set hidden id
-      usuario.addEventListener('change', function(){
-        var val = this.value;
+
+      function fmtBolivia(iso){
+        try {
+          return new Date(iso).toLocaleString('es-BO', {
+            timeZone: 'America/La_Paz',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+        } catch(e) {
+          return iso || '';
+        }
+      }
+
+      function formatValue(value){
+        if (value === null || typeof value === 'undefined') {
+          return '<span class="italic text-slate-400">null</span>';
+        }
+        if (typeof value === 'object') {
+          return '<code class="text-xs bg-slate-100 px-1.5 py-1 rounded">' + escapeHtml(JSON.stringify(value)) + '</code>';
+        }
+        return escapeHtml(value);
+      }
+
+      function opBadge(op){
+        var normalized = String(op || '').toUpperCase();
+        if (normalized === 'INSERT') return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        if (normalized === 'UPDATE') return 'bg-amber-50 text-amber-700 border border-amber-200';
+        if (normalized === 'DELETE') return 'bg-rose-50 text-rose-700 border border-rose-200';
+        return 'bg-slate-100 text-slate-700 border border-slate-200';
+      }
+
+      function getParams(page){
+        var params = new URLSearchParams();
+        if (tabla && tabla.value) params.set('tabla', tabla.value.trim());
+        if (oper && oper.value) params.set('operacion', oper.value);
+        if (usuarioId && usuarioId.value) {
+          params.set('usuario_id', usuarioId.value);
+        } else if (usuario && usuario.value) {
+          params.set('usuario_nombre', usuario.value.trim());
+        }
+        if (fmin && fmin.value) params.set('fecha_min', fmin.value);
+        if (fmax && fmax.value) params.set('fecha_max', fmax.value);
+        if (q && q.value) params.set('q', q.value.trim());
+        if (per && per.value) params.set('per_page', per.value);
+        params.set('page', page || 1);
+        return params;
+      }
+
+      function renderStats(data){
+        var stats = (data && data.stats) || {};
+        var cards = [
+          { label: 'Registros', value: data.total || 0, tone: 'slate', icon: 'ti ti-list-details' },
+          { label: 'INSERT', value: stats.INSERT || 0, tone: 'emerald', icon: 'ti ti-circle-plus' },
+          { label: 'UPDATE', value: stats.UPDATE || 0, tone: 'amber', icon: 'ti ti-refresh' },
+          { label: 'DELETE', value: stats.DELETE || 0, tone: 'rose', icon: 'ti ti-trash' },
+        ];
+
+        var html = '';
+        cards.forEach(function(card){
+          var palette = {
+            slate: 'bg-slate-50 text-slate-700 border-slate-200',
+            emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            amber: 'bg-amber-50 text-amber-700 border-amber-200',
+            rose: 'bg-rose-50 text-rose-700 border-rose-200',
+          }[card.tone];
+
+          html += '' +
+            '<div class="rounded-xl border ' + palette + ' p-4 shadow-sm">' +
+              '<div class="flex items-center justify-between">' +
+                '<p class="text-xs font-semibold uppercase tracking-wide">' + escapeHtml(card.label) + '</p>' +
+                '<i class="' + escapeHtml(card.icon) + '"></i>' +
+              '</div>' +
+              '<p class="text-2xl font-bold mt-2">' + escapeHtml(card.value) + '</p>' +
+            '</div>';
+        });
+        statsEl.innerHTML = html;
+      }
+
+      function renderRows(items){
+        if (!items || !items.length) {
+          return '<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">No se encontraron registros con los filtros actuales.</td></tr>';
+        }
+
+        var html = '';
+        items.forEach(function(it){
+          var op = String(it.operacion || '').toUpperCase();
+          var rowId = 'audit-detail-' + it.id;
+          var userLabel = it.usuario || it.usuario_correo || (it.usuario_id ? ('Usuario #' + it.usuario_id) : 'Sistema');
+          var detailCount = it.detalle_count || 0;
+          var automaticTag = it.automatico ? '<span class="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">Automático</span>' : '';
+          var clientTag = '';
+          if (it.cliente_ref && it.cliente_ref.id) {
+            var clientName = it.cliente_ref.nombre ? (' - ' + it.cliente_ref.nombre) : '';
+            clientTag = '<div class="mt-1 text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-md px-2 py-1 inline-block">Cliente: #' +
+              escapeHtml(it.cliente_ref.id) + escapeHtml(clientName) + '</div>';
+          }
+
+          html += '' +
+            '<tr class="border-b border-slate-100 align-top">' +
+              '<td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">' + escapeHtml(fmtBolivia(it.fecha)) + '</td>' +
+              '<td class="px-4 py-3 text-sm text-slate-700">' + escapeHtml(it.tabla || '-') + '</td>' +
+              '<td class="px-4 py-3 text-xs text-slate-600"><code class="bg-slate-100 px-1.5 py-0.5 rounded">' + escapeHtml(it.pk_text || '-') + '</code></td>' +
+              '<td class="px-4 py-3"><span class="text-xs font-semibold px-2 py-1 rounded-full ' + opBadge(op) + '">' + escapeHtml(op || '-') + '</span></td>' +
+              '<td class="px-4 py-3 text-sm text-slate-700">' + escapeHtml(userLabel) + '</td>' +
+              '<td class="px-4 py-3 text-sm text-slate-700">' + escapeHtml(it.resumen || '-') + automaticTag + clientTag + '</td>' +
+              '<td class="px-4 py-3 text-right">' +
+                '<button type="button" data-toggle="' + escapeHtml(rowId) + '" class="inline-flex items-center gap-1 text-cyan-700 hover:text-cyan-800 text-sm font-medium">' +
+                  '<i class="ti ti-chevrons-down"></i> Ver detalle (' + escapeHtml(detailCount) + ')' +
+                '</button>' +
+              '</td>' +
+            '</tr>';
+
+          html += '<tr id="' + escapeHtml(rowId) + '" class="hidden bg-slate-50 border-b border-slate-100"><td colspan="7" class="px-4 py-3">';
+
+          if (detailCount > 0) {
+            html += '<div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">';
+            html += '<table class="min-w-full text-sm">';
+            html += '<thead><tr class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">';
+            html += '<th class="px-3 py-2 text-left font-semibold">Campo</th>';
+            html += '<th class="px-3 py-2 text-left font-semibold">Valor anterior</th>';
+            html += '<th class="px-3 py-2 text-left font-semibold">Valor nuevo</th>';
+            html += '</tr></thead><tbody>';
+
+            (it.detalle_rows || []).forEach(function(row){
+              var rowTone = row.es_pk ? 'bg-cyan-50/60' : '';
+              var anteriorVal = (typeof row.anterior_display !== 'undefined') ? row.anterior_display : row.anterior;
+              var nuevoVal = (typeof row.nuevo_display !== 'undefined') ? row.nuevo_display : row.nuevo;
+              html += '<tr class="border-t border-slate-100 ' + rowTone + '">';
+              html += '<td class="px-3 py-2 font-medium text-slate-700">' + escapeHtml(row.campo || '-') + '</td>';
+              html += '<td class="px-3 py-2 text-slate-600">' + formatValue(anteriorVal) + '</td>';
+              html += '<td class="px-3 py-2 text-slate-700">' + formatValue(nuevoVal) + '</td>';
+              html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+          } else {
+            html += '<p class="text-sm text-slate-500">Sin detalle estructurado. Descripción original:</p>';
+            html += '<pre class="mt-2 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg p-3 overflow-x-auto">' + escapeHtml(it.descripcion || '-') + '</pre>';
+          }
+
+          html += '</td></tr>';
+        });
+        return html;
+      }
+
+      function renderPagination(data){
+        if (!data || !data.pages || data.pages <= 1) return '';
+
+        var html = '<div class="mt-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">';
+        html += '<p class="text-sm text-slate-600">Mostrando ' + escapeHtml(data.items.length) + ' de ' + escapeHtml(data.total) + ' registros</p>';
+        html += '<div class="inline-flex items-center gap-1">';
+
+        var start = Math.max(1, data.page - 3);
+        var end = Math.min(data.pages, data.page + 3);
+
+        if (data.page > 1) {
+          html += '<button data-page="' + (data.page - 1) + '" class="px-3 h-9 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-100">&laquo;</button>';
+        }
+
+        for (var i = start; i <= end; i++) {
+          var active = i === data.page;
+          html += '<button data-page="' + i + '" class="px-3 h-9 rounded-lg text-sm border ' +
+            (active ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100') + '">' + i + '</button>';
+        }
+
+        if (data.page < data.pages) {
+          html += '<button data-page="' + (data.page + 1) + '" class="px-3 h-9 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-100">&raquo;</button>';
+        }
+
+        html += '</div></div>';
+        return html;
+      }
+
+      function renderTable(data){
+        var html = '' +
+          '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">' +
+            '<div class="overflow-x-auto">' +
+              '<table class="min-w-full">' +
+                '<thead class="bg-slate-50 border-b border-slate-200">' +
+                  '<tr class="text-xs uppercase tracking-wide text-slate-600">' +
+                    '<th class="px-4 py-3 text-left font-semibold">Fecha</th>' +
+                    '<th class="px-4 py-3 text-left font-semibold">Tabla</th>' +
+                    '<th class="px-4 py-3 text-left font-semibold">PK</th>' +
+                    '<th class="px-4 py-3 text-left font-semibold">Operación</th>' +
+                    '<th class="px-4 py-3 text-left font-semibold">Usuario</th>' +
+                    '<th class="px-4 py-3 text-left font-semibold">Resumen</th>' +
+                    '<th class="px-4 py-3 text-right font-semibold">Acciones</th>' +
+                  '</tr>' +
+                '</thead>' +
+                '<tbody>' + renderRows(data.items || []) + '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</div>';
+
+        html += renderPagination(data);
+        out.innerHTML = html;
+      }
+
+      function load(page){
+        currentPage = page || 1;
+        var params = getParams(currentPage);
+        lastParams = new URLSearchParams(params);
+
+        fetch('/auditoria/search?' + params.toString(), { credentials: 'same-origin' })
+          .then(function(r){ return r.json(); })
+          .then(function(data){
+            renderStats(data);
+            renderTable(data);
+          })
+          .catch(function(err){
+            out.innerHTML = '<div class="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-4 text-sm">Error cargando auditoría</div>';
+            statsEl.innerHTML = '';
+            console.error(err);
+          });
+      }
+
+      function scheduleLoad(resetPage){
+        clearTimeout(timer);
+        timer = setTimeout(function(){
+          if (resetPage) currentPage = 1;
+          load(currentPage || 1);
+        }, 250);
+      }
+
+      function resolveSelectedUserId(){
+        var val = (usuario && usuario.value) || '';
         var opts = usuariosList.querySelectorAll('option') || [];
         var found = null;
-        for(var i=0;i<opts.length;i++){
-          if(opts[i].value === val){ found = opts[i]; break; }
+        for (var i = 0; i < opts.length; i++) {
+          if (opts[i].value === val) {
+            found = opts[i];
+            break;
+          }
         }
-        if(found){ document.getElementById('f-usuario-id').value = found.getAttribute('data-id'); } else { document.getElementById('f-usuario-id').value = ''; }
-        load(1);
+        usuarioId.value = found ? (found.getAttribute('data-id') || '') : '';
+      }
+
+      fetch('/auditoria/users', { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(users){
+          usuariosList.innerHTML = '';
+          users.forEach(function(u){
+            var opt = document.createElement('option');
+            opt.value = u.nombre;
+            opt.setAttribute('data-id', u.id);
+            usuariosList.appendChild(opt);
+          });
+        })
+        .catch(function(){ /* ignore */ });
+
+      [tabla, oper, fmin, fmax, q].forEach(function(el){
+        if (!el) return;
+        el.addEventListener('input', function(){ scheduleLoad(true); });
+        el.addEventListener('change', function(){ scheduleLoad(true); });
       });
-      // initial load
+
+      if (usuario) {
+        usuario.addEventListener('input', function(){
+          usuarioId.value = '';
+          scheduleLoad(true);
+        });
+        usuario.addEventListener('change', function(){
+          resolveSelectedUserId();
+          scheduleLoad(true);
+        });
+      }
+
+      if (per) {
+        per.addEventListener('change', function(){
+          currentPage = 1;
+          load(1);
+        });
+      }
+
+      out.addEventListener('click', function(e){
+        var btnPage = e.target.closest('button[data-page]');
+        if (btnPage) {
+          e.preventDefault();
+          var p = parseInt(btnPage.getAttribute('data-page'), 10) || 1;
+          load(p);
+          return;
+        }
+
+        var btnToggle = e.target.closest('button[data-toggle]');
+        if (btnToggle) {
+          e.preventDefault();
+          var targetId = btnToggle.getAttribute('data-toggle');
+          var row = targetId ? document.getElementById(targetId) : null;
+          if (!row) return;
+          row.classList.toggle('hidden');
+        }
+      });
+
+      if (exportCsv) {
+        exportCsv.addEventListener('click', function(){
+          var qparams = new URLSearchParams(lastParams);
+          qparams.delete('page');
+          window.location = '/auditoria/export?' + qparams.toString();
+        });
+      }
+
+      if (exportPdf) {
+        exportPdf.addEventListener('click', function(){
+          alert('Exportar PDF no implementado, se descargará CSV');
+          var qparams = new URLSearchParams(lastParams);
+          qparams.delete('page');
+          window.location = '/auditoria/export?' + qparams.toString();
+        });
+      }
+
       load(1);
     })();
   </script>

@@ -9,12 +9,10 @@ from flask import (
     jsonify,
 )
 from ..extensions import db
-from ..models import Pago, HistorialPago, Membresia, Plan, Promocion, Cliente
+from ..models import Pago, HistorialPago, Membresia, Cliente
 from ..services.payment_service import (
-    create_payment,
     add_payment_history,
     ensure_membership_state_after_payment,
-    get_payment_with_history,
 )
 from sqlalchemy import func
 from decimal import Decimal, InvalidOperation
@@ -52,7 +50,7 @@ def list_pagos():
     period = request.args.get("period", "all")
     fecha_desde = request.args.get("fecha_desde")
     fecha_hasta = request.args.get("fecha_hasta")
-    metodo_pago_filter = request.args.get("metodo_pago")
+    request.args.get("metodo_pago")
 
     query = Pago.query.join(Cliente, Pago.cliente_id == Cliente.id)
     # apply search by cliente nombre/apellido

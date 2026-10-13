@@ -43,13 +43,68 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">Duración</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Tipo de duración</label>
+            <select id="duracion_tipo" class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 px-4 bg-slate-50 hover:bg-white" name="duracion_tipo">
+              <option value="meses" {% if duracion_tipo != 'dias' %}selected{% endif %}>Periodo estándar</option>
+              <option value="dias" {% if duracion_tipo == 'dias' %}selected{% endif %}>Cantidad exacta de días</option>
+            </select>
+          </div>
+
+          <div id="duracion_meses_wrap">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Duración estándar</label>
             <select class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 px-4 bg-slate-50 hover:bg-white" 
-                    name="duracion">
-              {% for opt in ['Mensual','Trimestral','Semestral','Anual'] %}
-                <option value="{{ opt }}" {% if plan and plan.duracion==opt %}selected{% endif %}>{{ opt }}</option>
+                    name="duracion_meses" id="duracion_meses">
+              {% for value, label in [(1, 'Mensual'), (3, 'Trimestral'), (6, 'Semestral'), (12, 'Anual')] %}
+                <option value="{{ value }}" {% if duracion_tipo != 'dias' and duracion_meses == value %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
+          </div>
+
+          <div id="duracion_dias_wrap" class="hidden">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Cantidad de días</label>
+            <input class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 px-4 bg-slate-50 hover:bg-white" 
+                   name="duracion_dias"
+                   id="duracion_dias"
+                   type="number"
+                   min="1"
+                   step="1"
+                   value="{{ duracion_dias if duracion_tipo == 'dias' else 1 }}"
+                   placeholder="Ej. 15">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Vista previa</label>
+            <div class="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700">
+              <span id="duracion_preview">{{ duracion_label if duracion_label else 'Mensual' }}</span>
+            </div>
+          </div>
+
+          <div class="col-span-1 md:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Modalidad de uso</label>
+              <select id="tipo_uso" class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 px-4 bg-slate-50 hover:bg-white" name="tipo_uso">
+                <option value="tiempo" {% if tipo_uso != 'asistencia_manual' %}selected{% endif %}>Tiempo continuo</option>
+                <option value="asistencia_manual" {% if tipo_uso == 'asistencia_manual' %}selected{% endif %}>Asistencia manual</option>
+              </select>
+            </div>
+
+            <div id="cupo_marcajes_wrap" class="{% if tipo_uso != 'asistencia_manual' %}hidden{% endif %}">
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">Cupo de marcajes</label>
+              <input class="block w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors h-11 px-4 bg-slate-50 hover:bg-white" 
+                     name="cupo_marcajes"
+                     id="cupo_marcajes"
+                     type="number"
+                     min="1"
+                     step="1"
+                     value="{{ cupo_marcajes if cupo_marcajes else '' }}"
+                     placeholder="Ej. 30">
+            </div>
+          </div>
+
+          <div class="col-span-1 md:col-span-2 lg:col-span-4">
+            <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              La modalidad de asistencia manual usa el plazo de la duración del plan para vencer la membresía y además controla el consumo por marcajes.
+            </p>
           </div>
 
           <div>
@@ -102,4 +157,48 @@
     </form>
   </div>
 </div>
+
+<script>
+  (function(){
+    var tipoSel = document.getElementById('duracion_tipo');
+    var mesesWrap = document.getElementById('duracion_meses_wrap');
+    var diasWrap = document.getElementById('duracion_dias_wrap');
+    var mesesSel = document.getElementById('duracion_meses');
+    var diasInput = document.getElementById('duracion_dias');
+    var preview = document.getElementById('duracion_preview');
+    var tipoUsoSel = document.getElementById('tipo_uso');
+    var cupoWrap = document.getElementById('cupo_marcajes_wrap');
+    var cupoInput = document.getElementById('cupo_marcajes');
+
+    function refreshPreview(){
+      if (!preview || !tipoSel) return;
+      if (tipoSel.value === 'dias') {
+        var dias = parseInt(diasInput && diasInput.value ? diasInput.value : '1', 10) || 1;
+        preview.textContent = dias === 1 ? '1 día' : dias + ' días';
+      } else {
+        var value = parseInt(mesesSel && mesesSel.value ? mesesSel.value : '1', 10) || 1;
+        var labels = {1: 'Mensual', 3: 'Trimestral', 6: 'Semestral', 12: 'Anual'};
+        preview.textContent = labels[value] || (value + ' meses');
+      }
+    }
+
+    function toggleFields(){
+      var useDays = tipoSel && tipoSel.value === 'dias';
+      if (mesesWrap) mesesWrap.classList.toggle('hidden', useDays);
+      if (diasWrap) diasWrap.classList.toggle('hidden', !useDays);
+      if (mesesSel) mesesSel.disabled = useDays;
+      if (diasInput) diasInput.disabled = !useDays;
+      var manualMode = tipoUsoSel && tipoUsoSel.value === 'asistencia_manual';
+      if (cupoWrap) cupoWrap.classList.toggle('hidden', !manualMode);
+      if (cupoInput) cupoInput.disabled = !manualMode;
+      refreshPreview();
+    }
+
+    tipoSel && tipoSel.addEventListener('change', toggleFields);
+    mesesSel && mesesSel.addEventListener('change', refreshPreview);
+    diasInput && diasInput.addEventListener('input', refreshPreview);
+    tipoUsoSel && tipoUsoSel.addEventListener('change', toggleFields);
+    toggleFields();
+  })();
+</script>
 {% endblock %}

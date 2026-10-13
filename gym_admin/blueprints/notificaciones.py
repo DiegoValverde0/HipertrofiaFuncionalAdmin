@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify
 from ..models import Notificacion, Cliente, Sucursal
 from ..extensions import db
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
 notif_bp = Blueprint(
     "notificaciones", __name__, template_folder="../templates/notificaciones"

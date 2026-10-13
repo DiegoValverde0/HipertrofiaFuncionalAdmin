@@ -22,6 +22,10 @@
         <input id="membresia-search" class="w-full h-10 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" placeholder="Buscar por cliente o ID..." value="{{ q or '' }}">
       </div>
       
+      <button id="btn-filtro-manual" class="h-10 inline-flex items-center justify-center gap-2 px-4 border text-sm font-medium rounded-xl transition-all duration-200 shadow-sm whitespace-nowrap {{ 'bg-indigo-50 border-indigo-200 text-indigo-700' if tipo_uso == 'asistencia_manual' else 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+        <i class="ti ti-hand-click text-lg"></i> Asistencia Manual
+      </button>
+
       <button onclick="openMembresiaModal('create')" class="h-10 inline-flex items-center justify-center gap-2 px-5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-sm shadow-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap">
         <i class="ti ti-plus text-lg"></i> Nueva Membresía
       </button>
@@ -37,6 +41,7 @@
   (function(){
     var filters = {
       q:        '{{ q or "" }}',
+      tipo_uso: '{{ tipo_uso or "" }}',
       per_page: {{ per_page or 10 }},
       page:     {{ pagination.page if pagination else 1 }}
     };
@@ -52,6 +57,7 @@
 
       var url = new URL('/membresias', window.location.origin);
       if (filters.q) url.searchParams.set('q', filters.q);
+      if (filters.tipo_uso) url.searchParams.set('tipo_uso', filters.tipo_uso);
       url.searchParams.set('per_page', filters.per_page);
       url.searchParams.set('page', filters.page);
       url.searchParams.set('partial', '1');
@@ -66,6 +72,7 @@
           try {
             var stateUrl = new URL(window.location.pathname, window.location.origin);
             if (filters.q) stateUrl.searchParams.set('q', filters.q);
+            if (filters.tipo_uso) stateUrl.searchParams.set('tipo_uso', filters.tipo_uso);
             if (filters.per_page && filters.per_page != 10) stateUrl.searchParams.set('per_page', filters.per_page);
             if (filters.page && filters.page != 1) stateUrl.searchParams.set('page', filters.page);
             history.replaceState(null, '', stateUrl.toString());
@@ -75,6 +82,26 @@
     }
 
     window._membLoadTable = loadTable;
+
+    // Filter by tipo_uso manual
+    var btnManual = document.getElementById('btn-filtro-manual');
+    if (btnManual) {
+      btnManual.addEventListener('click', function() {
+        var isManual = filters.tipo_uso === 'asistencia_manual';
+        filters.tipo_uso = isManual ? '' : 'asistencia_manual';
+        
+        // Toggle button styling
+        if (filters.tipo_uso) {
+          btnManual.classList.remove('bg-white', 'border-slate-200', 'text-slate-700', 'hover:bg-slate-50');
+          btnManual.classList.add('bg-indigo-50', 'border-indigo-200', 'text-indigo-700');
+        } else {
+          btnManual.classList.remove('bg-indigo-50', 'border-indigo-200', 'text-indigo-700');
+          btnManual.classList.add('bg-white', 'border-slate-200', 'text-slate-700', 'hover:bg-slate-50');
+        }
+        
+        loadTable({ page: 1 });
+      });
+    }
 
     // Search (debounced, resets to page 1)
     var searchTimer = null;

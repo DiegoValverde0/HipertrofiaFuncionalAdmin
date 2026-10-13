@@ -2,9 +2,10 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from dateutil.relativedelta import relativedelta
+import re
 from flask import current_app
 from ..extensions import db
-from ..models import Membresia, Cliente, Plan, EstadoMembresia, Pago
+from ..models import Membresia, Cliente, Plan, EstadoMembresia
 from ..utils import _compute_monto_total_for_membresia
 
 
@@ -106,38 +107,127 @@ def get_membership_status(cliente_id, horizon_days=7):
     }
 
 
-def compute_end_date(fecha_inicio, duracion_str):
-    """Compute membership end date given start date and plan duration string.
+def _extract_positive_int(value, default=1):
+    try:
+        parsed = int(value)
+        return parsed if parsed > 0 else default
+    except Exception:
+        return default
 
-    Plan duration string: 'Mensual', 'Trimestral', 'Semestral', 'Anual'
-    Adjusts to next Monday if falls on weekend.
+
+def _resolve_duration_config(duration_source, duracion_tipo=None, duracion_valor=None):
+    """Resolve a plan duration into unit and amount.
+
+    Supports Plan objects with explicit duration config, dicts and legacy strings.
+    """
+    tipo = str(duracion_tipo or "").strip().lower()
+    valor = duracion_valor
+    legacy = ""
+
+    if isinstance(duration_source, Plan):
+        legacy = getattr(duration_source, "duracion", "") or ""
+        tipo = str(getattr(duration_source, "duracion_tipo", tipo) or "").strip().lower()
+        valor = getattr(duration_source, "duracion_valor", valor)
+    elif isinstance(duration_source, dict):
+        legacy = str(duration_source.get("duracion") or "")
+        tipo = str(duration_source.get("duracion_tipo") or tipo).strip().lower()
+        valor = duration_source.get("duracion_valor", valor)
+    else:
+        legacy = str(duration_source or "")
+
+    amount = _extract_positive_int(valor, default=1)
+    normalized = legacy.strip().lower()
+
+    # Compatibility rule:
+    # - When the new config is still generic (1 month) but the legacy label is specific,
+    #   keep honoring the legacy label so old plans do not silently change behavior.
+    if isinstance(duration_source, Plan) and tipo == "meses" and amount == 1:
+        legacy_months = {
+            "mensual": 1,
+            "trimestral": 3,
+            "semestral": 6,
+            "anual": 12,
+        }
+        if normalized in legacy_months:
+            return "meses", legacy_months[normalized]
+        match = re.search(r"(\d+)\s*(mes|meses|month|months)", normalized)
+        if match:
+            return "meses", _extract_positive_int(match.group(1), default=1)
+        if "día" in normalized or "dias" in normalized or "day" in normalized:
+            match = re.search(r"(\d+)\s*(día|dias|día[s]?|day|days)", normalized)
+            if match:
+                return "dias", _extract_positive_int(match.group(1), default=1)
+
+    if tipo in {"dia", "dias", "day", "days", "manual"}:
+        return "dias", amount
+    if tipo in {"mes", "meses", "month", "months"}:
+        return "meses", amount
+
+    preset_months = {
+        "mensual": 1,
+        "trimestral": 3,
+        "semestral": 6,
+        "anual": 12,
+    }
+    if normalized in preset_months:
+        return "meses", preset_months[normalized]
+
+    match = re.search(r"(\d+)\s*(día|dias|día[s]?|day|days)", normalized)
+    if match:
+        return "dias", _extract_positive_int(match.group(1), default=1)
+
+    match = re.search(r"(\d+)\s*(mes|meses|month|months)", normalized)
+    if match:
+        return "meses", _extract_positive_int(match.group(1), default=1)
+
+    if "día" in normalized or "dias" in normalized or "day" in normalized:
+        return "dias", amount
+
+    return "meses", amount
+
+
+def _resolve_usage_config(plan):
+    """Resolve usage mode settings for a plan."""
+    try:
+        tipo_uso = str(getattr(plan, "tipo_uso", "tiempo") or "tiempo").strip().lower()
+    except Exception:
+        tipo_uso = "tiempo"
+    try:
+        cupo_marcajes = getattr(plan, "cupo_marcajes", None)
+        cupo_marcajes = int(cupo_marcajes) if cupo_marcajes is not None else None
+        if cupo_marcajes is not None and cupo_marcajes <= 0:
+            cupo_marcajes = None
+    except Exception:
+        cupo_marcajes = None
+    return tipo_uso, cupo_marcajes
+
+
+def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion_valor=None):
+    """Compute membership end date given a duration configuration.
+
+    Monthly durations preserve the current weekend-to-Monday adjustment.
+    Day-based durations keep the exact day count.
     """
     try:
-        if not fecha_inicio or not duracion_str:
+        if not fecha_inicio or not duracion_source:
             return None
 
-        # Map duracion string to months
-        duracion_map = {
-            'Mensual': 1,
-            'mensual': 1,
-            'Trimestral': 3,
-            'trimestral': 3,
-            'Semestral': 6,
-            'semestral': 6,
-            'Anual': 12,
-            'anual': 12,
-        }
-        months = duracion_map.get(duracion_str, 1)
+        unidad, amount = _resolve_duration_config(
+            duracion_source,
+            duracion_tipo=duracion_tipo,
+            duracion_valor=duracion_valor,
+        )
 
-        # Add exact months using relativedelta
-        end_date = fecha_inicio + relativedelta(months=months)
+        if unidad == "dias":
+            end_date = fecha_inicio + timedelta(days=max(amount, 1) - 1)
+        else:
+            end_date = fecha_inicio + relativedelta(months=max(amount, 1))
 
-        # Adjust to Monday if on weekend
-        weekday = end_date.weekday()
-        if weekday == 5:  # Saturday
-            end_date = end_date + timedelta(days=2)
-        elif weekday == 6:  # Sunday
-            end_date = end_date + timedelta(days=1)
+            weekday = end_date.weekday()
+            if weekday == 5:  # Saturday
+                end_date = end_date + timedelta(days=2)
+            elif weekday == 6:  # Sunday
+                end_date = end_date + timedelta(days=1)
 
         return end_date
     except Exception as e:
@@ -219,7 +309,7 @@ def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=Non
             }
         
         # Calcular fecha_fin
-        fecha_fin = compute_end_date(fecha_inicio, plan.duracion)
+        fecha_fin = compute_end_date(fecha_inicio, plan)
         if not fecha_fin:
             return {
                 'estado': 'error',
@@ -338,9 +428,12 @@ def create_membership(
         except Exception:
             return False, None, "Error validando estado"
 
+        # Resolve plan usage mode so memberships inherit the intended behavior.
+        tipo_uso, cupo_marcajes = _resolve_usage_config(plan)
+
         # Compute end date from plan unless explicitly provided (admin/manual override)
         if not fecha_fin:
-            fecha_fin = compute_end_date(fecha_inicio, plan.duracion)
+            fecha_fin = compute_end_date(fecha_inicio, plan)
             if not fecha_fin:
                 return False, None, "No se pudo calcular fecha de fin"
 
@@ -360,6 +453,9 @@ def create_membership(
             estado_id=estado_id,
             sucursal_id=sucursal_id or cliente.sucursal_id,
             promocion_id=promocion_id,
+            tipo_uso=tipo_uso,
+            cupo_marcajes=cupo_marcajes,
+            marcajes_usados=0,
             tipo_creacion=tipo_creacion,
         )
 
@@ -396,6 +492,10 @@ def update_membership(membresia_id, **kwargs):
             new_plan = Plan.query.get(updates.get("plan_id"))
             if not new_plan or getattr(new_plan, "estado", None) != "Activo":
                 return False, "Plan no válido o inactivo"
+            tipo_uso, cupo_marcajes = _resolve_usage_config(new_plan)
+            updates["tipo_uso"] = tipo_uso
+            updates["cupo_marcajes"] = cupo_marcajes
+            updates["marcajes_usados"] = 0
 
         new_fecha_inicio = updates.get("fecha_inicio", membresia.fecha_inicio)
         if isinstance(new_fecha_inicio, str):
@@ -417,7 +517,7 @@ def update_membership(membresia_id, **kwargs):
         if ("plan_id" in updates or "fecha_inicio" in updates) and not explicit_fecha_fin:
             if not new_plan:
                 return False, "Plan no válido o inactivo"
-            new_fecha_fin = compute_end_date(new_fecha_inicio, new_plan.duracion)
+            new_fecha_fin = compute_end_date(new_fecha_inicio, new_plan)
             if not new_fecha_fin:
                 return False, "No se pudo calcular fecha de fin"
             updates["fecha_fin"] = new_fecha_fin

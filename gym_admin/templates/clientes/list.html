@@ -76,6 +76,22 @@
     var searchEl = document.getElementById('cliente-search');
     var estadoEl = document.getElementById('estado-select');
     var perPageEl = document.getElementById('per-page');
+    var tableEl = document.getElementById('clientes-table');
+    var accordionEl = document.getElementById('clientes-accordion');
+    var activeController = null;
+    var lastRequestId = 0;
+
+    function setLoading(isLoading) {
+      var currentTarget = window.matchMedia('(max-width: 768px)').matches ? accordionEl : tableEl;
+      if (!currentTarget) return;
+      if (isLoading) {
+        currentTarget.style.opacity = '0.55';
+        currentTarget.style.pointerEvents = 'none';
+      } else {
+        currentTarget.style.opacity = '';
+        currentTarget.style.pointerEvents = '';
+      }
+    }
 
     // ─── Core: Load table via AJAX with current filters ───
     function loadTable(overrides) {
@@ -89,6 +105,12 @@
       }
 
       var url = new URL('/clientes/table', window.location.origin);
+      var requestId = ++lastRequestId;
+
+      if (activeController) {
+        try { activeController.abort(); } catch(e) {}
+      }
+      activeController = new AbortController();
 
       // Add all non-empty filters as query params
       if (filters.q)        url.searchParams.set('q', filters.q);
@@ -103,9 +125,13 @@
         url.searchParams.set('mode', 'accordion');
       }
 
-      fetch(url.toString(), { credentials: 'same-origin' })
+      setLoading(true);
+
+      fetch(url.toString(), { credentials: 'same-origin', signal: activeController.signal })
         .then(function(res) { return res.text(); })
         .then(function(html) {
+          if (requestId !== lastRequestId) return;
+
           var isAccordion = url.searchParams.get('mode') === 'accordion';
           var targetEl = isAccordion
             ? document.getElementById('clientes-accordion')
@@ -132,7 +158,12 @@
           } catch(e) {}
         })
         .catch(function(err) {
+          if (err && err.name === 'AbortError') return;
           console.error('Error loading client table', err);
+        })
+        .finally(function(){
+          if (requestId !== lastRequestId) return;
+          setLoading(false);
         });
     }
 

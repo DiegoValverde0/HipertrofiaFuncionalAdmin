@@ -139,6 +139,10 @@ class Plan(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     duracion = db.Column(db.String(20), nullable=False)
+    duracion_tipo = db.Column(db.String(20), nullable=False, default="meses")
+    duracion_valor = db.Column(db.Integer, nullable=False, default=1)
+    tipo_uso = db.Column(db.String(30), nullable=False, default="tiempo")
+    cupo_marcajes = db.Column(db.Integer, nullable=True)
     precio = db.Column(db.Numeric(10, 2), nullable=False)
     tipo = db.Column(db.String(20), nullable=False)
     fecha_creacion = db.Column(
@@ -189,6 +193,9 @@ class Membresia(db.Model):
     fecha_inicio = db.Column(db.Date, nullable=False)
     fecha_fin = db.Column(db.Date, nullable=False)
     estado_id = db.Column(db.Integer, db.ForeignKey("estados_membresias.id"))
+    tipo_uso = db.Column(db.String(30), nullable=False, default="tiempo")
+    cupo_marcajes = db.Column(db.Integer, nullable=True)
+    marcajes_usados = db.Column(db.Integer, nullable=False, default=0)
     
     # NUEVO: Registrar si fue 'new' o 'extend' para auditoría e intención
     tipo_creacion = db.Column(
@@ -199,6 +206,12 @@ class Membresia(db.Model):
     )
 
     pagos = db.relationship("Pago", backref="membresia", lazy=True)
+    marcajes_asistencia = db.relationship(
+        "MarcajeAsistencia",
+        backref="membresia",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<Membresia {self.id} cliente={self.cliente_id}>"
@@ -237,6 +250,13 @@ class Membresia(db.Model):
             return self.estado_membresia and self.estado_membresia.nombre.lower().startswith("inactiv")
         except Exception:
             return self.estado_id == 4
+
+    @property
+    def is_manual_asistencia(self):
+        try:
+            return (self.tipo_uso or "").lower() == "asistencia_manual"
+        except Exception:
+            return False
 
 
 # Asignar automáticamente la sucursal actual desde la sesión si no se proporciona
@@ -294,6 +314,25 @@ class HistorialPago(db.Model):
         return f"<HistorialPago pago_id={self.pago_id} monto={self.monto_pagado}>"
 
 
+class MarcajeAsistencia(db.Model):
+    __tablename__ = "marcajes_asistencia"
+    id = db.Column(db.Integer, primary_key=True)
+    membresia_id = db.Column(db.Integer, db.ForeignKey("membresias.id"), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("clientes.id"), nullable=False)
+    sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    tipo_registro = db.Column(db.String(20), nullable=False, default="manual")
+    observacion = db.Column(db.String(255), nullable=True)
+
+    cliente = db.relationship("Cliente", backref="marcajes_asistencia")
+    sucursal = db.relationship("Sucursal", backref="marcajes_asistencia")
+    usuario = db.relationship("Usuario", backref="marcajes_asistencia")
+
+    def __repr__(self):
+        return f"<MarcajeAsistencia membresia_id={self.membresia_id} fecha={self.fecha_registro}>"
+
+
 class Cuenta(db.Model):
     __tablename__ = "cuentas"
     id = db.Column(db.Integer, primary_key=True)
@@ -334,6 +373,11 @@ class Gasto(db.Model):
 
 class Inventario(db.Model):
     __tablename__ = "inventario"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "producto_id", "sucursal_id", name="uq_inventario_producto_sucursal"
+        ),
+    )
     id = db.Column(db.Integer, primary_key=True)
     producto_id = db.Column(db.Integer, db.ForeignKey("productos.id"), nullable=False)
     sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
@@ -342,10 +386,6 @@ class Inventario(db.Model):
     # Relaciones con back_populates para eliminar ambigüedad
     sucursal = db.relationship("Sucursal", back_populates="inventarios")
     producto = db.relationship("Producto", back_populates="inventarios")
-
-    db.UniqueConstraint(
-        "producto_id", "sucursal_id", name="uq_inventario_producto_sucursal"
-    )
 
     def __repr__(self):
         return f"<Inventario Prod:{self.producto_id} Suc:{self.sucursal_id} Cant:{self.cantidad}>"

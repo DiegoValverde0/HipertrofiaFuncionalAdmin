@@ -15,19 +15,15 @@ from ..services.client_service import (
     update_client,
     delete_client,
     compute_age,
-    get_client_with_flags,
 )
 from flask_login import current_user
-from ..extensions import db
 from ..utils import (
     _compute_monto_total_for_membresia,
     admin_required,
     api_key_required,
     verify_sucursal_access,
 )
-from datetime import date, datetime
 from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
 from datetime import date, datetime, timedelta
 
 clientes_bp = Blueprint("clientes", __name__)
@@ -57,7 +53,7 @@ def _compute_client_flags_global(clients_list, horizon_days=7, sucursal_id=None)
                     ]
 
                 for m in membresias_a_revisar:
-                    estado = getattr(m, "estado_id", None)
+                    getattr(m, "estado_id", None)
                     if not getattr(m, "fecha_fin", None):
                         continue
                     if m.is_activa:
@@ -207,10 +203,22 @@ def list_clientes():
                 has_active = False
                 soon = False
                 soon_date = None
+                has_manual = False
+                manual_membresia_id = None
+
                 try:
                     candidates = []
+                    from ..services.attendance_service import manual_attendance_summary
                     for m in c.membresias:
-                        estado = getattr(m, "estado_id", None)
+                        getattr(m, "estado_id", None)
+                        
+                        # Check manual attendance
+                        if getattr(m, "is_manual_asistencia", False):
+                            summary = manual_attendance_summary(m)
+                            if summary.get("puede_marcar"):
+                                has_manual = True
+                                manual_membresia_id = m.id
+                        
                         if not getattr(m, "fecha_fin", None):
                             continue
                         if m.is_activa:
@@ -248,13 +256,17 @@ def list_clientes():
                     has_active = False
                     soon = False
                     soon_date = None
+                    has_manual = False
+                    manual_membresia_id = None
                 flags[c.id] = {
                     "has_active": has_active,
                     "soon": soon,
                     "fecha_fin": str(soon_date) if soon_date else None,
+                    "has_manual": has_manual,
+                    "manual_membresia_id": manual_membresia_id,
                 }
         except Exception:
-            return {}
+            pass
         return flags
 
     client_flags = _compute_client_flags(items)
@@ -425,10 +437,22 @@ def clientes_table():
                 has_active = False
                 soon = False
                 soon_date = None
+                has_manual = False
+                manual_membresia_id = None
+
                 try:
                     candidates = []
+                    from ..services.attendance_service import manual_attendance_summary
                     for m in c.membresias:
-                        estado = getattr(m, "estado_id", None)
+                        getattr(m, "estado_id", None)
+                        
+                        # Check manual attendance
+                        if getattr(m, "is_manual_asistencia", False):
+                            summary = manual_attendance_summary(m)
+                            if summary.get("puede_marcar"):
+                                has_manual = True
+                                manual_membresia_id = m.id
+                        
                         if not getattr(m, "fecha_fin", None):
                             continue
                         if m.is_activa:
@@ -466,13 +490,17 @@ def clientes_table():
                     has_active = False
                     soon = False
                     soon_date = None
+                    has_manual = False
+                    manual_membresia_id = None
                 flags[c.id] = {
                     "has_active": has_active,
                     "soon": soon,
                     "fecha_fin": str(soon_date) if soon_date else None,
+                    "has_manual": has_manual,
+                    "manual_membresia_id": manual_membresia_id,
                 }
         except Exception:
-            return {}
+            pass
         return flags
 
     client_flags = _compute_client_flags(pag.items)
@@ -655,6 +683,7 @@ def create_cliente():
         # Usar servicio para crear cliente
         success, cliente, error_msg = create_client(
             nombre=nombre,
+            apellido=apellido,
             correo=correo or None,
             telefono=telefono or None,
             fecha_nacimiento=fecha_nacimiento,
@@ -759,6 +788,7 @@ def edit_cliente(cliente_id):
         success, error_msg = update_client(
             cliente_id=cliente_id,
             nombre=nombre,
+            apellido=apellido,
             correo=correo or None,
             telefono=telefono or None,
             fecha_nacimiento=fecha_nacimiento,
@@ -802,9 +832,9 @@ def delete_cliente(cliente_id):
     c = Cliente.query.get_or_404(cliente_id)
     verify_sucursal_access(c)
     try:
-        from ..blueprints.auth import current_user as auth_current_user
+        pass
     except Exception:
-        auth_current_user = None
+        pass
 
     if not (
         current_user
@@ -828,7 +858,7 @@ def delete_cliente(cliente_id):
 def api_list_clientes():
     try:
         # 1. Obtener contexto de seguridad desde el decorador
-        api_user = getattr(g, "api_key_user", None)
+        getattr(g, "api_key_user", None)
         api_sucursal_id = getattr(g, "api_key_sucursal_id", None)
 
         # 2. Obtener y sanear parámetros de búsqueda
