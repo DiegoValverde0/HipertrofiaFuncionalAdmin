@@ -24,6 +24,9 @@ class Config:
         )
 
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///gym.db")
+
+    # Token para tareas programadas (cron) que llaman a /membresias/admin/run_maintenance
+    ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2MB por request
 

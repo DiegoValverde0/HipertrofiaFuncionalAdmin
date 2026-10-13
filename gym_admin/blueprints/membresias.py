@@ -11,6 +11,7 @@ from flask import (
     abort,
 )
 from flask_login import current_user
+import hmac
 from ..models import Membresia, Cliente, Plan, Promocion, EstadoMembresia
 from ..services.membership_service import (
     get_membership_status,
@@ -24,6 +25,7 @@ from ..services.attendance_service import (
 from ..utils import (
     _compute_monto_total_for_membresia,
     admin_required,
+    login_exempt,
     verify_sucursal_access,
     process_membership_states,
 )
@@ -158,28 +160,28 @@ def list_membresias():
 
 
 @membresias_bp.route("/admin/run_maintenance")
+@login_exempt
 def run_maintenance():
     """Endpoint unificado para mantenimiento del sistema.
     Permite acceso si:
     1. El usuario es administrador logueado.
-    2. SE PROVEE un ADMIN_TOKEN válido vía query string (para CRON).
+    2. Se envía el ADMIN_TOKEN en la cabecera ``Authorization: Bearer <token>``
+       (usado por el cron del VPS).
     """
-    token = request.args.get("token")
-    conf_tok = current_app.config.get("ADMIN_TOKEN")
-    
-    is_admin = False
-    try:
-        from flask_login import current_user
-        is_admin = current_user.is_authenticated and current_user.rol_id == 1
-    except Exception:
-        pass
+    is_admin = bool(
+        current_user
+        and current_user.is_authenticated
+        and getattr(current_user, "rol_id", None) == 1
+    )
 
-    # Validar token (debe estar configurado en .env y coincidir)
-    is_cron = conf_tok and token and token == conf_tok
-    
+    conf_tok = current_app.config.get("ADMIN_TOKEN") or ""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
+    is_cron = bool(conf_tok and token) and hmac.compare_digest(token, conf_tok)
+
     if not is_admin and not is_cron:
         return jsonify({"success": False, "message": "Acceso denegado"}), 403
-    
+
     try:
         from .notificaciones import create_birthday_notifications_for_week
         

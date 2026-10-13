@@ -151,6 +151,15 @@ def admin_required(func):
     return wrapper
 
 
+def login_exempt(func):
+    """Marca una vista para que el before_request global no exija sesión.
+
+    La vista queda a cargo de validar su propio acceso.
+    """
+    func._login_exempt = True
+    return func
+
+
 def api_key_required(func):
     """
     Decorador para proteger endpoints API con validación de API key.

@@ -201,10 +201,12 @@ def create_app(config_object: str | None = None):
                 ):
                     return None
 
-                # Rutas protegidas con @api_key_required validan su propia
-                # autenticación (sesión o API key); el resto exige sesión.
+                # Rutas con @api_key_required o @login_exempt validan su propia
+                # autenticación (sesión, API key o token); el resto exige sesión.
                 view = app.view_functions.get(request.endpoint)
-                if getattr(view, "_api_key_protected", False):
+                if getattr(view, "_api_key_protected", False) or getattr(
+                    view, "_login_exempt", False
+                ):
                     return None
 
             # 2. PERMITIR PDFS TOKENIZADOS
