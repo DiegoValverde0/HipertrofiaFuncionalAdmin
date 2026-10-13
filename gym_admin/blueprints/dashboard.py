@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify, render_template, request, url_for, session
-from ..models import Gasto, Pago, Cliente, Membresia, Plan, Promocion
+from flask import Blueprint, jsonify, render_template, request, session
+from ..models import Gasto, Pago, Cliente, Membresia, Plan
 from ..extensions import db
-from datetime import datetime, date
+from datetime import date
 from sqlalchemy import func
 from flask_login import current_user
 
@@ -99,7 +99,7 @@ def api_financials_monthly():
     # if include_cafeteria requested, aggregate Venta.monto_total by month and add to pagos
     if include_cafeteria:
         try:
-            from ..models import Venta, Cliente as _Cliente
+            from ..models import Venta
 
             # build month expression for Venta.fecha_venta similar to Pago/Gasto above
             if dialect in ("mysql", "mariadb"):
@@ -325,83 +325,6 @@ def api_members_expiring():
         return jsonify(dict(error=str(e)))
 
 
-@dashboard_bp.route("/api/debug")
-def api_debug():
-    info = {}
-    try:
-        bind = db.session.get_bind()
-        info["dialect"] = getattr(bind, "dialect").name
-    except Exception as e:
-        info["dialect"] = f"unknown ({e})"
-    try:
-        info["counts"] = dict(
-            clientes=Cliente.query.count(),
-            pagos=Pago.query.count(),
-            gastos=Gasto.query.count(),
-            membresias=Membresia.query.count(),
-        )
-    except Exception as e:
-        info["counts"] = dict(error=str(e))
-    # attempt small sample queries and monthly aggregation
-    try:
-        p = Pago.query.order_by(Pago.id.desc()).limit(5).all()
-        info["pagos_sample"] = [
-            dict(id=x.id, monto=float(x.monto_total or 0), fecha=str(x.fecha_pago))
-            for x in p
-        ]
-    except Exception as e:
-        info["pagos_sample"] = dict(error=str(e))
-    try:
-        g = Gasto.query.order_by(Gasto.id.desc()).limit(5).all()
-        info["gastos_sample"] = [
-            dict(id=x.id, monto=float(x.monto or 0), fecha=str(x.fecha_gasto))
-            for x in g
-        ]
-    except Exception as e:
-        info["gastos_sample"] = dict(error=str(e))
-
-    # try monthly aggregation but catch errors
-    try:
-        # reuse the logic above to detect dialect
-        bind = db.session.get_bind()
-        dialect = getattr(bind, "dialect").name
-        if dialect in ("mysql", "mariadb"):
-            m_expr_pago = func.date_format(Pago.fecha_pago, "%Y-%m")
-            m_expr_gasto = func.date_format(Gasto.fecha_gasto, "%Y-%m")
-        elif dialect == "postgresql":
-            m_expr_pago = func.to_char(Pago.fecha_pago, "YYYY-MM")
-            m_expr_gasto = func.to_char(Gasto.fecha_gasto, "YYYY-MM")
-        else:
-            m_expr_pago = func.strftime("%Y-%m", Pago.fecha_pago)
-            m_expr_gasto = func.strftime("%Y-%m", Gasto.fecha_gasto)
-        pagos_q = (
-            db.session.query(
-                m_expr_pago.label("m"), func.sum(Pago.monto_total).label("ingresos")
-            )
-            .group_by(m_expr_pago)
-            .order_by(m_expr_pago)
-            .limit(5)
-        )
-        gastos_q = (
-            db.session.query(
-                m_expr_gasto.label("m"), func.sum(Gasto.monto).label("egresos")
-            )
-            .group_by(m_expr_gasto)
-            .order_by(m_expr_gasto)
-            .limit(5)
-        )
-        info["pagos_agg_sample"] = [
-            {"m": r.m, "ingresos": float(r.ingresos or 0)} for r in pagos_q
-        ]
-        info["gastos_agg_sample"] = [
-            {"m": r.m, "egresos": float(r.egresos or 0)} for r in gastos_q
-        ]
-    except Exception as e:
-        info["agg_error"] = str(e)
-
-    return jsonify(info)
-
-
 @dashboard_bp.route("/api/overview")
 def api_overview():
     """Return totals for cards (clientes total/activos/inactivos) respecting sucursal filter"""
@@ -469,7 +392,7 @@ def api_promociones_activas():
     try:
         from ..models import Promocion
 
-        today = date.today()
+        date.today()
         q = Promocion.query.filter(Promocion.estado == "Activo")
         # optionally respect sucursal if promos have sucursal (they don't by model); keep global
         rows = q.order_by(Promocion.fecha_fin.asc()).limit(10).all()

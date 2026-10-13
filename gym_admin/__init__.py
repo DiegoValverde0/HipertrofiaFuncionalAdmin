@@ -1,6 +1,5 @@
 from flask import Flask, render_template, session, request
 from .config import Config
-from .extensions import db, migrate, login_manager, csrf, limiter
 from datetime import date
 
 
@@ -25,6 +24,11 @@ def create_app(config_object: str | None = None):
         extensions.login_manager.init_app(app)
     if getattr(extensions, "csrf", None):
         extensions.csrf.init_app(app)
+    else:
+        app.logger.warning(
+            "CSRFProtect no disponible; se ejecuta en modo compatibilidad. "
+            "Instale Flask-WTF para protección CSRF completa."
+        )
     if getattr(extensions, "limiter", None):
         extensions.limiter.init_app(app)
 
@@ -33,9 +37,10 @@ def create_app(config_object: str | None = None):
     def inject_csrf_token():
         try:
             from flask_wtf.csrf import generate_csrf
+
             return dict(csrf_token=generate_csrf)
-        except ImportError:
-            # Fallback si flask-wtf no está disponible
+        except Exception:
+            # Compatibilidad cuando Flask-WTF no está instalado.
             return dict(csrf_token=lambda: "")
 
     # register blueprints
@@ -52,10 +57,7 @@ def create_app(config_object: str | None = None):
     from .blueprints.finanzas import finanzas_bp
     from .blueprints.estados_membresias import estados_bp
     from .blueprints.gastos import gastos_bp
-    from .blueprints.notificaciones import (
-        notif_bp,
-        create_birthday_notifications_for_week,
-    )
+    from .blueprints.notificaciones import notif_bp
     from .blueprints.dashboard import dashboard_bp
     from .blueprints.productos import productos_bp
     from .blueprints.ventas import ventas_bp
@@ -93,6 +95,22 @@ def create_app(config_object: str | None = None):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers[
+            "Content-Security-Policy"
+        ] = "; ".join(
+            [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://code.jquery.com https://npmcdn.com",
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
+                "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
+                "img-src 'self' data: blob:",
+                "connect-src 'self'",
+                "object-src 'none'",
+                "frame-ancestors 'self'",
+                "base-uri 'self'",
+                "form-action 'self'",
+            ]
+        )
         if request.is_secure:
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"
@@ -167,18 +185,6 @@ def create_app(config_object: str | None = None):
         sucursal_id = session.get("sucursal_id") if session is not None else None
         return dict(sucursales=sucursales, sucursal_actual_id=sucursal_id)
 
-    # context processor para sucursales y sucursal actual
-    from .models import Sucursal
-
-    @app.context_processor
-    def inject_sucursales():
-        try:
-            sucursales = Sucursal.query.order_by(Sucursal.nombre).all()
-        except Exception:
-            sucursales = []
-        sucursal_id = session.get("sucursal_id") if session is not None else None
-        return dict(sucursales=sucursales, sucursal_actual_id=sucursal_id)
-
     # Requerir autenticación en todas las rutas por defecto (excluir auth y static)
     @app.before_request
     def require_login_all_routes():
@@ -195,9 +201,10 @@ def create_app(config_object: str | None = None):
                 ):
                     return None
 
-                # EXCEPCIÓN CRÍTICA: No redirigir si es una ruta de API
-                # Esto permite que @api_key_required haga su trabajo después
-                if "api" in request.endpoint:
+                # Rutas protegidas con @api_key_required validan su propia
+                # autenticación (sesión o API key); el resto exige sesión.
+                view = app.view_functions.get(request.endpoint)
+                if getattr(view, "_api_key_protected", False):
                     return None
 
             # 2. PERMITIR PDFS TOKENIZADOS

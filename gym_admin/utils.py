@@ -1,8 +1,7 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from decimal import Decimal
 from .extensions import db
-from .models import Membresia, Pago, HistorialPago, APIKey
-from sqlalchemy import func
+from .models import Membresia, APIKey
 from flask import current_app, request, jsonify, g, session, abort
 from functools import wraps
 from flask import redirect, url_for
@@ -79,7 +78,6 @@ def verify_sucursal_access(resource):
         # Si es un abort(403), re-lanzarlo
         if hasattr(e, "code") and getattr(e, "code", None) == 403:
             raise
-        pass
 
     return True
 
@@ -265,6 +263,8 @@ def api_key_required(func):
                 500,
             )
 
+    # Permite que el before_request global deje pasar sin sesión sólo a estas vistas
+    wrapper._api_key_protected = True
     return wrapper
 
 
