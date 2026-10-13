@@ -8,6 +8,7 @@ from flask import (
     jsonify,
     session,
     g,
+    current_app,
 )
 from ..models import Cliente, Sucursal
 from ..services.client_service import (
@@ -16,9 +17,9 @@ from ..services.client_service import (
     delete_client,
     compute_age,
 )
+from ..services.membership_service import compute_coverage, local_today
 from flask_login import current_user
 from ..utils import (
-    _compute_monto_total_for_membresia,
     admin_required,
     api_key_required,
     verify_sucursal_access,
@@ -29,75 +30,48 @@ from datetime import date, datetime, timedelta
 clientes_bp = Blueprint("clientes", __name__)
 
 
-def _compute_client_flags_global(clients_list, horizon_days=7, sucursal_id=None):
-    """Compute has_active, soon and fecha_fin flags for a list of Cliente objects.
-    Uses the same business rules as the per-page helper in the template (estado codes and payment checks).
-    Returns a dict mapping cliente.id -> flags dict."""
-    from datetime import date as _d, timedelta
-    from decimal import Decimal
+def _compute_client_flags_global(
+    clients_list, horizon_days=7, sucursal_id=None, include_manual=False
+):
+    """Flags de membresía por cliente para listados y filtros.
 
+    Usa compute_coverage: el cliente está cubierto hasta la fecha_fin más
+    lejana entre sus membresías activas o en espera pagadas, así que una
+    renovación ya pagada evita que figure como "por vencer".
+    Returns dict cliente.id -> flags.
+    """
+    from ..services.attendance_service import manual_attendance_summary
+
+    today = local_today()
     flags = {}
-    try:
-        horizon = _d.today() + timedelta(days=horizon_days)
-        for c in clients_list:
-            has_active = False
-            soon = False
-            soon_date = None
-            try:
-                candidates = []
-                # Filtrar membresías por sucursal si se proporciona el ID
-                membresias_a_revisar = c.membresias
-                if sucursal_id:
-                    membresias_a_revisar = [
-                        m for m in c.membresias if m.sucursal_id == sucursal_id
-                    ]
+    for c in clients_list:
+        membresias = c.membresias
+        if sucursal_id:
+            membresias = [m for m in membresias if m.sucursal_id == sucursal_id]
+        try:
+            coverage = compute_coverage(membresias, horizon_days, today=today)
+        except Exception:
+            current_app.logger.exception("Error calculando cobertura del cliente %s", c.id)
+            coverage = {"has": False, "soon": False, "coverage_end": None}
 
-                for m in membresias_a_revisar:
-                    getattr(m, "estado_id", None)
-                    if not getattr(m, "fecha_fin", None):
-                        continue
-                    if m.is_activa:
-                        candidates.append(m)
-                        continue
-                    if m.is_en_espera:
-                        try:
-                            total_due = _compute_monto_total_for_membresia(m)
-                        except Exception:
-                            total_due = None
-                        if total_due and total_due > 0:
-                            total_paid = Decimal("0")
-                            try:
-                                for p in m.pagos:
-                                    for h in p.historial:
-                                        try:
-                                            total_paid += Decimal(h.monto_pagado)
-                                        except Exception:
-                                            pass
-                            except Exception:
-                                pass
-                            if total_paid >= total_due:
-                                candidates.append(m)
-
-                if candidates:
-                    m_sorted = sorted(candidates, key=lambda mm: mm.fecha_fin)
-                    first = m_sorted[0]
-                    has_active = True
-                    if first.fecha_fin <= horizon:
-                        soon = True
-                        soon_date = first.fecha_fin
-                else:
-                    has_active = False
-            except Exception:
-                has_active = False
-                soon = False
-                soon_date = None
-            flags[c.id] = {
-                "has_active": has_active,
-                "soon": soon,
-                "fecha_fin": str(soon_date) if soon_date else None,
-            }
-    except Exception:
-        return {}
+        entry = {
+            "has_active": coverage["has"],
+            "soon": coverage["soon"],
+            "fecha_fin": str(coverage["coverage_end"]) if coverage["soon"] else None,
+        }
+        if include_manual:
+            entry["has_manual"] = False
+            entry["manual_membresia_id"] = None
+            for m in membresias:
+                try:
+                    if m.is_manual_asistencia and manual_attendance_summary(m).get(
+                        "puede_marcar"
+                    ):
+                        entry["has_manual"] = True
+                        entry["manual_membresia_id"] = m.id
+                except Exception:
+                    pass
+        flags[c.id] = entry
     return flags
 
 
@@ -190,86 +164,7 @@ def list_clientes():
     from datetime import date as _date
 
     items = pag.items
-
-    # compute flags helper (extracted to reuse for AJAX partials)
-    def _compute_client_flags(items_list):
-        from datetime import date as _d, timedelta
-        from decimal import Decimal
-
-        flags = {}
-        try:
-            horizon = _d.today() + timedelta(days=7)
-            for c in items_list:
-                has_active = False
-                soon = False
-                soon_date = None
-                has_manual = False
-                manual_membresia_id = None
-
-                try:
-                    candidates = []
-                    from ..services.attendance_service import manual_attendance_summary
-                    for m in c.membresias:
-                        getattr(m, "estado_id", None)
-                        
-                        # Check manual attendance
-                        if getattr(m, "is_manual_asistencia", False):
-                            summary = manual_attendance_summary(m)
-                            if summary.get("puede_marcar"):
-                                has_manual = True
-                                manual_membresia_id = m.id
-                        
-                        if not getattr(m, "fecha_fin", None):
-                            continue
-                        if m.is_activa:
-                            candidates.append(m)
-                            continue
-                        if m.is_en_espera:
-                            try:
-                                total_due = _compute_monto_total_for_membresia(m)
-                            except Exception:
-                                total_due = None
-                            if total_due and total_due > 0:
-                                total_paid = Decimal("0")
-                                try:
-                                    for p in m.pagos:
-                                        for h in p.historial:
-                                            try:
-                                                total_paid += Decimal(h.monto_pagado)
-                                            except Exception:
-                                                pass
-                                except Exception:
-                                    pass
-                                if total_paid >= total_due:
-                                    candidates.append(m)
-
-                    if candidates:
-                        m_sorted = sorted(candidates, key=lambda mm: mm.fecha_fin)
-                        first = m_sorted[0]
-                        has_active = True
-                        if first.fecha_fin <= horizon:
-                            soon = True
-                            soon_date = first.fecha_fin
-                    else:
-                        has_active = False
-                except Exception:
-                    has_active = False
-                    soon = False
-                    soon_date = None
-                    has_manual = False
-                    manual_membresia_id = None
-                flags[c.id] = {
-                    "has_active": has_active,
-                    "soon": soon,
-                    "fecha_fin": str(soon_date) if soon_date else None,
-                    "has_manual": has_manual,
-                    "manual_membresia_id": manual_membresia_id,
-                }
-        except Exception:
-            pass
-        return flags
-
-    client_flags = _compute_client_flags(items)
+    client_flags = _compute_client_flags_global(items, include_manual=True)
 
     # pass current filter params so the template can reflect selected values
     return render_template(
@@ -425,85 +320,8 @@ def clientes_table():
 
     mode = request.args.get("mode")
 
-    # compute reminders/flags for the partial table as well (AJAX reloads expect it)
-    def _compute_client_flags(items_list):
-        from datetime import date as _d, timedelta
-        from decimal import Decimal
 
-        flags = {}
-        try:
-            horizon = _d.today() + timedelta(days=7)
-            for c in items_list:
-                has_active = False
-                soon = False
-                soon_date = None
-                has_manual = False
-                manual_membresia_id = None
-
-                try:
-                    candidates = []
-                    from ..services.attendance_service import manual_attendance_summary
-                    for m in c.membresias:
-                        getattr(m, "estado_id", None)
-                        
-                        # Check manual attendance
-                        if getattr(m, "is_manual_asistencia", False):
-                            summary = manual_attendance_summary(m)
-                            if summary.get("puede_marcar"):
-                                has_manual = True
-                                manual_membresia_id = m.id
-                        
-                        if not getattr(m, "fecha_fin", None):
-                            continue
-                        if m.is_activa:
-                            candidates.append(m)
-                            continue
-                        if m.is_en_espera:
-                            try:
-                                total_due = _compute_monto_total_for_membresia(m)
-                            except Exception:
-                                total_due = None
-                            if total_due and total_due > 0:
-                                total_paid = Decimal("0")
-                                try:
-                                    for p in m.pagos:
-                                        for h in p.historial:
-                                            try:
-                                                total_paid += Decimal(h.monto_pagado)
-                                            except Exception:
-                                                pass
-                                except Exception:
-                                    pass
-                                if total_paid >= total_due:
-                                    candidates.append(m)
-
-                    if candidates:
-                        m_sorted = sorted(candidates, key=lambda mm: mm.fecha_fin)
-                        first = m_sorted[0]
-                        has_active = True
-                        if first.fecha_fin <= horizon:
-                            soon = True
-                            soon_date = first.fecha_fin
-                    else:
-                        has_active = False
-                except Exception:
-                    has_active = False
-                    soon = False
-                    soon_date = None
-                    has_manual = False
-                    manual_membresia_id = None
-                flags[c.id] = {
-                    "has_active": has_active,
-                    "soon": soon,
-                    "fecha_fin": str(soon_date) if soon_date else None,
-                    "has_manual": has_manual,
-                    "manual_membresia_id": manual_membresia_id,
-                }
-        except Exception:
-            pass
-        return flags
-
-    client_flags = _compute_client_flags(pag.items)
+    client_flags = _compute_client_flags_global(pag.items, include_manual=True)
 
     # include total count for UI (pagination.total)
     ctx = dict(

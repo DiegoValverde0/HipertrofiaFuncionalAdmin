@@ -5,6 +5,7 @@ from gym_admin.models import Sucursal, Cliente, Plan, EstadoMembresia, Promocion
 
 class TestConfig:
     TESTING = True
+    SECRET_KEY = "test-secret"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
     SERVER_NAME = "localhost.localdomain"

@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import Blueprint, current_app, jsonify, render_template, request, session
 from ..models import Gasto, Pago, Cliente, Membresia, Plan
 from ..extensions import db
 from datetime import date
@@ -221,11 +221,14 @@ def api_clients_birthdays():
 
 @dashboard_bp.route("/api/members/expiring")
 def api_members_expiring():
-    # membresias que expiran en los próximos `days` días (default 30)
+    # clientes cuya cobertura termina en los próximos `days` días (default 30).
+    # Un cliente con una renovación pagada en espera no aparece.
     from datetime import timedelta
+    from .clientes import _compute_client_flags_global
+    from ..services.membership_service import local_today
 
     days = request.args.get("days", default=30, type=int)
-    now = date.today()
+    now = local_today()
     cutoff = now + timedelta(days=days)
     try:
         sucursal_id = None
@@ -234,95 +237,42 @@ def api_members_expiring():
                 sucursal_id = current_user.sucursal_id
             else:
                 sucursal_id = session.get("sucursal_id")
-        # find candidate memberships in the window to narrow client set
-        mq = db.session.query(Membresia).filter(
+        sucursal_id = int(sucursal_id) if sucursal_id else None
+
+        # membresías que terminan en la ventana, sólo para acotar los clientes
+        mq = db.session.query(Membresia.cliente_id).filter(
             Membresia.fecha_fin >= now, Membresia.fecha_fin <= cutoff
         )
         if sucursal_id:
-            mq = mq.filter(Membresia.sucursal_id == int(sucursal_id))
-        # try to restrict to active estado if possible
-        try:
-            from ..models import EstadoMembresia
+            mq = mq.filter(Membresia.sucursal_id == sucursal_id)
+        client_ids = {row.cliente_id for row in mq.distinct()}
+        clients = (
+            Cliente.query.filter(Cliente.id.in_(client_ids)).all() if client_ids else []
+        )
 
-            mq = mq.join(
-                EstadoMembresia, Membresia.estado_id == EstadoMembresia.id
-            ).filter(EstadoMembresia.nombre == "Activo")
-        except Exception:
-            pass
-        members = mq.all()
-        client_ids = list({m.cliente_id for m in members})
-        clients = []
-        if client_ids:
-            clients = Cliente.query.filter(Cliente.id.in_(client_ids)).all()
-
-        # compute flags using same business logic as clientes list
-        try:
-            # import helper from clientes blueprint
-            from .clientes import _compute_client_flags_global
-        except Exception:
-            _compute_client_flags_global = None
-
+        flags = _compute_client_flags_global(
+            clients, horizon_days=days, sucursal_id=sucursal_id
+        )
         out = []
-        if _compute_client_flags_global and clients:
-            flags = _compute_client_flags_global(
-                clients, horizon_days=days, sucursal_id=sucursal_id
-            )
-            for c in clients:
-                f = flags.get(c.id, {})
-                if f.get("soon"):
-                    # fecha_fin comes as string in flags; parse it to date to compute days_left
-                    fecha_fin_str = f.get("fecha_fin")
-                    try:
-                        fecha_fin = (
-                            date.fromisoformat(fecha_fin_str) if fecha_fin_str else None
-                        )
-                    except Exception:
-                        fecha_fin = None
-                    days_left = (fecha_fin - now).days if fecha_fin else None
-                    out.append(
-                        dict(
-                            cliente_id=c.id,
-                            nombre=f"{c.nombre} {c.apellido}",
-                            telefono=(getattr(c, "telefono", None) or ""),
-                            fecha_fin=fecha_fin.isoformat() if fecha_fin else None,
-                            days_left=days_left,
-                        )
-                    )
-        else:
-            # fallback: if helper missing, attempt original membership-based approach
-            # fallback: ensure we also respect sucursal filter here
-            rows_q = (
-                db.session.query(Membresia, Cliente)
-                .join(Cliente, Membresia.cliente_id == Cliente.id)
-                .filter(Membresia.fecha_fin >= now, Membresia.fecha_fin <= cutoff)
-            )
-            if sucursal_id:
-                try:
-                    rows_q = rows_q.filter(Membresia.sucursal_id == int(sucursal_id))
-                except Exception:
-                    pass
-            rows = rows_q.all()
-            for m, c in rows:
-                days_left = (
-                    (m.fecha_fin - now).days if getattr(m, "fecha_fin", None) else None
+        for c in clients:
+            f = flags.get(c.id, {})
+            if not f.get("soon") or not f.get("fecha_fin"):
+                continue
+            fecha_fin = date.fromisoformat(f["fecha_fin"])
+            out.append(
+                dict(
+                    cliente_id=c.id,
+                    nombre=f"{c.nombre} {c.apellido}",
+                    telefono=(getattr(c, "telefono", None) or ""),
+                    fecha_fin=fecha_fin.isoformat(),
+                    days_left=(fecha_fin - now).days,
                 )
-                out.append(
-                    dict(
-                        cliente_id=c.id,
-                        nombre=f"{c.nombre} {c.apellido}",
-                        telefono=(getattr(c, "telefono", None) or ""),
-                        fecha_fin=(
-                            m.fecha_fin.isoformat()
-                            if getattr(m, "fecha_fin", None)
-                            else None
-                        ),
-                        days_left=days_left,
-                    )
-                )
-
+            )
+        out.sort(key=lambda item: item["days_left"])
         return jsonify(dict(count=len(out), items=out))
     except Exception as e:
-        return jsonify(dict(error=str(e)))
+        current_app.logger.exception("Error en api_members_expiring")
+        return jsonify(dict(error=str(e))), 500
 
 
 @dashboard_bp.route("/api/overview")

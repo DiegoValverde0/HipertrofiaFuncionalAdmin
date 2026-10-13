@@ -7,18 +7,82 @@ from flask import current_app
 from ..extensions import db
 from ..models import Membresia, Cliente, Plan, EstadoMembresia
 from ..utils import _compute_monto_total_for_membresia
+from ..utils_timezone import to_bolivia
+
+
+def local_today():
+    """Fecha actual en hora de Bolivia (el servidor corre en UTC)."""
+    return to_bolivia(datetime.utcnow()).date()
+
+
+def is_paid_in_full(membresia):
+    """True si la suma de los pagos cubre el monto total de la membresía."""
+    try:
+        total_due = _compute_monto_total_for_membresia(membresia)
+    except Exception:
+        return False
+    if not total_due or total_due <= 0:
+        return False
+    total_paid = Decimal("0")
+    for pago in membresia.pagos:
+        for hist in pago.historial:
+            try:
+                total_paid += Decimal(hist.monto_pagado)
+            except Exception:
+                pass
+    return total_paid >= total_due
+
+
+def is_valid_membership(membresia):
+    """Una membresía cubre al cliente si está Activa o En espera y pagada."""
+    if not getattr(membresia, "fecha_fin", None):
+        return False
+    if membresia.is_activa:
+        return True
+    return bool(membresia.is_en_espera and is_paid_in_full(membresia))
+
+
+def compute_coverage(membresias, horizon_days=7, today=None):
+    """Calcula hasta cuándo está cubierto un cliente.
+
+    La cobertura llega hasta la fecha_fin más lejana entre sus membresías
+    válidas, de modo que una renovación ya pagada que está en espera evita que
+    el cliente figure como "por vencer".
+
+    Returns dict:
+    - has: bool, tiene al menos una membresía válida
+    - soon: bool, la cobertura termina dentro de ``horizon_days``
+    - coverage_end: date | None, último día cubierto
+    - current: Membresia | None, membresía válida que termina en coverage_end
+    """
+    today = today or local_today()
+    valid = [m for m in membresias if is_valid_membership(m)]
+    if not valid:
+        return {"has": False, "soon": False, "coverage_end": None, "current": None}
+
+    current = max(valid, key=lambda m: m.fecha_fin)
+    coverage_end = current.fecha_fin
+    soon = 0 <= (coverage_end - today).days <= horizon_days
+    return {"has": True, "soon": soon, "coverage_end": coverage_end, "current": current}
 
 
 def get_membership_status(cliente_id, horizon_days=7):
     """Get current membership status for a client.
 
     Returns dict with:
-    - has: bool (client has active membership)
-    - soon: bool (expires within horizon_days)
-    - last_id: id of last/active membership
+    - has: bool (client has active membership or a paid one waiting)
+    - soon: bool (coverage ends within horizon_days)
+    - last_id: id of the membership that ends the coverage (or latest one)
     - last_fecha_fin: expiration date of last
     - last_estado: state of last
     """
+    empty = {
+        "has": False,
+        "soon": False,
+        "last_id": None,
+        "last_fecha_fin": None,
+        "last_estado": None,
+    }
     try:
         membresias = Membresia.query.filter_by(cliente_id=cliente_id).all()
     except Exception as e:
@@ -28,82 +92,23 @@ def get_membership_status(cliente_id, horizon_days=7):
             )
         except Exception:
             pass
-        return {
-            "has": False,
-            "soon": False,
-            "last_id": None,
-            "last_fecha_fin": None,
-            "last_estado": None,
-        }
+        return empty
 
     if not membresias:
-        return {
-            "has": False,
-            "soon": False,
-            "last_id": None,
-            "last_fecha_fin": None,
-            "last_estado": None,
-        }
+        return empty
 
-    # Dynamically resolve status IDs
-    activa_ids = {2}
-    espera_ids = {5}
-    try:
-        activa_objs = EstadoMembresia.query.filter(EstadoMembresia.nombre.ilike("activ%")).all()
-        espera_objs = EstadoMembresia.query.filter(
-            EstadoMembresia.nombre.ilike("%espera%") | EstadoMembresia.nombre.ilike("%en espera%")
-        ).all()
-        if activa_objs:
-            activa_ids = {e.id for e in activa_objs if getattr(e, "id", None) is not None}
-        if espera_objs:
-            espera_ids = {e.id for e in espera_objs if getattr(e, "id", None) is not None}
-    except Exception:
-        pass
-
-    # Build candidate list: active or en espera (fully paid)
-    candidates = []
-    for m in membresias:
-        try:
-            if m.estado_id in activa_ids:
-                candidates.append(m)
-                continue
-            if m.estado_id in espera_ids:
-                total_due = _compute_monto_total_for_membresia(m)
-                total_paid = Decimal("0")
-                for pago in m.pagos:
-                    for hist in pago.historial:
-                        try:
-                            total_paid += Decimal(hist.monto_pagado)
-                        except Exception:
-                            pass
-                if total_due and total_paid >= total_due:
-                    candidates.append(m)
-        except Exception:
-            continue
-
-    # Select membership with the furthest fecha_fin among valid candidates
-    best_membresia = None
-    if candidates:
-        best_membresia = max(candidates, key=lambda mm: mm.fecha_fin or datetime.min.date())
-    else:
-        # fallback to most recent by fecha_inicio when none are active/paid
-        best_membresia = max(membresias, key=lambda mm: mm.fecha_inicio or datetime.min)
-
-    has_active = bool(candidates)
-
-    # Check if expires soon (only meaningful when active/paid)
-    soon = False
-    if has_active and best_membresia and best_membresia.fecha_fin:
-        days_until = (best_membresia.fecha_fin - datetime.now().date()).days
-        if 0 <= days_until <= horizon_days:
-            soon = True
+    coverage = compute_coverage(membresias, horizon_days=horizon_days)
+    best = coverage["current"]
+    if best is None:
+        # sin membresías válidas: informar la más reciente
+        best = max(membresias, key=lambda m: (m.fecha_inicio, m.id))
 
     return {
-        "has": has_active,
-        "soon": soon,
-        "last_id": best_membresia.id if best_membresia else None,
-        "last_fecha_fin": best_membresia.fecha_fin if best_membresia else None,
-        "last_estado": best_membresia.estado_id if best_membresia else None,
+        "has": coverage["has"],
+        "soon": coverage["soon"],
+        "last_id": best.id,
+        "last_fecha_fin": best.fecha_fin,
+        "last_estado": best.estado_id,
     }
 
 

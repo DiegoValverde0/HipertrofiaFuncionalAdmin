@@ -181,15 +181,35 @@
       var results = document.getElementById('m-search-results');
       var hid = document.getElementById('cliente_id');
       var timer = null;
+      var searchSeq = 0;
+      function searchMessage(text, cls){
+        return '<div class="px-4 py-3 text-sm ' + cls + '">' + text + '</div>';
+      }
       if(!input) return; // nada que hacer si no existe el input
       input.addEventListener('input', function(){
         clearTimeout(timer);
         var q = this.value.trim();
         timer = setTimeout(function(){
           if(!q){ if(results) results.innerHTML = ''; if(hid) hid.value = ''; var alertBox = document.getElementById('m-last'); if(alertBox) alertBox.innerHTML = ''; return; }
-          fetch('/membresias/search_clientes?q='+encodeURIComponent(q), { credentials:'same-origin' })
-            .then(function(r){ return r.json(); })
+          var reqId = ++searchSeq;
+          if(results) results.innerHTML = searchMessage('Buscando…', 'text-slate-500');
+          fetch('/membresias/search_clientes?q='+encodeURIComponent(q), {
+            credentials:'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+          })
+            .then(function(r){
+              // Si la sesión expiró el servidor redirige al login (HTML), no JSON
+              var isJson = (r.headers.get('content-type') || '').indexOf('application/json') !== -1;
+              if(r.redirected || !isJson){ throw new Error('session'); }
+              if(!r.ok){ throw new Error('http ' + r.status); }
+              return r.json();
+            })
             .then(function(data){
+              if(reqId !== searchSeq) return; // llegó una búsqueda más nueva
+              if(!data.length){
+                if(results) results.innerHTML = searchMessage('Sin resultados para "' + escapeHtml(q) + '".', 'text-slate-500');
+                return;
+              }
               var html = '<div class="list-group">';
               data.forEach(function(item){
                 var icon = item.has_membresia ? '<i class="bi bi-check-circle-fill text-success me-2"></i>' : '<i class="bi bi-person-lines-fill text-muted me-2"></i>';
@@ -248,6 +268,10 @@
               }
             }).catch(function(err){
               console.error('Error buscando clientes:', err);
+              if(reqId !== searchSeq || !results) return;
+              results.innerHTML = (err && err.message === 'session')
+                ? searchMessage('Tu sesión expiró. Recarga la página e inicia sesión nuevamente.', 'text-rose-600')
+                : searchMessage('No se pudo buscar clientes. Intenta de nuevo en unos segundos.', 'text-rose-600');
             });
         }, 250);
       });

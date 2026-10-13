@@ -14,6 +14,8 @@ from flask_login import current_user
 import hmac
 from ..models import Membresia, Cliente, Plan, Promocion, EstadoMembresia
 from ..services.membership_service import (
+    compute_coverage,
+    local_today,
     get_membership_status,
     create_membership,
     update_membership,
@@ -102,32 +104,39 @@ def list_membresias():
             restante = 0.0
         pendientes[m.id] = restante
 
-    # calcular membresías próximas a vencer (estado Activa=2 y fecha_fin <= hoy+7)
+    # "Por vencer": activa, vence en <= 7 días y el cliente no tiene otra
+    # membresía válida (activa o en espera pagada) que termine después.
     expiring = {}
     manual_summaries = {}
-    try:
-        from datetime import date as _d, timedelta
-        from ..services.attendance_service import manual_attendance_summary
+    coverage_by_client = {}
+    for m in items:
+        if m.cliente_id not in coverage_by_client:
+            try:
+                coverage_by_client[m.cliente_id] = compute_coverage(
+                    m.cliente.membresias, horizon_days=7
+                )["coverage_end"]
+            except Exception:
+                current_app.logger.exception(
+                    "Error calculando cobertura del cliente %s", m.cliente_id
+                )
+                coverage_by_client[m.cliente_id] = None
 
-        horizon = _d.today() + timedelta(days=7)
-        for m in items:
+        soon = False
+        try:
+            if m.is_activa and m.fecha_fin:
+                days_left = (m.fecha_fin - local_today()).days
+                coverage_end = coverage_by_client[m.cliente_id]
+                renewed = coverage_end is not None and coverage_end > m.fecha_fin
+                soon = days_left <= 7 and not renewed
+        except Exception:
             soon = False
-            try:
-                if getattr(m, "estado_id", None) == 2 and getattr(m, "fecha_fin", None):
-                    if m.fecha_fin <= horizon:
-                        soon = True
-            except Exception:
-                soon = False
-            expiring[m.id] = soon
-            
-            # calculate manual summary
-            try:
-                if getattr(m, "is_manual_asistencia", False):
-                    manual_summaries[m.id] = manual_attendance_summary(m)
-            except Exception:
-                pass
-    except Exception:
-        expiring = {}
+        expiring[m.id] = soon
+
+        try:
+            if m.is_manual_asistencia:
+                manual_summaries[m.id] = manual_attendance_summary(m)
+        except Exception:
+            pass
 
     # Support returning only the table fragment for AJAX requests (partial=1) or X-Requested-With
     is_ajax = (
@@ -228,37 +237,27 @@ def search_clientes_for_membresia():
     if sucursal_id:
         query = query.filter(Cliente.sucursal_id == sucursal_id)
 
-    rows = query.limit(30).all()
+    rows = query.order_by(Cliente.nombre, Cliente.apellido).limit(30).all()
     result = []
     for r in rows:
-        # Use helper to determine membership status (handles dynamic estado ids)
-        last = None
+        # Si falla el estado de un cliente se lista igual (sin estado) en vez de
+        # romper toda la búsqueda.
         try:
             status = _client_membership_status(r)
-            has = bool(status.get("has"))
-            soon = bool(status.get("soon"))
-            last = status.get("last_id")
         except Exception:
-            has = False
-            soon = False
-            last = None
-        text = f"{r.nombre} {r.apellido} - {r.correo or r.telefono or ''}"
-        # include last_fecha_fin as ISO string when available so the frontend can compute fechas
-        last_fecha = None
-        try:
-            last_fecha_val = status.get("last_fecha_fin")
-            if last_fecha_val:
-                last_fecha = str(last_fecha_val)
-        except Exception:
-            last_fecha = None
+            current_app.logger.exception(
+                "Error calculando estado de membresía del cliente %s", r.id
+            )
+            status = {}
+        last_fecha = status.get("last_fecha_fin")
         result.append(
             {
                 "id": r.id,
-                "text": text,
-                "has_membresia": has,
-                "soon": soon,
-                "ultima_membresia": last,
-                "ultima_fecha_fin": last_fecha,
+                "text": f"{r.nombre} {r.apellido} - {r.correo or r.telefono or ''}",
+                "has_membresia": bool(status.get("has")),
+                "soon": bool(status.get("soon")),
+                "ultima_membresia": status.get("last_id"),
+                "ultima_fecha_fin": str(last_fecha) if last_fecha else None,
                 "ultima_estado": status.get("last_estado"),
                 "sucursal_id": r.sucursal_id,
             }

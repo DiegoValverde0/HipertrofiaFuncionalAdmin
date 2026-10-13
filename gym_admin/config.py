@@ -28,6 +28,10 @@ class Config:
     # Token para tareas programadas (cron) que llaman a /membresias/admin/run_maintenance
     ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # MySQL cierra conexiones inactivas (wait_timeout); pre_ping detecta y
+    # reemplaza las conexiones muertas antes de usarlas, evitando errores
+    # intermitentes después de periodos sin uso.
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True, "pool_recycle": 1800}
     MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2MB por request
 
     # --- Seguridad de cookies de sesión ---

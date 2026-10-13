@@ -119,6 +119,11 @@ class ModalForm {
   }
 
   async open(url, mode = 'create') {
+    // Cancelar un cierre en curso: su limpieza diferida borraría el formulario nuevo
+    if (this._closeTimer) {
+      clearTimeout(this._closeTimer);
+      this._closeTimer = null;
+    }
     try {
       // Obtener formulario via AJAX
       const response = await fetch(url, {
@@ -286,7 +291,8 @@ class ModalForm {
     // Animación de cierre
     this.modal.style.opacity = '0';
 
-    setTimeout(() => {
+    this._closeTimer = setTimeout(() => {
+      this._closeTimer = null;
       this.modal.classList.add('hidden');
       this.modal.classList.remove('flex');
       this.formContainer.innerHTML = '';
