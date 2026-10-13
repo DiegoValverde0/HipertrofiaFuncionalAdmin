@@ -17,8 +17,9 @@ htmlcov/
 .env
 .env.local
 
-# Docs / Markdown / Tests
+# Docs / Markdown / Tests (notas locales); el README sí se versiona
 *.md
+!README.md
 
 # Docker related (Omitidos para no sobreescribir configuraciones de producción)
 Dockerfile
