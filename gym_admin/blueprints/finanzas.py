@@ -13,8 +13,8 @@ from ..models import (
 )
 from ..extensions import db
 from sqlalchemy import func
-from datetime import datetime, date, timedelta
-from ..utils_timezone import now_utc, to_bolivia, to_utc_naive
+from datetime import datetime, timedelta
+from ..utils_timezone import local_today, now_utc, to_bolivia, to_utc_naive
 
 finanzas_bp = Blueprint("finanzas", __name__)
 
@@ -66,7 +66,7 @@ def _parse_period(period, fecha_desde, fecha_hasta):
         return to_utc_naive(s_b), to_utc_naive(e_b)
     except Exception:
         # final fallback to naive UTC now last 30 days
-        today = date.today()
+        today = local_today()
         s = datetime.combine(today - timedelta(days=30), datetime.min.time())
         e = datetime.combine(today, datetime.max.time())
         return s, e

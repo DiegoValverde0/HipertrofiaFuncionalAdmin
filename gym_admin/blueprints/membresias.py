@@ -33,7 +33,7 @@ from ..utils import (
     process_membership_states,
 )
 from ..extensions import db
-from datetime import datetime, date
+from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy.exc import IntegrityError
 
@@ -353,10 +353,10 @@ def create_membresia():
             fecha_inicio = (
                 datetime.strptime(fecha_inicio_raw, "%Y-%m-%d").date()
                 if fecha_inicio_raw
-                else date.today()
+                else local_today()
             )
         except Exception:
-            fecha_inicio = date.today()
+            fecha_inicio = local_today()
 
         client_status = _client_membership_status(cliente)
 
@@ -390,8 +390,10 @@ def create_membresia():
             flash(f"Error calculando fechas: {preview.get('mensaje', 'Desconocido')}")
             return redirect(request.referrer or url_for("membresias.create_membresia"))
 
-        # Parsear fecha_fin desde el preview
+        # Guardar exactamente las fechas de la vista previa: al extender, el
+        # inicio se apila tras la membresía vigente y no es el del formulario.
         try:
+            fecha_inicio = datetime.strptime(preview["fecha_inicio"], "%Y-%m-%d").date()
             fecha_fin = datetime.strptime(preview["fecha_fin"], "%Y-%m-%d").date()
         except Exception:
             if is_ajax:
@@ -676,9 +678,9 @@ def list_by_cliente(cliente_id):
 
     # compute pendings and expiring flag per membership
     try:
-        from datetime import date as _d, timedelta
+        from datetime import timedelta
 
-        horizon = _d.today() + timedelta(days=7)
+        horizon = local_today() + timedelta(days=7)
         for m in membresias:
             active_map[m.id] = getattr(m, "estado_id", None) in activa_ids
             soon = False

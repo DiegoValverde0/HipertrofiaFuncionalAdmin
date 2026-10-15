@@ -9,12 +9,12 @@ Handles automatic state transitions for memberships and clients based on:
 Functions here run as background batch jobs, typically triggered post-login
 or via scheduled tasks.
 """
-from datetime import date
 from decimal import Decimal
 from flask import current_app
 from ..extensions import db
 from ..models import Membresia, Cliente, EstadoMembresia
 from ..utils import _compute_monto_total_for_membresia
+from ..utils_timezone import local_today
 
 
 def process_membership_states(target_membresia_id=None, client_id=None):
@@ -28,7 +28,7 @@ def process_membership_states(target_membresia_id=None, client_id=None):
         target_membresia_id: Process specific membership (int)
         client_id: Process all memberships for a client (int)
     """
-    today = date.today()
+    today = local_today()
     vencida_id = None
 
     # Ensure 'Vencida' estado exists
@@ -226,7 +226,7 @@ def cancel_pending_memberships_with_past_start():
         int: Number of memberships cancelled
     """
     try:
-        today = date.today()
+        today = local_today()
         expired = Membresia.query.filter(
             Membresia.estado_id == 1,
             Membresia.fecha_inicio != None,

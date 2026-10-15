@@ -5,7 +5,7 @@ from .models import Membresia, APIKey
 from flask import current_app, request, jsonify, g, session, abort
 from functools import wraps
 from flask import redirect, url_for
-from .utils_timezone import utcnow
+from .utils_timezone import local_today, utcnow
 
 
 def get_user_sucursal_id():
@@ -367,7 +367,7 @@ def ensure_membership_state_after_payment(membresia_id: int):
         activa_id = activa_estado.id if activa_estado else 2
         espera_id = espera_estado.id if espera_estado else 5
 
-        today = date.today()
+        today = local_today()
         desired = None
         if total_paid >= total_due:
             # fecha inicio en el futuro -> En espera

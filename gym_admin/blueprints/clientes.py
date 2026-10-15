@@ -25,7 +25,7 @@ from ..utils import (
     api_key_required,
     verify_sucursal_access,
 )
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from ..utils_timezone import utcnow
 
 clientes_bp = Blueprint("clientes", __name__)
@@ -150,7 +150,6 @@ def list_clientes():
     pag = query.order_by(Cliente.nombre.asc(), Cliente.apellido.asc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
-    from datetime import date as _date
 
     items = pag.items
     client_flags = _compute_client_flags_global(items, include_manual=True)
@@ -160,7 +159,7 @@ def list_clientes():
         "clientes/list.html",
         pagination=pag,
         clientes=items,
-        today=_date.today(),
+        today=local_today(),
         reminders=client_flags,
         q=q,
         estado=estado,
@@ -189,10 +188,9 @@ def view_cliente(cliente_id):
             membresias.append({"membresia": m, "pagos": pagos})
     except Exception:
         membresias = []
-    from datetime import date as _date
 
     return render_template(
-        "clientes/detail.html", cliente=c, membresias=membresias, today=_date.today()
+        "clientes/detail.html", cliente=c, membresias=membresias, today=local_today()
     )
 
 
@@ -287,7 +285,6 @@ def clientes_table():
     pag = query.order_by(Cliente.nombre.asc(), Cliente.apellido.asc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
-    from datetime import date as _date
 
     mode = request.args.get("mode")
 
@@ -298,7 +295,7 @@ def clientes_table():
     ctx = dict(
         pagination=pag,
         clientes=pag.items,
-        today=_date.today(),
+        today=local_today(),
         reminders=client_flags,
         total=pag.total,
         q=q,
@@ -669,7 +666,7 @@ def api_list_clientes():
         # 5. Filtro de Vencimiento (Optimizado)
         if vencer_en_dias is not None:
             vencer_en_dias = max(1, vencer_en_dias)
-            hoy = date.today()
+            hoy = local_today()
             horizonte = hoy + timedelta(days=vencer_en_dias)
 
             # Filtramos clientes que tengan membresías activas o en espera
@@ -711,7 +708,7 @@ def api_list_clientes():
             if membresias_validas:
                 # Ordenamos por fecha_fin para obtener la más próxima
                 m_proxima = min(membresias_validas, key=lambda x: x.fecha_fin)
-                if m_proxima.fecha_fin >= date.today():
+                if m_proxima.fecha_fin >= local_today():
                     prox_venc = m_proxima.fecha_fin
                     tiene_activa = True
 
@@ -732,7 +729,7 @@ def api_list_clientes():
                     "tiene_membresia_activa": tiene_activa,
                     "fecha_vencimiento_proxima": str(prox_venc) if prox_venc else None,
                     "dias_para_vencer": (
-                        (prox_venc - date.today()).days if prox_venc else None
+                        (prox_venc - local_today()).days if prox_venc else None
                     ),
                 }
             )

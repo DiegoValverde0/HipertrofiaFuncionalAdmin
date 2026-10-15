@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify
 from ..models import Notificacion, Cliente, Sucursal
 from ..extensions import db
 from datetime import date, timedelta
+from ..utils_timezone import local_today
 
 notif_bp = Blueprint(
     "notificaciones", __name__, template_folder="../templates/notificaciones"
@@ -41,7 +42,7 @@ def api_birthdays():
     """Return detailed list of clients with birthdays this week (json).
     Respects current user's `sucursal_id` (user.sucursal_id or session['sucursal_id']).
     """
-    today = date.today()
+    today = local_today()
     start = today - timedelta(days=today.weekday())
     end = start + timedelta(days=6)
     results = []
@@ -155,7 +156,7 @@ def create_birthday_notifications_for_week(
     and the notification record will have `sucursal_id` set. If not provided,
     behavior falls back to global (all clients).
     """
-    today = date.today()
+    today = local_today()
     # logging
     try:
         from flask import current_app

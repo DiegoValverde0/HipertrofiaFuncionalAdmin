@@ -1,6 +1,7 @@
 from flask import Blueprint, current_app, jsonify, render_template, request, session
 from ..models import Gasto, Pago, Cliente, Membresia, Plan
 from ..extensions import db
+from ..utils_timezone import local_today
 from datetime import date
 from sqlalchemy import func
 from flask_login import current_user
@@ -22,10 +23,10 @@ def _month_key(dt):
 def api_financials_monthly():
     # devuelve ingresos (pagos) y egresos (gastos) por mes para el último año
     try:
-        today = date.today()
+        today = local_today()
         start = today.replace(year=today.year - 1, day=1)
     except Exception:
-        start = date.today()
+        start = local_today()
 
     # allow optional inclusion of cafeteria ventas into ingresos
     include_cafeteria = request.args.get("include_cafeteria", default="0") in (
@@ -128,7 +129,7 @@ def api_financials_monthly():
     data_ing = []
     data_eg = []
     cur = start
-    while cur <= date.today():
+    while cur <= local_today():
         key = cur.strftime("%Y-%m")
         labels.append(key)
         data_ing.append(pagos.get(key, 0.0))
@@ -180,7 +181,7 @@ def api_clients_birthdays():
     # devuelve clientes con cumpleaños esta semana (respetando sucursal)
     from datetime import timedelta
 
-    today = date.today()
+    today = local_today()
     start = today - timedelta(days=today.weekday())
     end = start + timedelta(days=6)
     results = []
@@ -225,7 +226,6 @@ def api_members_expiring():
     # Un cliente con una renovación pagada en espera no aparece.
     from datetime import timedelta
     from .clientes import _compute_client_flags_global
-    from ..services.membership_service import local_today
 
     days = request.args.get("days", default=30, type=int)
     now = local_today()
@@ -342,7 +342,7 @@ def api_promociones_activas():
     try:
         from ..models import Promocion
 
-        date.today()
+        local_today()
         q = Promocion.query.filter(Promocion.estado == "Activo")
         # optionally respect sucursal if promos have sucursal (they don't by model); keep global
         rows = q.order_by(Promocion.fecha_fin.asc()).limit(10).all()

@@ -377,6 +377,15 @@
         // Actualizar campo fecha_fin con el resultado
         if (data.estado === 'valido') {
           finEl.value = data.fecha_fin;
+
+          // Al extender, el servidor apila el inicio tras la membresía vigente:
+          // mostrar en el campo la misma fecha que se va a guardar.
+          if (opcion === 'extend' && data.fecha_inicio && inicioEl.value !== data.fecha_inicio) {
+            inicioEl.value = data.fecha_inicio;
+            if (inicioEl._flatpickr) {
+              try { inicioEl._flatpickr.setDate(data.fecha_inicio, false); } catch (e) {}
+            }
+          }
           
           // Si hay flatpickr, actualizar también
           if (window.flatpickr) {

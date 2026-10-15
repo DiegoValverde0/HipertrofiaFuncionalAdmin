@@ -3,10 +3,10 @@ Promotion batch processing service.
 
 Handles automatic state transitions for promotions based on activation/expiry dates.
 """
-from datetime import date
 from flask import current_app
 from ..extensions import db
 from ..models import Promocion
+from ..utils_timezone import local_today
 
 
 def sync_promociones_by_date(today=None):
@@ -17,12 +17,12 @@ def sync_promociones_by_date(today=None):
     - If fecha_fin is None and fecha_inicio <= today → mark as 'Activo'
 
     Args:
-        today: Reference date for comparison (defaults to date.today())
+        today: Reference date for comparison (defaults to local_today(), fecha de Bolivia)
 
     Returns:
         tuple: (activadas, desactivadas) lists of promotion IDs
     """
-    today = today or date.today()
+    today = today or local_today()
     activadas = []
     desactivadas = []
 

@@ -1,10 +1,10 @@
 """Client service layer - business logic for client management."""
-from datetime import datetime, date
 from flask import current_app
 from ..extensions import db
 from sqlalchemy import and_, or_, true
 from ..models import Cliente, Membresia
 from .membership_service import get_membership_status
+from ..utils_timezone import local_today
 
 
 def clean_client_query(q):
@@ -41,7 +41,7 @@ def compute_age(fecha_nacimiento):
     try:
         if not fecha_nacimiento:
             return None
-        today = date.today()
+        today = local_today()
         age = today.year - fecha_nacimiento.year
         if (today.month, today.day) < (
             fecha_nacimiento.month,
@@ -78,7 +78,7 @@ def get_client_with_flags(cliente_id):
         days_until = None
         if status["last_fecha_fin"]:
             days_until = (
-                status["last_fecha_fin"] - datetime.now().date()
+                status["last_fecha_fin"] - local_today()
             ).days
 
         return {

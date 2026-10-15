@@ -1,9 +1,9 @@
 """Payment service layer - business logic for payment management."""
-from datetime import datetime
 from flask import current_app
 from ..extensions import db
 from ..models import Pago, HistorialPago, Membresia
 from ..utils import process_membership_states
+from ..utils_timezone import utcnow
 
 
 def create_payment(membresia_id, monto_total, metodo_pago="", comentarios=""):
@@ -87,7 +87,7 @@ def add_payment_history(pago_id, abono, metodo_pago="", comentarios=""):
             monto_pagado=abono,
             metodo_pago=metodo_pago,
             comentarios=comentarios,
-            fecha_pago=datetime.now(),
+            fecha_pago=utcnow(),
         )
 
         if metodo_pago:

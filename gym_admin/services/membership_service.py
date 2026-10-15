@@ -7,13 +7,7 @@ from flask import current_app
 from ..extensions import db
 from ..models import Membresia, Cliente, Plan, EstadoMembresia
 from ..utils import _compute_monto_total_for_membresia
-from ..utils_timezone import to_bolivia
-from ..utils_timezone import utcnow
-
-
-def local_today():
-    """Fecha actual en hora de Bolivia (el servidor corre en UTC)."""
-    return to_bolivia(utcnow()).date()
+from ..utils_timezone import local_today  # noqa: F401 (se reexporta)
 
 
 def is_paid_in_full(membresia):
@@ -265,7 +259,7 @@ def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=Non
         }
     """
     try:
-        from datetime import date as date_type
+        pass
         
         # Parsear fecha_inicio si viene como string
         if isinstance(fecha_inicio, str):
@@ -297,7 +291,7 @@ def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=Non
                     fecha_inicio += timedelta(days=1)
         
         # Validar que fecha_inicio sea razonable
-        today = date_type.today()
+        today = local_today()
         if fecha_inicio < today - timedelta(days=30):  # Pasado lejano
             return {
                 'estado': 'warning',

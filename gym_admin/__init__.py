@@ -1,6 +1,6 @@
 from flask import Flask, render_template, session, request
 from .config import Config
-from datetime import date
+from .utils_timezone import local_today
 
 
 def create_app(config_object: str | None = None):
@@ -161,7 +161,7 @@ def create_app(config_object: str | None = None):
 
         return dict(
             _compute_monto_total_for_membresia=_utils._compute_monto_total_for_membresia,
-            today=date.today(),
+            today=local_today(),
         )
 
     # register timezone formatting filter (mostrar en hora de Bolivia)

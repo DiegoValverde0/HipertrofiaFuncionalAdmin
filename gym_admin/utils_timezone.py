@@ -17,6 +17,11 @@ def utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def local_today():
+    """Fecha de hoy en Bolivia, sin depender de la zona horaria del servidor."""
+    return to_bolivia(utcnow()).date()
+
+
 def now_utc():
     """Return current time as timezone-aware UTC datetime."""
     return datetime.now(timezone.utc)
