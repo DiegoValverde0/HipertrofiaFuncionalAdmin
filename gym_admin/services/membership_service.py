@@ -214,13 +214,29 @@ def _resolve_usage_config(plan):
     return tipo_uso, cupo_marcajes
 
 
+def _next_business_day(day):
+    """Mueve sábado y domingo al lunes siguiente."""
+    if day.weekday() == 5:
+        return day + timedelta(days=2)
+    if day.weekday() == 6:
+        return day + timedelta(days=1)
+    return day
+
+
+def _nominal_next_start(fecha_inicio, unidad, amount):
+    """Día en que empezaría el período siguiente, sin ajustes de fin de semana."""
+    if unidad == "dias":
+        return fecha_inicio + timedelta(days=max(amount, 1))
+    return fecha_inicio + relativedelta(months=max(amount, 1))
+
+
 def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion_valor=None):
     """Compute membership end date given a duration configuration.
 
     Both units count the start day as the first covered day, so the end is the
     day before the next period starts (1 mes desde el 10/01 termina el 09/02 y
-    la renovación vuelve a empezar el 10). Monthly durations keep the
-    weekend-to-Monday adjustment of the end date.
+    la renovación vuelve a empezar el 10). If the end falls on Saturday or
+    Sunday it moves to the next Monday, for both monthly and day-based plans.
     """
     try:
         if not fecha_inicio or not duracion_source:
@@ -232,20 +248,8 @@ def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion
             duracion_valor=duracion_valor,
         )
 
-        if unidad == "dias":
-            end_date = fecha_inicio + timedelta(days=max(amount, 1) - 1)
-        else:
-            end_date = (
-                fecha_inicio + relativedelta(months=max(amount, 1)) - timedelta(days=1)
-            )
-
-            weekday = end_date.weekday()
-            if weekday == 5:  # Saturday
-                end_date = end_date + timedelta(days=2)
-            elif weekday == 6:  # Sunday
-                end_date = end_date + timedelta(days=1)
-
-        return end_date
+        # Vencimiento en sábado o domingo -> lunes siguiente
+        return _next_business_day(_nominal_next_start(fecha_inicio, unidad, amount) - timedelta(days=1))
     except Exception as e:
         try:
             current_app.logger.exception(f"Error computing end date: {e}")
@@ -254,29 +258,21 @@ def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion
         return None
 
 
-def _next_business_day(day):
-    """Mueve sábado y domingo al lunes siguiente."""
-    if day.weekday() == 5:
-        return day + timedelta(days=2)
-    if day.weekday() == 6:
-        return day + timedelta(days=1)
-    return day
-
-
 def extension_start_date(previa):
     """Inicio de una extensión que se apila tras ``previa``.
 
-    En planes por meses la extensión empieza en el aniversario de la membresía
-    anterior (10/01 -> 10/02 -> 10/03), aunque su fin se haya corrido al lunes
-    por caer en fin de semana; así las renovaciones no se desplazan. Si la
-    fecha de fin no es la calculada por su plan (modificada a mano o creada con
-    la regla anterior) se usa el día siguiente a su fin.
+    La extensión empieza donde termina el período de la membresía anterior
+    (10/01 -> 10/02 -> 10/03 en planes por meses; inicio + N días en planes por
+    días), aunque su fin se haya corrido al lunes por caer en fin de semana;
+    así las renovaciones no se desplazan. Si la fecha de fin no es la que
+    calcula su plan (modificada a mano o creada con una regla anterior) se usa
+    el día siguiente a su fin.
     """
     if not previa or not previa.fecha_inicio or not previa.fecha_fin or not previa.plan:
         return None
     unidad, amount = _resolve_duration_config(previa.plan)
-    if unidad == "meses" and previa.fecha_fin == compute_end_date(previa.fecha_inicio, previa.plan):
-        return previa.fecha_inicio + relativedelta(months=max(amount, 1))
+    if previa.fecha_fin == compute_end_date(previa.fecha_inicio, previa.plan):
+        return _nominal_next_start(previa.fecha_inicio, unidad, amount)
     return _next_business_day(previa.fecha_fin + timedelta(days=1))
 
 

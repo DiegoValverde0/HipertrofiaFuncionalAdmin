@@ -223,3 +223,25 @@ def test_get_membership_status(db_session, cliente, plan, estados_membresia):
     
     status = get_membership_status(cliente.id)
     assert status["has"] is True # En espera with payment counts as active
+
+
+def test_plan_por_dias_que_vence_en_fin_de_semana_pasa_al_lunes():
+    treinta = {"duracion_tipo": "dias", "duracion_valor": 30}
+    assert compute_end_date(date(2026, 10, 1), treinta) == date(2026, 10, 30)  # viernes, sin cambio
+    assert compute_end_date(date(2026, 10, 2), treinta) == date(2026, 11, 2)   # sábado 31/10 -> lunes
+    assert compute_end_date(date(2026, 10, 3), treinta) == date(2026, 11, 2)   # domingo 01/11 -> lunes
+
+
+def test_renovacion_plan_por_dias_no_corre_la_fecha(db_session, cliente, plan, estados_membresia):
+    from gym_admin.services.membership_service import extension_start_date
+
+    plan.duracion, plan.duracion_tipo, plan.duracion_valor = "30 días", "dias", 30
+    inicio = date(2026, 10, 2)
+    for esperado in [date(2026, 11, 1), date(2026, 12, 1), date(2026, 12, 31)]:
+        m = Membresia(cliente_id=cliente.id, sucursal_id=cliente.sucursal_id, plan_id=plan.id,
+                      fecha_inicio=inicio, fecha_fin=compute_end_date(inicio, plan), estado_id=2)
+        db_session.add(m)
+        db_session.flush()
+        assert m.fecha_fin.weekday() < 5  # nunca vence en fin de semana
+        inicio = extension_start_date(m)
+        assert inicio == esperado  # cada período sigue siendo de 30 días
