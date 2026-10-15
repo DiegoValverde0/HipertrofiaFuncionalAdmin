@@ -28,6 +28,18 @@ def is_paid_in_full(membresia):
     return total_paid >= total_due
 
 
+def has_payments(membresia):
+    """True si la membresía tiene al menos un abono registrado."""
+    for pago in membresia.pagos:
+        for hist in pago.historial:
+            try:
+                if Decimal(hist.monto_pagado) > 0:
+                    return True
+            except Exception:
+                pass
+    return False
+
+
 def is_valid_membership(membresia):
     """Una membresía cubre al cliente si está Activa o En espera y pagada."""
     if not getattr(membresia, "fecha_fin", None):
@@ -205,8 +217,10 @@ def _resolve_usage_config(plan):
 def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion_valor=None):
     """Compute membership end date given a duration configuration.
 
-    Monthly durations preserve the current weekend-to-Monday adjustment.
-    Day-based durations keep the exact day count.
+    Both units count the start day as the first covered day, so the end is the
+    day before the next period starts (1 mes desde el 10/01 termina el 09/02 y
+    la renovación vuelve a empezar el 10). Monthly durations keep the
+    weekend-to-Monday adjustment of the end date.
     """
     try:
         if not fecha_inicio or not duracion_source:
@@ -221,7 +235,9 @@ def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion
         if unidad == "dias":
             end_date = fecha_inicio + timedelta(days=max(amount, 1) - 1)
         else:
-            end_date = fecha_inicio + relativedelta(months=max(amount, 1))
+            end_date = (
+                fecha_inicio + relativedelta(months=max(amount, 1)) - timedelta(days=1)
+            )
 
             weekday = end_date.weekday()
             if weekday == 5:  # Saturday
@@ -236,6 +252,32 @@ def compute_end_date(fecha_inicio, duracion_source, duracion_tipo=None, duracion
         except Exception:
             pass
         return None
+
+
+def _next_business_day(day):
+    """Mueve sábado y domingo al lunes siguiente."""
+    if day.weekday() == 5:
+        return day + timedelta(days=2)
+    if day.weekday() == 6:
+        return day + timedelta(days=1)
+    return day
+
+
+def extension_start_date(previa):
+    """Inicio de una extensión que se apila tras ``previa``.
+
+    En planes por meses la extensión empieza en el aniversario de la membresía
+    anterior (10/01 -> 10/02 -> 10/03), aunque su fin se haya corrido al lunes
+    por caer en fin de semana; así las renovaciones no se desplazan. Si la
+    fecha de fin no es la calculada por su plan (modificada a mano o creada con
+    la regla anterior) se usa el día siguiente a su fin.
+    """
+    if not previa or not previa.fecha_inicio or not previa.fecha_fin or not previa.plan:
+        return None
+    unidad, amount = _resolve_duration_config(previa.plan)
+    if unidad == "meses" and previa.fecha_fin == compute_end_date(previa.fecha_inicio, previa.plan):
+        return previa.fecha_inicio + relativedelta(months=max(amount, 1))
+    return _next_business_day(previa.fecha_fin + timedelta(days=1))
 
 
 def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=None):
@@ -283,12 +325,10 @@ def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=Non
         if opcion == 'extend' and cliente_id:
             status = get_membership_status(cliente_id)
             if status.get('last_fecha_fin'):
-                fecha_inicio = status['last_fecha_fin'] + timedelta(days=1)
-                # Ajustar fin de semana
-                if fecha_inicio.weekday() == 5:  # Sábado
-                    fecha_inicio += timedelta(days=2)
-                elif fecha_inicio.weekday() == 6:  # Domingo
-                    fecha_inicio += timedelta(days=1)
+                previa = db.session.get(Membresia, status['last_id']) if status.get('last_id') else None
+                fecha_inicio = extension_start_date(previa) if previa else None
+                if not fecha_inicio:
+                    fecha_inicio = _next_business_day(status['last_fecha_fin'] + timedelta(days=1))
         
         # Validar que fecha_inicio sea razonable
         today = local_today()
@@ -340,8 +380,9 @@ def preview_membership_dates(fecha_inicio, plan_id, opcion='new', cliente_id=Non
 
 
 def cancel_pending_memberships(cliente_id):
-    """Cancel all pending (estado=1) memberships for a client.
+    """Anula las membresías pendientes (estado=1) sin ningún pago del cliente.
 
+    Las que tienen pagos parciales se conservan: son deuda que se debe cobrar.
     Returns count of cancelled memberships.
     """
     try:
@@ -349,6 +390,8 @@ def cancel_pending_memberships(cliente_id):
 
         count = 0
         for m in pending_membresias:
+            if has_payments(m):
+                continue
             try:
                 m.estado_id = 3  # Anulada
                 count += 1

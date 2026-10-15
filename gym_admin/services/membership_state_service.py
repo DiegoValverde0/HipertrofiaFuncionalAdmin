@@ -221,6 +221,7 @@ def cancel_pending_memberships_with_past_start():
     """
     Mark pending memberships (estado_id=1) with fecha_inicio in the past as cancelled (3).
     Used to prevent offering expired pending memberships for checkout.
+    Memberships with a partial payment are kept: they are debt to collect.
 
     Returns:
         int: Number of memberships cancelled
@@ -233,16 +234,19 @@ def cancel_pending_memberships_with_past_start():
             Membresia.fecha_inicio < today,
         ).all()
 
-        if not expired:
+        from .membership_service import has_payments
+
+        to_cancel = [m for m in expired if not has_payments(m)]
+        if not to_cancel:
             return 0
 
-        for m in expired:
+        for m in to_cancel:
             m.estado_id = 3  # Cancelled
             db.session.add(m)
 
         db.session.commit()
-        current_app.logger.debug("Cancelled %d pending memberships with past start", len(expired))
-        return len(expired)
+        current_app.logger.debug("Cancelled %d pending memberships with past start", len(to_cancel))
+        return len(to_cancel)
 
     except Exception:
         db.session.rollback()

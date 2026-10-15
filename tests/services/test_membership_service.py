@@ -8,25 +8,41 @@ from gym_admin.services.membership_service import (
 from gym_admin.models import Membresia, Plan
 
 def test_compute_fecha_fin():
-    """Test the duration parser and end date calculation."""
-    start = date(2023, 1, 1)
-    
-    # 1 month
-    fin = compute_end_date(start, "1 mes")
-    assert fin.month == 2
-    assert fin.day == 1
+    """Los meses cuentan el día de inicio: el fin es el día anterior al aniversario."""
+    start = date(2023, 1, 10)  # martes
 
-    # 3 months (trimestral)
-    fin = compute_end_date(start, "Trimestral")
-    assert fin.month == 4
-    
-    # 6 months (semestral)
-    fin = compute_end_date(start, "Semestral")
-    assert fin.month == 7
-    
-    # 1 year (anual)
-    fin = compute_end_date(start, "Anual")
-    assert fin.year == 2024
+    assert compute_end_date(start, "1 mes") == date(2023, 2, 9)        # jueves
+    assert compute_end_date(start, "Trimestral") == date(2023, 4, 10)  # 09/04 domingo -> lunes
+    assert compute_end_date(start, "Semestral") == date(2023, 7, 10)   # 09/07 domingo -> lunes
+    assert compute_end_date(start, "Anual") == date(2024, 1, 9)
+
+
+def test_renovacion_mensual_no_corre_el_dia(db_session, cliente, plan, estados_membresia):
+    """Cada extensión empieza el mismo día del mes, aunque el fin caiga en fin de semana."""
+    from gym_admin.services.membership_service import extension_start_date
+    from gym_admin.extensions import db
+
+    plan.duracion_tipo, plan.duracion_valor = "meses", 1
+    inicio = date(2026, 3, 10)
+    for esperado in [date(2026, 4, 10), date(2026, 5, 10), date(2026, 6, 10), date(2026, 7, 10)]:
+        m = Membresia(cliente_id=cliente.id, sucursal_id=cliente.sucursal_id, plan_id=plan.id,
+                      fecha_inicio=inicio, fecha_fin=compute_end_date(inicio, plan), estado_id=2)
+        db.session.add(m)
+        db.session.flush()
+        inicio = extension_start_date(m)
+        assert inicio == esperado
+        # el fin de la anterior (corrido al lunes) nunca deja un hueco
+        assert m.fecha_fin >= inicio - timedelta(days=1)
+
+
+def test_extension_tras_fin_manual_empieza_al_dia_siguiente(db_session, cliente, plan, estados_membresia):
+    from gym_admin.services.membership_service import extension_start_date
+
+    m = Membresia(cliente_id=cliente.id, sucursal_id=cliente.sucursal_id, plan_id=plan.id,
+                  fecha_inicio=date(2026, 3, 10), fecha_fin=date(2026, 4, 22), estado_id=2)
+    db_session.add(m)
+    db_session.flush()
+    assert extension_start_date(m) == date(2026, 4, 23)
 
 
 def test_compute_fecha_fin_custom_days(db_session):

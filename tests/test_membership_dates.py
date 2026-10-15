@@ -91,3 +91,44 @@ def test_de_noche_no_anula_la_pendiente_que_empieza_hoy(
 
     assert cancel_pending_memberships_with_past_start() == 0
     assert db.session.get(Membresia, m.id).estado_id == 1
+
+
+def _abonar(membresia, monto):
+    from gym_admin.models import HistorialPago, Pago
+
+    pago = Pago(
+        cliente_id=membresia.cliente_id,
+        membresia_id=membresia.id,
+        sucursal_id=membresia.sucursal_id,
+        monto_total=100,
+    )
+    db.session.add(pago)
+    db.session.flush()
+    db.session.add(HistorialPago(pago_id=pago.id, monto_pagado=monto))
+    db.session.commit()
+
+
+def test_pendiente_con_pago_parcial_no_se_anula(db_session, cliente, plan, estados_membresia):
+    hoy = local_today()
+    sin_pago = _membresia(cliente, plan, 1, hoy - timedelta(days=3), hoy + timedelta(days=27))
+    con_abono = _membresia(cliente, plan, 1, hoy - timedelta(days=3), hoy + timedelta(days=27))
+    _abonar(con_abono, 40)
+
+    assert cancel_pending_memberships_with_past_start() == 1
+    assert db.session.get(Membresia, sin_pago.id).estado_id == 3
+    assert db.session.get(Membresia, con_abono.id).estado_id == 1
+
+
+def test_crear_membresia_no_anula_pendiente_con_abono(db_session, cliente, plan, estados_membresia):
+    from gym_admin.services.membership_service import create_membership
+
+    _activar(plan)
+    hoy = local_today()
+    con_abono = _membresia(cliente, plan, 1, hoy, hoy + timedelta(days=30))
+    _abonar(con_abono, 40)
+    sin_pago = _membresia(cliente, plan, 1, hoy, hoy + timedelta(days=30))
+
+    ok, _, err = create_membership(cliente.id, plan.id, hoy + timedelta(days=31), estado_id=1)
+    assert ok, err
+    assert db.session.get(Membresia, con_abono.id).estado_id == 1
+    assert db.session.get(Membresia, sin_pago.id).estado_id == 3
