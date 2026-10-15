@@ -3,10 +3,8 @@
 from datetime import timedelta
 
 import pytest
-from werkzeug.security import generate_password_hash
-
 from gym_admin.extensions import db
-from gym_admin.models import HistorialPago, Membresia, Pago, Role, Usuario
+from gym_admin.models import HistorialPago, Membresia, Pago
 from gym_admin.services import membership_service
 from gym_admin.services.membership_service import compute_coverage, local_today
 from gym_admin.blueprints.clientes import _compute_client_flags_global
@@ -84,29 +82,6 @@ def test_renovacion_en_espera_sin_pagar_no_cuenta(
     coverage = compute_coverage(cliente.membresias)
     assert coverage["soon"] is True
     assert coverage["coverage_end"] == hoy
-
-
-@pytest.fixture
-def logged_client(app, db_session, sucursal, estados_membresia):
-    db.session.add(Role(id=1, nombre="admin"))
-    db.session.add(
-        Usuario(
-            id=1,
-            nombre="Recepción",
-            correo="recepcion@test.com",
-            contrasena=generate_password_hash("pw"),
-            rol_id=1,
-            sucursal_id=sucursal.id,
-            estado=True,
-        )
-    )
-    db.session.commit()
-    client = app.test_client()
-    resp = client.post(
-        "/auth/login", data={"correo": "recepcion@test.com", "contrasena": "pw"}
-    )
-    assert resp.status_code == 302 and "/auth/login" not in resp.headers["Location"]
-    return client
 
 
 def test_busqueda_muestra_renovacion(logged_client, cliente, plan, estados_membresia, hoy):

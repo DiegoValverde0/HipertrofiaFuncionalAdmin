@@ -9,6 +9,7 @@ from flask import (
     session,
 )
 from ..models import Venta, DetalleVenta, Producto, Cliente
+from ..services.client_service import client_search_filter
 from ..extensions import db
 from sqlalchemy import func
 from datetime import datetime, timedelta
@@ -39,9 +40,8 @@ def list_ventas():
     query = Venta.query
 
     if q:
-        like = f"%{q}%"
         query = query.join(Cliente).filter(
-            (Cliente.nombre.ilike(like)) | (Cliente.apellido.ilike(like))
+            client_search_filter(q)
         )
 
     if metodo_pago_filter:
@@ -292,9 +292,8 @@ def api_clientes():
         query = query.filter(Cliente.sucursal_id == sucursal_id)
 
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            (Cliente.nombre.ilike(like)) | (Cliente.apellido.ilike(like))
+            client_search_filter(q)
         )
 
     clientes = query.order_by(Cliente.nombre).limit(10).all()
@@ -342,9 +341,8 @@ def api_summary():
     query = Venta.query
 
     if q:
-        like = f"%{q}%"
         query = query.join(Cliente).filter(
-            (Cliente.nombre.ilike(like)) | (Cliente.apellido.ilike(like))
+            client_search_filter(q)
         )
 
     if metodo_pago_filter:

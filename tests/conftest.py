@@ -1,7 +1,9 @@
 import pytest
 from gym_admin import create_app
-from gym_admin.extensions import db
-from gym_admin.models import Sucursal, Cliente, Plan, EstadoMembresia, Promocion
+from flask import g
+from gym_admin.extensions import db, limiter
+from gym_admin.models import Sucursal, Cliente, Plan, EstadoMembresia, Promocion, Role, Usuario
+from werkzeug.security import generate_password_hash
 
 class TestConfig:
     TESTING = True
@@ -79,3 +81,30 @@ def promocion(db_session):
     db.session.add(p)
     db.session.commit()
     return p
+
+
+@pytest.fixture
+def logged_client(app, db_session, sucursal, estados_membresia):
+    db.session.add(Role(id=1, nombre="admin"))
+    db.session.add(
+        Usuario(
+            id=1,
+            nombre="Recepción",
+            correo="recepcion@test.com",
+            contrasena=generate_password_hash("pw"),
+            rol_id=1,
+            sucursal_id=sucursal.id,
+            estado=True,
+        )
+    )
+    db.session.commit()
+    limiter.reset()  # muchos tests inician sesión; no deben chocar con el límite
+    client = app.test_client()
+    resp = client.post(
+        "/auth/login", data={"correo": "recepcion@test.com", "contrasena": "pw"}
+    )
+    assert resp.status_code == 302 and "/auth/login" not in resp.headers["Location"]
+    yield client
+    # El contexto de app dura toda la sesión de tests y Flask-Login guarda el
+    # usuario en g: limpiarlo para que no quede logueado en los tests siguientes.
+    g.pop("_login_user", None)

@@ -12,6 +12,7 @@ from flask import (
 )
 from ..models import Cliente, Sucursal
 from ..services.client_service import (
+    client_search_filter,
     create_client,
     update_client,
     delete_client,
@@ -24,7 +25,6 @@ from ..utils import (
     api_key_required,
     verify_sucursal_access,
 )
-from sqlalchemy import or_
 from datetime import date, datetime, timedelta
 from ..utils_timezone import utcnow
 
@@ -103,14 +103,8 @@ def list_clientes():
             # Build a base client query applying the same search/estado/tipo/sucursal filters
             base_q = Cliente.query
             if q:
-                like = f"%{q}%"
                 base_q = base_q.filter(
-                    or_(
-                        Cliente.nombre.ilike(like),
-                        Cliente.apellido.ilike(like),
-                        Cliente.correo.ilike(like),
-                        Cliente.telefono.ilike(like),
-                    )
+                    client_search_filter(q)
                 )
             if estado:
                 base_q = base_q.filter_by(estado=estado)
@@ -131,14 +125,8 @@ def list_clientes():
 
     query = Cliente.query
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            or_(
-                Cliente.nombre.ilike(like),
-                Cliente.apellido.ilike(like),
-                Cliente.correo.ilike(like),
-                Cliente.telefono.ilike(like),
-            )
+            client_search_filter(q)
         )
     if estado:
         query = query.filter_by(estado=estado)
@@ -214,14 +202,8 @@ def search_clientes():
     q = request.args.get("q", type=str) or ""
     if not q:
         return jsonify([])
-    like = f"%{q}%"
     query = Cliente.query.filter(
-        or_(
-            Cliente.nombre.ilike(like),
-            Cliente.apellido.ilike(like),
-            Cliente.correo.ilike(like),
-            Cliente.telefono.ilike(like),
-        )
+        client_search_filter(q)
     )
     # --- FILTRAR BÚSQUEDA POR SUCURSAL ---
     sucursal_id = None
@@ -264,14 +246,8 @@ def clientes_table():
 
     query = Cliente.query
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            or_(
-                Cliente.nombre.ilike(like),
-                Cliente.apellido.ilike(like),
-                Cliente.correo.ilike(like),
-                Cliente.telefono.ilike(like),
-            )
+            client_search_filter(q)
         )
     if estado:
         query = query.filter_by(estado=estado)
@@ -287,14 +263,8 @@ def clientes_table():
             # Build base query applying same filters
             base_q = Cliente.query
             if q:
-                like = f"%{q}%"
                 base_q = base_q.filter(
-                    or_(
-                        Cliente.nombre.ilike(like),
-                        Cliente.apellido.ilike(like),
-                        Cliente.correo.ilike(like),
-                        Cliente.telefono.ilike(like),
-                    )
+                    client_search_filter(q)
                 )
             if estado:
                 base_q = base_q.filter_by(estado=estado)
@@ -353,14 +323,8 @@ def export_clientes_csv():
 
     query = Cliente.query
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            or_(
-                Cliente.nombre.ilike(like),
-                Cliente.apellido.ilike(like),
-                Cliente.correo.ilike(like),
-                Cliente.telefono.ilike(like),
-            )
+            client_search_filter(q)
         )
     if estado:
         query = query.filter_by(estado=estado)
@@ -424,14 +388,8 @@ def print_clientes():
 
     query = Cliente.query
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            or_(
-                Cliente.nombre.ilike(like),
-                Cliente.apellido.ilike(like),
-                Cliente.correo.ilike(like),
-                Cliente.telefono.ilike(like),
-            )
+            client_search_filter(q)
         )
     if estado:
         query = query.filter_by(estado=estado)

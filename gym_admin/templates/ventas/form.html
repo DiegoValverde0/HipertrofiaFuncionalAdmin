@@ -29,7 +29,7 @@
                 <div class="relative">
                   <div class="flex items-center gap-2.5 mt-1">
                     <i class="ti ti-search text-slate-400 text-sm shrink-0"></i>
-                    <input type="text" id="product-search" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" placeholder="Escribe para buscar productos...">
+                    <input type="search" id="product-search" autocomplete="off" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" placeholder="Escribe para buscar productos...">
                   </div>
                   <div id="product-results" class="mt-1"></div>
                 </div>
@@ -67,7 +67,7 @@
               <div>
                 <label for="cliente-search" class="text-sm font-medium text-slate-700">Cliente (opcional)</label>
                 <div id="cliente-search-wrapper" class="mt-1">
-                  <input type="text" id="cliente-search" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" placeholder="Buscar cliente...">
+                  <input type="search" id="cliente-search" autocomplete="off" class="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" placeholder="Buscar cliente...">
                   <div id="cliente-results" class="mt-1"></div>
                   <input type="hidden" name="cliente_id" id="cliente_id_input">
                   <div id="selected-cliente" class="mt-2" style="display: none;"></div>
@@ -198,7 +198,8 @@
               item.addEventListener('click', e => {
                 e.preventDefault();
                 clienteIdInput.value = cliente.id;
-                selectedClienteDiv.innerHTML = `Cliente: <strong>${cliente.text}</strong> <button type="button" class="ml-2 px-2 py-1 text-xs font-medium text-red-700 hover:text-red-900 transition-colors" id="clear-cliente"> (x)</button>`;
+                selectedClienteDiv.innerHTML = `Cliente: <strong></strong> <button type="button" class="ml-2 px-2 py-1 text-xs font-medium text-red-700 hover:text-red-900 transition-colors" id="clear-cliente"> (x)</button>`;
+                selectedClienteDiv.querySelector('strong').textContent = cliente.text;
                 selectedClienteDiv.style.display = 'block';
                 clienteSearch.style.display = 'none';
                 clienteResults.innerHTML = '';

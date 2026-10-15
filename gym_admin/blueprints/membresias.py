@@ -13,6 +13,7 @@ from flask import (
 from flask_login import current_user
 import hmac
 from ..models import Membresia, Cliente, Plan, Promocion, EstadoMembresia
+from ..services.client_service import clean_client_query, client_search_filter
 from ..services.membership_service import (
     compute_coverage,
     local_today,
@@ -34,7 +35,6 @@ from ..utils import (
 from ..extensions import db
 from datetime import datetime, date
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 membresias_bp = Blueprint("membresias", __name__)
@@ -78,10 +78,9 @@ def list_membresias():
         query = query.filter(Membresia.sucursal_id == sucursal_id)
 
     if q:
-        like = f"%{q}%"
         # buscar por cliente nombre/apellido
         query = query.join(Cliente).filter(
-            or_(Cliente.nombre.ilike(like), Cliente.apellido.ilike(like))
+            client_search_filter(q)
         )
     pag = query.order_by(Membresia.id.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -213,18 +212,10 @@ def run_maintenance():
 @membresias_bp.route("/search_clientes")
 def search_clientes_for_membresia():
     # búsqueda en tiempo real para el formulario de membresías
-    q = request.args.get("q", type=str) or ""
+    q = clean_client_query(request.args.get("q", type=str))
     if not q:
         return jsonify([])
-    like = f"%{q}%"
-    query = Cliente.query.filter(
-        or_(
-            Cliente.nombre.ilike(like),
-            Cliente.apellido.ilike(like),
-            Cliente.correo.ilike(like),
-            Cliente.telefono.ilike(like),
-        )
-    )
+    query = Cliente.query.filter(client_search_filter(q))
 
     # --- FILTRAR CLIENTES POR SUCURSAL ---
     sucursal_id = None
@@ -253,6 +244,8 @@ def search_clientes_for_membresia():
         result.append(
             {
                 "id": r.id,
+                "nombre": f"{r.nombre} {r.apellido or ''}".strip(),
+                "detalle": r.telefono or r.correo or "",
                 "text": f"{r.nombre} {r.apellido} - {r.correo or r.telefono or ''}",
                 "has_membresia": bool(status.get("has")),
                 "soon": bool(status.get("soon")),

@@ -2,8 +2,38 @@
 from datetime import datetime, date
 from flask import current_app
 from ..extensions import db
+from sqlalchemy import and_, or_, true
 from ..models import Cliente, Membresia
 from .membership_service import get_membership_status
+
+
+def clean_client_query(q):
+    """Normaliza el texto de búsqueda de clientes.
+
+    El navegador puede autocompletar el campo con el texto completo de una
+    opción elegida antes, p. ej. "Ana Paz - ana@mail.comTiene"; se conserva
+    sólo la parte anterior a " - " (nombre y apellido).
+    """
+    q = (q or "").strip()
+    if " - " in q:
+        q = q.split(" - ", 1)[0]
+    return " ".join(q.split())
+
+
+def client_search_filter(q):
+    """Filtro SQLAlchemy para buscar clientes por palabras.
+
+    Cada palabra debe aparecer en el nombre, apellido, correo o teléfono, así
+    "ana paz" encuentra a "Ana María Paz" sin importar el orden ni las
+    mayúsculas.
+    """
+    words = clean_client_query(q).split()
+    if not words:
+        return true()
+    fields = (Cliente.nombre, Cliente.apellido, Cliente.correo, Cliente.telefono)
+    return and_(
+        *[or_(*[f.icontains(w, autoescape=True) for f in fields]) for w in words]
+    )
 
 
 def compute_age(fecha_nacimiento):

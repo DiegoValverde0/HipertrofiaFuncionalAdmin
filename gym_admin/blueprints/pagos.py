@@ -10,6 +10,7 @@ from flask import (
 )
 from ..extensions import db
 from ..models import Pago, HistorialPago, Membresia, Cliente
+from ..services.client_service import client_search_filter
 from ..services.payment_service import (
     add_payment_history,
     ensure_membership_state_after_payment,
@@ -55,9 +56,8 @@ def list_pagos():
     query = Pago.query.join(Cliente, Pago.cliente_id == Cliente.id)
     # apply search by cliente nombre/apellido
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            (Cliente.nombre.ilike(like)) | (Cliente.apellido.ilike(like))
+            client_search_filter(q)
         )
 
     # filter by metodo_pago
@@ -167,9 +167,8 @@ def reporte_detallado():
     )
 
     if q:
-        like = f"%{q}%"
         query = query.filter(
-            (Cliente.nombre.ilike(like)) | (Cliente.apellido.ilike(like))
+            client_search_filter(q)
         )
 
     if metodo_pago_filter:
@@ -450,7 +449,6 @@ def search_membresias():
     q = request.args.get("q", type=str) or ""
     if not q:
         return jsonify([])
-    like = f"%{q}%"
     # permitir búsqueda por ID exacto o por nombre/apellido de cliente
     results = []
     try:
@@ -484,7 +482,7 @@ def search_membresias():
         membres = (
             Membresia.query.join(Cliente)
             .join(EstadoMembresia)
-            .filter((Cliente.nombre.ilike(like)) | (Cliente.apellido.ilike(like)))
+            .filter(client_search_filter(q))
             .filter(EstadoMembresia.nombre.ilike("pendient%"))
             .limit(30)
             .all()
