@@ -187,25 +187,25 @@ def api_key_required(func):
                 g.api_key_sucursal_id = getattr(current_user, "sucursal_id", None)
                 return func(*args, **kwargs)
 
-            # Si no hay sesión, validar API key en header Authorization: Bearer <key>
-            auth_header = request.headers.get("Authorization", "")
-            if not auth_header.startswith("Bearer "):
+            # Si no hay sesión, validar API key en header Authorization, X-API-KEY o query param
+            api_key_string = None
+            auth_header = request.headers.get("Authorization", "").strip()
+            if auth_header.startswith("Bearer "):
+                api_key_string = auth_header[7:].strip()
+            elif request.headers.get("X-API-KEY"):
+                api_key_string = request.headers.get("X-API-KEY", "").strip()
+            elif request.args.get("api_key"):
+                api_key_string = request.args.get("api_key", "").strip()
+
+            if not api_key_string:
                 return (
                     jsonify(
                         {
                             "success": False,
-                            "error": "API key no proporcionada. Use: Authorization: Bearer sk_live_...",
+                            "error": "API key no proporcionada. Use: Authorization: Bearer <key> o parámetro ?api_key=<key>",
                             "data": None,
                         }
                     ),
-                    401,
-                )
-
-            # Extraer la key
-            api_key_string = auth_header[7:]
-            if not api_key_string:
-                return (
-                    jsonify({"success": False, "error": "API key vacía", "data": None}),
                     401,
                 )
 

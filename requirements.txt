@@ -20,6 +20,7 @@ weasyprint==70.0
 gunicorn==26.2.0
 dnspython==2.9.0
 redis==7.4.1
+openpyxl==3.1.5
 
 # --- Dependencias indirectas ---
 alembic==1.20.0

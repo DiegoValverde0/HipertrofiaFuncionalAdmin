@@ -9,7 +9,12 @@ from flask import (
     session,
     g,
     current_app,
+    Response,
 )
+from ..extensions import db
+from sqlalchemy import text
+from io import BytesIO, StringIO
+import csv
 from ..models import Cliente, Sucursal
 from ..services.client_service import (
     client_search_filter,
@@ -761,3 +766,407 @@ def api_list_clientes():
         # Registro del error real para el desarrollador
         print(f"DEBUG ERROR: {str(e)}")
         return jsonify({"success": False, "error": "Error interno del servidor"}), 500
+
+
+@clientes_bp.route("/api/reporte-consolidado", methods=["GET"])
+@clientes_bp.route("/exportar-consolidado", methods=["GET"])
+@api_key_required
+def api_reporte_consolidado_bi():
+    """
+    Super-endpoint de Inteligencia de Negocios (Power BI / Excel / Google Sheets).
+    Parámetros opcionales:
+      - formato: 'xlsx' / 'excel', 'csv', 'json' (default 'json')
+      - sucursal_id: int (filtra por sucursal si la API Key o sesión es global)
+      - estado: 'Activo' | 'Inactivo'
+      - q: str (búsqueda opcional por nombre, apellido, correo o teléfono)
+    """
+    try:
+        # 1. Contexto de seguridad y filtros opcionales
+        api_sucursal_id = getattr(g, "api_key_sucursal_id", None)
+        req_sucursal_id = request.args.get("sucursal_id", type=int)
+
+        # Si el usuario está autenticado por sesión web y no especificó sucursal por query
+        session_suc = session.get("sucursal_id") if hasattr(session, "get") else None
+        if session_suc in (0, "0", ""):
+            session_suc = None
+        session_sucursal_id = int(session_suc) if session_suc else None
+
+        sucursal_id = api_sucursal_id or req_sucursal_id or session_sucursal_id
+        estado = request.args.get("estado", type=str)
+        if estado:
+            estado = estado.strip()
+        q = request.args.get("q", type=str)
+        formato = (request.args.get("formato", "json") or "json").lower().strip()
+
+        # 2. Aumentar group_concat_max_len en la sesión actual para evitar truncamientos
+        # en clientes con historiales muy largos de membresías (solo MySQL)
+        try:
+            if db.engine.dialect.name == "mysql":
+                db.session.execute(text("SET SESSION group_concat_max_len = 100000;"))
+        except Exception as dialect_err:
+            current_app.logger.warning("No se pudo configurar group_concat_max_len: %s", str(dialect_err))
+
+        # 3. Construir filtros dinámicos seguros (bindparams)
+        filtros_sql = ["1 = 1"]
+        params = {}
+
+        if sucursal_id and sucursal_id > 0:
+            filtros_sql.append("c.sucursal_id = :sucursal_id")
+            params["sucursal_id"] = sucursal_id
+
+        if estado in ("Activo", "Inactivo"):
+            filtros_sql.append("c.estado = :estado")
+            params["estado"] = estado
+
+        if q and q.strip():
+            filtros_sql.append(
+                "(c.nombre LIKE :q OR c.apellido LIKE :q OR c.correo LIKE :q OR c.telefono LIKE :q)"
+            )
+            params["q"] = f"%{q.strip()}%"
+
+        where_clause = " AND ".join(filtros_sql)
+
+        # 4. Superconsulta SQL Consolidada
+        sql_query = text(f"""
+            SELECT 
+                c.id AS cliente_id,
+                c.nombre,
+                c.apellido,
+                TRIM(CONCAT(COALESCE(c.nombre, ''), ' ', COALESCE(c.apellido, ''))) AS nombre_completo,
+                COALESCE(c.telefono, '') AS telefono,
+                COALESCE(c.correo, '') AS correo,
+                c.tipo_cliente,
+                c.estado AS estado_cliente,
+                c.sucursal_id,
+                COALESCE(s.nombre, 'Sin Sucursal') AS sucursal_nombre,
+                DATE_FORMAT(c.fecha_nacimiento, '%Y-%m-%d') AS fecha_nacimiento,
+                TIMESTAMPDIFF(YEAR, c.fecha_nacimiento, CURDATE()) AS edad_actual,
+                CASE 
+                    WHEN c.fecha_nacimiento IS NULL THEN 'No registrado'
+                    WHEN TIMESTAMPDIFF(YEAR, c.fecha_nacimiento, CURDATE()) < 18 THEN 'Menor de 18'
+                    WHEN TIMESTAMPDIFF(YEAR, c.fecha_nacimiento, CURDATE()) BETWEEN 18 AND 24 THEN '18-24 años'
+                    WHEN TIMESTAMPDIFF(YEAR, c.fecha_nacimiento, CURDATE()) BETWEEN 25 AND 34 THEN '25-34 años'
+                    WHEN TIMESTAMPDIFF(YEAR, c.fecha_nacimiento, CURDATE()) BETWEEN 35 AND 44 THEN '35-44 años'
+                    WHEN TIMESTAMPDIFF(YEAR, c.fecha_nacimiento, CURDATE()) BETWEEN 45 AND 54 THEN '45-54 años'
+                    ELSE '55+ años'
+                END AS rango_etario,
+
+                DATE_FORMAT(c.fecha_registro, '%Y-%m-%d') AS fecha_registro,
+                DATEDIFF(CURDATE(), c.fecha_registro) AS dias_desde_registro,
+                CASE 
+                    WHEN rm.primera_fecha_inicio IS NOT NULL AND c.fecha_registro IS NOT NULL 
+                    THEN GREATEST(0, DATEDIFF(rm.primera_fecha_inicio, c.fecha_registro))
+                    ELSE NULL 
+                END AS dias_en_activar_primera_membresia,
+
+                COALESCE(rm.total_membresias_historial, 0) AS total_membresias_solicitadas,
+                COALESCE(rm.membresias_activadas_pagadas, 0) AS membresias_activadas_pagadas,
+                GREATEST(0, COALESCE(rm.membresias_activadas_pagadas, 0) - 1) AS cantidad_renovaciones,
+                COALESCE(rm.renovaciones_tipo_extend, 0) AS renovaciones_marcadas_extend,
+                CASE 
+                    WHEN COALESCE(rm.membresias_activadas_pagadas, 0) > 1 THEN 'Recurrente'
+                    WHEN COALESCE(rm.membresias_activadas_pagadas, 0) = 1 THEN 'Única Membresía'
+                    ELSE 'Sin Membresías Pagadas'
+                END AS tipo_fidelidad_cliente,
+
+                COALESCE(rm.planes_cortos_dias_semanas, 0) AS membresias_cortas_diarias_semanales,
+                COALESCE(rm.planes_1_mes, 0) AS membresias_1_mes,
+                COALESCE(rm.planes_2_meses, 0) AS membresias_2_meses,
+                COALESCE(rm.planes_3_meses, 0) AS membresias_3_meses,
+                COALESCE(rm.planes_6_meses, 0) AS membresias_6_meses,
+                COALESCE(rm.planes_12_meses_anual, 0) AS membresias_anuales,
+                COALESCE(rm.planes_otros_meses, 0) AS membresias_otros_plazos,
+                COALESCE(rm.planes_por_cupo_sesiones, 0) AS membresias_por_cupo_asistencia,
+
+                COALESCE(rm.periodo_primera_membresia, 'Sin membresías') AS periodo_primera_membresia,
+                DATE_FORMAT(rm.primera_fecha_inicio, '%Y-%m-%d') AS primera_membresia_inicio,
+                rm.primera_fecha_fin AS primera_membresia_fin,
+                COALESCE(rm.primer_plan_nombre, 'N/A') AS primer_plan_contratado,
+
+                COALESCE(rm.periodo_ultima_membresia, 'Sin membresías') AS periodo_ultima_membresia,
+                rm.ultima_fecha_inicio AS ultima_membresia_inicio,
+                DATE_FORMAT(rm.ultima_fecha_fin, '%Y-%m-%d') AS ultima_membresia_fin,
+                COALESCE(rm.ultimo_plan_nombre, 'N/A') AS ultimo_plan_contratado,
+                COALESCE(rm.ultimo_estado_membresia, 'Sin Membresía') AS estado_ultima_membresia,
+
+                CASE 
+                    WHEN rm.max_fecha_fin_pagada >= CURDATE() THEN 1 
+                    ELSE 0 
+                END AS tiene_membresia_vigente_hoy,
+                CASE 
+                    WHEN rm.max_fecha_fin_pagada IS NOT NULL 
+                    THEN DATEDIFF(rm.max_fecha_fin_pagada, CURDATE()) 
+                    ELSE NULL 
+                END AS dias_para_vencer_o_vencido,
+                CASE 
+                    WHEN rm.max_fecha_fin_pagada IS NOT NULL AND rm.max_fecha_fin_pagada < CURDATE() 
+                    THEN DATEDIFF(CURDATE(), rm.max_fecha_fin_pagada)
+                    ELSE 0 
+                END AS dias_abandono_desde_ultimo_vencimiento,
+                COALESCE(rm.total_dias_contratados, 0) AS total_dias_contratados_historico,
+                CASE
+                    WHEN COALESCE(rm.membresias_activadas_pagadas, 0) = 0 THEN '1. Prospecto (Sin Membresía Pagada)'
+                    WHEN rm.max_fecha_fin_pagada >= CURDATE() AND DATEDIFF(rm.max_fecha_fin_pagada, CURDATE()) <= 7 THEN '2. Alerta: Por Vencer (<= 7 días)'
+                    WHEN rm.max_fecha_fin_pagada >= CURDATE() AND COALESCE(rm.membresias_activadas_pagadas, 0) = 1 THEN '3. Activo Nuevo (1ra Membresía)'
+                    WHEN rm.max_fecha_fin_pagada >= CURDATE() AND COALESCE(rm.membresias_activadas_pagadas, 0) > 1 THEN '4. Activo Fidelizado (Renovador)'
+                    WHEN DATEDIFF(CURDATE(), rm.max_fecha_fin_pagada) BETWEEN 1 AND 30 THEN '5. En Riesgo de Abandono (Vencido 1-30 días)'
+                    WHEN DATEDIFF(CURDATE(), rm.max_fecha_fin_pagada) BETWEEN 31 AND 90 THEN '6. Abandono Reciente (Vencido 31-90 días)'
+                    ELSE '7. Cliente Perdido / Churn (> 90 días)'
+                END AS segmento_fidelidad_churn,
+
+                ROUND(COALESCE(rm.total_pagado_membresias, 0), 2) AS total_pagado_membresias,
+                ROUND(
+                    CASE 
+                        WHEN COALESCE(rm.membresias_activadas_pagadas, 0) > 0 
+                        THEN COALESCE(rm.total_pagado_membresias, 0) / rm.membresias_activadas_pagadas 
+                        ELSE 0 
+                    END, 2
+                ) AS ticket_promedio_membresia,
+                ROUND(COALESCE(rm.saldo_pendiente_total, 0), 2) AS saldo_pendiente_membresias,
+                COALESCE(rm.metodo_pago_frecuente, 'N/A') AS metodo_pago_preferido,
+                COALESCE(rm.membresias_con_promocion, 0) AS membresias_con_promocion,
+                COALESCE(rv.total_compras_pos, 0) AS cantidad_compras_productos_pos,
+                ROUND(COALESCE(rv.monto_total_ventas_pos, 0), 2) AS total_gastado_productos_pos,
+                ROUND(COALESCE(rm.total_pagado_membresias, 0) + COALESCE(rv.monto_total_ventas_pos, 0), 2) AS ltv_ingresos_totales_cliente,
+
+                GREATEST(COALESCE(ra.total_marcajes_tabla, 0), COALESCE(rm.total_marcajes_usados_col, 0)) AS total_asistencias_registradas,
+                DATE_FORMAT(ra.ultima_fecha_asistencia, '%Y-%m-%d %H:%i') AS ultima_fecha_asistencia,
+                CASE 
+                    WHEN ra.ultima_fecha_asistencia IS NOT NULL 
+                    THEN DATEDIFF(CURDATE(), DATE(ra.ultima_fecha_asistencia)) 
+                    ELSE NULL 
+                END AS dias_sin_asistir
+
+            FROM clientes c
+            LEFT JOIN sucursales s ON s.id = c.sucursal_id
+            LEFT JOIN (
+                SELECT 
+                    m_det.cliente_id,
+                    SUM(CASE WHEN m_det.es_anulada = 0 THEN 1 ELSE 0 END) AS total_membresias_historial,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 THEN 1 ELSE 0 END) AS membresias_activadas_pagadas,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.tipo_creacion = 'extend' THEN 1 ELSE 0 END) AS renovaciones_tipo_extend,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.promocion_id IS NOT NULL THEN 1 ELSE 0 END) AS membresias_con_promocion,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = 'CORTA' THEN 1 ELSE 0 END) AS planes_cortos_dias_semanas,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = '1_MES' THEN 1 ELSE 0 END) AS planes_1_mes,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = '2_MESES' THEN 1 ELSE 0 END) AS planes_2_meses,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = '3_MESES' THEN 1 ELSE 0 END) AS planes_3_meses,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = '6_MESES' THEN 1 ELSE 0 END) AS planes_6_meses,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = '12_MESES' THEN 1 ELSE 0 END) AS planes_12_meses_anual,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND m_det.categoria_duracion = 'OTROS' THEN 1 ELSE 0 END) AS planes_otros_meses,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 AND (m_det.tipo_uso = 'asistencia_manual' OR m_det.cupo_marcajes IS NOT NULL) THEN 1 ELSE 0 END) AS planes_por_cupo_sesiones,
+                    MIN(CASE WHEN m_det.es_anulada = 0 THEN m_det.fecha_inicio END) AS primera_fecha_inicio,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN DATE_FORMAT(m_det.fecha_fin, '%Y-%m-%d') END ORDER BY m_det.fecha_inicio ASC, m_det.membresia_id ASC SEPARATOR '||'), '||', 1) AS primera_fecha_fin,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN m_det.plan_nombre END ORDER BY m_det.fecha_inicio ASC, m_det.membresia_id ASC SEPARATOR '||'), '||', 1) AS primer_plan_nombre,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN CONCAT(DATE_FORMAT(m_det.fecha_inicio, '%Y-%m-%d'), ' al ', DATE_FORMAT(m_det.fecha_fin, '%Y-%m-%d'), ' (', m_det.plan_nombre, ')') END ORDER BY m_det.fecha_inicio ASC, m_det.membresia_id ASC SEPARATOR '||'), '||', 1) AS periodo_primera_membresia,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN DATE_FORMAT(m_det.fecha_inicio, '%Y-%m-%d') END ORDER BY m_det.fecha_inicio DESC, m_det.membresia_id DESC SEPARATOR '||'), '||', 1) AS ultima_fecha_inicio,
+                    MAX(CASE WHEN m_det.es_anulada = 0 THEN m_det.fecha_fin END) AS ultima_fecha_fin,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN m_det.plan_nombre END ORDER BY m_det.fecha_inicio DESC, m_det.membresia_id DESC SEPARATOR '||'), '||', 1) AS ultimo_plan_nombre,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN m_det.estado_nombre END ORDER BY m_det.fecha_inicio DESC, m_det.membresia_id DESC SEPARATOR '||'), '||', 1) AS ultimo_estado_membresia,
+                    SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN m_det.es_anulada = 0 THEN CONCAT(DATE_FORMAT(m_det.fecha_inicio, '%Y-%m-%d'), ' al ', DATE_FORMAT(m_det.fecha_fin, '%Y-%m-%d'), ' (', m_det.plan_nombre, ')') END ORDER BY m_det.fecha_inicio DESC, m_det.membresia_id DESC SEPARATOR '||'), '||', 1) AS periodo_ultima_membresia,
+                    MAX(CASE WHEN m_det.es_pagada_y_activada = 1 THEN m_det.fecha_fin END) AS max_fecha_fin_pagada,
+                    SUM(CASE WHEN m_det.es_pagada_y_activada = 1 THEN GREATEST(0, DATEDIFF(m_det.fecha_fin, m_det.fecha_inicio)) ELSE 0 END) AS total_dias_contratados,
+                    SUM(CASE WHEN m_det.es_anulada = 0 THEN m_det.monto_pagado ELSE 0 END) AS total_pagado_membresias,
+                    SUM(CASE WHEN m_det.es_anulada = 0 THEN m_det.saldo_pendiente ELSE 0 END) AS saldo_pendiente_total,
+                    SUBSTRING_INDEX(GROUP_CONCAT(m_det.metodo_pago ORDER BY m_det.fecha_inicio DESC, m_det.membresia_id DESC SEPARATOR '||'), '||', 1) AS metodo_pago_frecuente,
+                    SUM(COALESCE(m_det.marcajes_usados, 0)) AS total_marcajes_usados_col
+                FROM (
+                    SELECT 
+                        m.id AS membresia_id,
+                        m.cliente_id,
+                        m.fecha_inicio,
+                        m.fecha_fin,
+                        m.tipo_creacion,
+                        m.tipo_uso,
+                        m.cupo_marcajes,
+                        m.marcajes_usados,
+                        m.promocion_id,
+                        p.nombre AS plan_nombre,
+                        COALESCE(em.nombre, 'Desconocido') AS estado_nombre,
+                        CASE 
+                            WHEN m.estado_id = 3 OR LOWER(COALESCE(em.nombre, '')) LIKE 'anulad%' THEN 1 
+                            ELSE 0 
+                        END AS es_anulada,
+                        CASE 
+                            WHEN (m.estado_id != 3 AND LOWER(COALESCE(em.nombre, '')) NOT LIKE 'anulad%')
+                                 AND (m.estado_id != 1 AND LOWER(COALESCE(em.nombre, '')) NOT LIKE 'pendient%')
+                                 AND COALESCE(pg_agg.monto_pagado_real, 0) > 0 
+                            THEN 1 
+                            ELSE 0 
+                        END AS es_pagada_y_activada,
+                        CASE 
+                            WHEN LOWER(p.duracion_tipo) LIKE 'dia%' OR LOWER(p.duracion_tipo) LIKE 'd%' OR LOWER(p.duracion_tipo) LIKE 'seman%' 
+                                 OR (DATEDIFF(m.fecha_fin, m.fecha_inicio) < 25) THEN 'CORTA'
+                            WHEN (LOWER(p.duracion_tipo) LIKE 'mes%' AND p.duracion_valor = 1) 
+                                 OR LOWER(p.duracion) LIKE '%1 mes%' OR LOWER(p.nombre) LIKE '%mensual%'
+                                 OR (DATEDIFF(m.fecha_fin, m.fecha_inicio) BETWEEN 25 AND 35) THEN '1_MES'
+                            WHEN (LOWER(p.duracion_tipo) LIKE 'mes%' AND p.duracion_valor = 2) 
+                                 OR LOWER(p.duracion) LIKE '%2 mes%' OR LOWER(p.nombre) LIKE '%bimestral%'
+                                 OR (DATEDIFF(m.fecha_fin, m.fecha_inicio) BETWEEN 55 AND 65) THEN '2_MESES'
+                            WHEN (LOWER(p.duracion_tipo) LIKE 'mes%' AND p.duracion_valor = 3) 
+                                 OR LOWER(p.duracion) LIKE '%3 mes%' OR LOWER(p.nombre) LIKE '%trimestral%'
+                                 OR (DATEDIFF(m.fecha_fin, m.fecha_inicio) BETWEEN 85 AND 95) THEN '3_MESES'
+                            WHEN (LOWER(p.duracion_tipo) LIKE 'mes%' AND p.duracion_valor = 6) 
+                                 OR LOWER(p.duracion) LIKE '%6 mes%' OR LOWER(p.nombre) LIKE '%semestral%'
+                                 OR (DATEDIFF(m.fecha_fin, m.fecha_inicio) BETWEEN 175 AND 190) THEN '6_MESES'
+                            WHEN (LOWER(p.duracion_tipo) LIKE 'mes%' AND p.duracion_valor = 12) 
+                                 OR LOWER(p.duracion_tipo) LIKE 'a%' OR LOWER(p.duracion) LIKE '%anual%' 
+                                 OR LOWER(p.duracion) LIKE '%12 mes%' OR LOWER(p.nombre) LIKE '%anual%'
+                                 OR (DATEDIFF(m.fecha_fin, m.fecha_inicio) >= 350) THEN '12_MESES'
+                            ELSE 'OTROS'
+                        END AS categoria_duracion,
+                        COALESCE(pg_agg.monto_pagado_real, 0) AS monto_pagado,
+                        GREATEST(0, COALESCE(pg_agg.monto_comprometido, p.precio, 0) - COALESCE(pg_agg.monto_pagado_real, 0)) AS saldo_pendiente,
+                        pg_agg.ultimo_metodo_pago AS metodo_pago
+                    FROM membresias m
+                    INNER JOIN planes p ON p.id = m.plan_id
+                    LEFT JOIN estados_membresias em ON em.id = m.estado_id
+                    LEFT JOIN (
+                        SELECT 
+                            pg.membresia_id,
+                            SUM(COALESCE(pg.monto_total, 0)) AS monto_comprometido,
+                            SUM(
+                                CASE 
+                                    WHEN hp_sum.total_abonos IS NOT NULL AND hp_sum.total_abonos > 0 
+                                    THEN hp_sum.total_abonos 
+                                    ELSE COALESCE(pg.monto_total, 0) 
+                                END
+                            ) AS monto_pagado_real,
+                            SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(hp_sum.metodo_abono, pg.metodo_pago) ORDER BY pg.fecha_pago DESC, pg.id DESC SEPARATOR '||'), '||', 1) AS ultimo_metodo_pago
+                        FROM pagos pg
+                        LEFT JOIN (
+                            SELECT 
+                                pago_id, 
+                                SUM(monto_pagado) AS total_abonos,
+                                SUBSTRING_INDEX(GROUP_CONCAT(metodo_pago ORDER BY fecha_pago DESC, id DESC SEPARATOR '||'), '||', 1) AS metodo_abono
+                            FROM historial_pagos
+                            GROUP BY pago_id
+                        ) hp_sum ON hp_sum.pago_id = pg.id
+                        GROUP BY pg.membresia_id
+                    ) pg_agg ON pg_agg.membresia_id = m.id
+                ) m_det
+                GROUP BY m_det.cliente_id
+            ) rm ON rm.cliente_id = c.id
+            LEFT JOIN (
+                SELECT 
+                    v.cliente_id,
+                    COUNT(v.id) AS total_compras_pos,
+                    SUM(COALESCE(v.monto_total, 0)) AS monto_total_ventas_pos
+                FROM ventas v
+                WHERE v.cliente_id IS NOT NULL
+                GROUP BY v.cliente_id
+            ) rv ON rv.cliente_id = c.id
+            LEFT JOIN (
+                SELECT 
+                    ma.cliente_id,
+                    COUNT(ma.id) AS total_marcajes_tabla,
+                    MAX(ma.fecha_registro) AS ultima_fecha_asistencia
+                FROM marcajes_asistencia ma
+                GROUP BY ma.cliente_id
+            ) ra ON ra.cliente_id = c.id
+            WHERE {where_clause}
+            ORDER BY c.id ASC;
+        """)
+
+        result = db.session.execute(sql_query, params)
+        keys = list(result.keys())
+        rows = [dict(zip(keys, row)) for row in result.fetchall()]
+
+        # Convertir tipos Decimal a float para serialización limpia en JSON/Excel
+        for r in rows:
+            for k, v in r.items():
+                if hasattr(v, "__float__") and not isinstance(v, (int, float, bool)):
+                    r[k] = float(v)
+
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # 5. Salida en Excel (.xlsx) si se solicita ?formato=xlsx o ?formato=excel
+        if formato in ("xlsx", "excel"):
+            try:
+                import openpyxl
+                from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+                from openpyxl.utils import get_column_letter
+
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Consolidado_Clientes_BI"
+
+                header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+                header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+                header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+                thin_border = Border(
+                    left=Side(style="thin", color="E2E8F0"),
+                    right=Side(style="thin", color="E2E8F0"),
+                    top=Side(style="thin", color="E2E8F0"),
+                    bottom=Side(style="thin", color="E2E8F0"),
+                )
+
+                if keys:
+                    ws.append(keys)
+                    ws.row_dimensions[1].height = 28
+                    for col_num in range(1, len(keys) + 1):
+                        cell = ws.cell(row=1, column=col_num)
+                        cell.fill = header_fill
+                        cell.font = header_font
+                        cell.alignment = header_alignment
+
+                    for row_idx, r in enumerate(rows, start=2):
+                        row_vals = [r.get(k) for k in keys]
+                        ws.append(row_vals)
+                        for col_idx in range(1, len(keys) + 1):
+                            cell = ws.cell(row=row_idx, column=col_idx)
+                            cell.border = thin_border
+
+                    # Inmovilizar panel de títulos
+                    ws.freeze_panes = "A2"
+
+                    # Auto-ajuste de ancho de columnas
+                    for col in ws.columns:
+                        max_len = 0
+                        col_letter = get_column_letter(col[0].column)
+                        for cell in col:
+                            val_str = str(cell.value or "")
+                            if len(val_str) > max_len:
+                                max_len = len(val_str)
+                        ws.column_dimensions[col_letter].width = max(min(max_len + 3, 50), 12)
+
+                bio = BytesIO()
+                wb.save(bio)
+                bio.seek(0)
+                filename = f"reporte_consolidado_clientes_{timestamp_str}.xlsx"
+                return Response(
+                    bio.getvalue(),
+                    mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{filename}"'
+                    },
+                )
+            except ImportError:
+                # Fallback automático a CSV para Excel si openpyxl falla
+                formato = "csv"
+
+        # 6. Salida en CSV compatible con Excel (UTF-8 con BOM) si se solicita ?formato=csv
+        if formato == "csv":
+            si = StringIO()
+            si.write("\ufeff")  # BOM para que Excel abra acentos y columnas automáticamente
+            cw = csv.writer(si)
+            if keys:
+                cw.writerow(keys)
+                for r in rows:
+                    cw.writerow([r.get(k, "") if r.get(k) is not None else "" for k in keys])
+            filename = f"reporte_consolidado_clientes_{timestamp_str}.csv"
+            return Response(
+                si.getvalue(),
+                mimetype="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"'
+                },
+            )
+
+        # 7. Salida por defecto: JSON plano (óptimo para Power BI Web Connector y Google Sheets)
+        return jsonify(rows), 200
+
+    except Exception as e:
+        current_app.logger.exception("Error generando el reporte consolidado BI: %s", str(e))
+        return jsonify({"success": False, "error": "Error interno generando reporte", "detail": str(e)}), 500
+

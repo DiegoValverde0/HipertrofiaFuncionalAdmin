@@ -155,21 +155,23 @@ document.addEventListener('DOMContentLoaded', function(){
   // Search and per-page for clientes, membresias, ventas and productos are now handled
   // in their respective list.html templates with centralized filter state.
 
-  // export/print for clients (use unique buttons)
-  exportClientsBtn?.addEventListener('click', function(e){
-    e.preventDefault();
-    var url = new URL('/clientes/export.csv', window.location.origin);
-    var cur = new URL(window.location.href);
-    cur.searchParams.forEach(function(v,k){ url.searchParams.set(k,v); });
-    window.location.href = url.toString();
-  });
-  printClientsBtn?.addEventListener('click', function(e){
-    e.preventDefault();
-    var url = new URL('/clientes/print', window.location.origin);
-    var cur = new URL(window.location.href);
-    cur.searchParams.forEach(function(v,k){ url.searchParams.set(k,v); });
-    window.open(url.toString(), '_blank');
-  });
+  // export/print for clients (handled in clientes/list.html if present)
+  if (!document.getElementById('export-super-excel')) {
+    exportClientsBtn?.addEventListener('click', function(e){
+      e.preventDefault();
+      var url = new URL('/clientes/export.csv', window.location.origin);
+      var cur = new URL(window.location.href);
+      cur.searchParams.forEach(function(v,k){ url.searchParams.set(k,v); });
+      window.location.href = url.toString();
+    });
+    printClientsBtn?.addEventListener('click', function(e){
+      e.preventDefault();
+      var url = new URL('/clientes/print', window.location.origin);
+      var cur = new URL(window.location.href);
+      cur.searchParams.forEach(function(v,k){ url.searchParams.set(k,v); });
+      window.open(url.toString(), '_blank');
+    });
+  }
 
   // export/print for gastos (use POST to include current filters - handled later in gastos section)
   exportGastosBtn?.addEventListener('click', function(e){

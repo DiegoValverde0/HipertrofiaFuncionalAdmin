@@ -40,9 +40,54 @@
     </div>
 
     <div class="flex items-center gap-2 border-l border-slate-200 pl-2 shrink-0">
-      <button id="export-clients-csv" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 h-9 px-3 shadow-sm" title="Exportar CSV">
-        <i class="ti ti-file-spreadsheet text-emerald-600 text-lg"></i>
-      </button>
+      <!-- Menú Exportar con Superinforme Consolidado (Excel/CSV) y CSV Básico -->
+      <div x-data="{ openExport: false }" class="relative inline-block text-left">
+        <button @click="openExport = !openExport; $event.stopPropagation()" @click.outside="openExport = false" type="button"
+          class="inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-9 px-3 shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500" title="Exportar reportes">
+          <i class="ti ti-download text-emerald-600 text-lg"></i>
+          <span class="hidden sm:inline">Exportar</span>
+          <i class="ti ti-chevron-down text-xs text-slate-400"></i>
+        </button>
+
+        <div x-show="openExport" x-transition.opacity.duration.200ms
+          class="absolute right-0 z-50 mt-1.5 w-64 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-slate-900/5 focus:outline-none overflow-hidden"
+          style="display: none;">
+          <div class="p-2 space-y-1">
+            <div class="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Superinforme Consolidado (BI)</div>
+            
+            <a href="#" id="export-super-excel" @click="openExport = false"
+              class="flex items-start gap-2.5 rounded-lg text-slate-700 p-2 hover:bg-emerald-50 hover:text-emerald-800 transition-colors">
+              <i class="ti ti-file-spreadsheet text-emerald-600 text-xl mt-0.5 shrink-0"></i>
+              <div>
+                <div class="text-xs font-semibold">Superinforme Excel (.xlsx)</div>
+                <div class="text-[11px] text-slate-500">Métricas completas, LTV, churn y estilo</div>
+              </div>
+            </a>
+
+            <a href="#" id="export-super-csv" @click="openExport = false"
+              class="flex items-start gap-2.5 rounded-lg text-slate-700 p-2 hover:bg-sky-50 hover:text-sky-800 transition-colors">
+              <i class="ti ti-file-text text-sky-600 text-xl mt-0.5 shrink-0"></i>
+              <div>
+                <div class="text-xs font-semibold">Superinforme CSV (BI)</div>
+                <div class="text-[11px] text-slate-500">UTF-8 BOM para Power BI / Excel</div>
+              </div>
+            </a>
+
+            <div class="my-1 border-t border-slate-100"></div>
+            <div class="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Exportación Simple</div>
+
+            <a href="#" id="export-clients-csv" @click="openExport = false"
+              class="flex items-start gap-2.5 rounded-lg text-slate-700 p-2 hover:bg-slate-100 transition-colors">
+              <i class="ti ti-table text-slate-400 text-xl mt-0.5 shrink-0"></i>
+              <div>
+                <div class="text-xs font-semibold">CSV Básico</div>
+                <div class="text-[11px] text-slate-500">Columnas básicas del listado actual</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+
       <button id="print-clients-view" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 h-9 px-3 shadow-sm" title="Imprimir lista">
         <i class="ti ti-printer text-lg"></i>
       </button>
@@ -216,6 +261,56 @@
         window.location.href = a.href;
       }
     });
+
+    // ─── Export & Print Handlers (Sincronizados con los filtros activos) ───
+    var exportExcelBtn = document.getElementById('export-super-excel');
+    var exportCsvBtn = document.getElementById('export-super-csv');
+    var exportBasicBtn = document.getElementById('export-clients-csv');
+    var printBtn = document.getElementById('print-clients-view');
+
+    function buildExportUrl(basePath, formato) {
+      var url = new URL(basePath, window.location.origin);
+      if (formato) url.searchParams.set('formato', formato);
+      if (filters.q) url.searchParams.set('q', filters.q);
+      if (filters.estado) url.searchParams.set('estado', filters.estado);
+      return url.toString();
+    }
+
+    if (exportExcelBtn) {
+      exportExcelBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        window.location.href = buildExportUrl('{{ url_for("clientes.api_reporte_consolidado_bi") }}', 'xlsx');
+      });
+    }
+
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        window.location.href = buildExportUrl('{{ url_for("clientes.api_reporte_consolidado_bi") }}', 'csv');
+      });
+    }
+
+    if (exportBasicBtn) {
+      exportBasicBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        var url = new URL('{{ url_for("clientes.export_clientes_csv") }}', window.location.origin);
+        if (filters.q) url.searchParams.set('q', filters.q);
+        if (filters.estado) url.searchParams.set('estado', filters.estado);
+        if (filters.tipo) url.searchParams.set('tipo', filters.tipo);
+        window.location.href = url.toString();
+      });
+    }
+
+    if (printBtn) {
+      printBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        var url = new URL('{{ url_for("clientes.print_clientes") }}', window.location.origin);
+        if (filters.q) url.searchParams.set('q', filters.q);
+        if (filters.estado) url.searchParams.set('estado', filters.estado);
+        if (filters.tipo) url.searchParams.set('tipo', filters.tipo);
+        window.open(url.toString(), '_blank');
+      });
+    }
 
     // ─── Initial load ───
     // Don't reload on initial page since the server already rendered the table
