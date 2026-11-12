@@ -488,6 +488,31 @@ class Notificacion(db.Model):
         return f"<Notificacion {self.id} tipo={self.tipo}>"
 
 
+class SeguimientoCliente(db.Model):
+    __tablename__ = "seguimientos_clientes"
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(
+        db.Integer, db.ForeignKey("clientes.id"), nullable=False, index=True
+    )
+    sucursal_id = db.Column(db.Integer, db.ForeignKey("sucursales.id"), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    canal = db.Column(db.String(30), nullable=False, default="Llamada")
+    resultado = db.Column(db.String(40), nullable=False, default="contactado", index=True)
+    fecha_contacto = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
+    fecha_recontacto = db.Column(db.Date, nullable=True, index=True)
+    nota = db.Column(db.String(255), nullable=True)
+
+    cliente = db.relationship(
+        "Cliente",
+        backref=db.backref("seguimientos", lazy=True, cascade="all, delete-orphan"),
+    )
+    sucursal = db.relationship("Sucursal", backref="seguimientos_clientes")
+    usuario = db.relationship("Usuario", backref="seguimientos_clientes")
+
+    def __repr__(self):
+        return f"<SeguimientoCliente cliente={self.cliente_id} resultado={self.resultado}>"
+
+
 class Auditoria(db.Model):
     __tablename__ = "auditoria"
     id = db.Column(db.Integer, primary_key=True)
@@ -738,6 +763,7 @@ event.listen(Pago, "before_insert", _assign_sucursal_from_session)
 event.listen(Venta, "before_insert", _assign_sucursal_from_session)
 event.listen(Gasto, "before_insert", _assign_sucursal_from_session)
 event.listen(Notificacion, "before_insert", _assign_sucursal_from_session)
+event.listen(SeguimientoCliente, "before_insert", _assign_sucursal_from_session)
 
 # register listeners
 event.listen(db.session, "before_flush", _collect_before_flush)

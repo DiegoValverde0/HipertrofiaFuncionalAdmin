@@ -1,0 +1,530 @@
+{# Macro para construir URLs de paginación preservando todos los filtros y ordenamiento #}
+{% macro report_page_url(page_num) -%}
+?page={{ page_num }}&per_page={{ pagination.per_page }}
+{%- if filters.q %}&q={{ filters.q|urlencode }}{% endif -%}
+{%- if filters.segmento %}&segmento={{ filters.segmento|urlencode }}{% endif -%}
+{%- if filters.ventana %}&ventana={{ filters.ventana|urlencode }}{% endif -%}
+{%- if filters.dias_min is not none %}&dias_min={{ filters.dias_min }}{% endif -%}
+{%- if filters.dias_max is not none %}&dias_max={{ filters.dias_max }}{% endif -%}
+{%- if filters.historial %}&historial={{ filters.historial|urlencode }}{% endif -%}
+{%- if filters.tipo %}&tipo={{ filters.tipo|urlencode }}{% endif -%}
+{%- if filters.contacto %}&contacto={{ filters.contacto|urlencode }}{% endif -%}
+{%- if filters.agrupar %}&agrupar={{ filters.agrupar|urlencode }}{% endif -%}
+{%- if filters.sort %}&sort={{ filters.sort|urlencode }}{% endif -%}
+{%- if filters.dir %}&dir={{ filters.dir|urlencode }}{% endif -%}
+{%- if filters.campana %}&campana={{ filters.campana|urlencode }}{% endif -%}
+{%- endmacro %}
+
+{% macro sort_header(col_key, label, align='left') -%}
+{% set is_active = (filters.sort == col_key) %}
+{% set next_dir = 'desc' if (is_active and filters.dir == 'asc') else 'asc' %}
+<button type="button"
+  class="report-sort-btn inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[10px] hover:text-brand-700 transition-colors {{ 'text-brand-700' if is_active else 'text-slate-500' }} {{ 'ml-auto' if align == 'right' else '' }}"
+  data-sort="{{ col_key }}" data-dir="{{ next_dir }}" title="Ordenar por {{ label }}">
+  <span>{{ label }}</span>
+  {% if is_active %}
+  <i class="ti {{ 'ti-arrow-up' if filters.dir == 'asc' else 'ti-arrow-down' }} text-xs text-brand-600"></i>
+  {% else %}
+  <i class="ti ti-arrows-sort text-xs text-slate-300"></i>
+  {% endif %}
+</button>
+{%- endmacro %}
+
+<!-- Tarjetas KPI: Segmentación de Membresías -->
+<div id="informe-kpi-strip" class="space-y-2 mb-4">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+    <button type="button" data-kpi-filter="reset"
+      class="kpi-quick-btn text-left rounded-xl border px-3 py-2 transition-colors shadow-sm {{ 'border-brand-500 bg-brand-50/70 ring-1 ring-brand-500' if not filters.segmento and not filters.ventana and not filters.contacto else 'border-slate-200 bg-white hover:bg-slate-50' }}">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Sede</div>
+      <div class="text-lg font-extrabold text-slate-900 mt-0.5">{{ kpis.total }}</div>
+      <div class="text-[10px] text-slate-500">Ver todos</div>
+    </button>
+
+    <button type="button" data-kpi-filter="por_vencer"
+      class="kpi-quick-btn text-left rounded-xl border px-3 py-2 transition-colors shadow-sm {{ 'border-amber-500 bg-amber-50 ring-1 ring-amber-400' if filters.segmento == 'por_vencer' else 'border-amber-200 bg-white hover:bg-amber-50/50' }}">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1"><span
+          class="w-2 h-2 rounded-full bg-amber-500"></span> Por Vencer ≤7d</div>
+      <div class="text-lg font-extrabold text-amber-800 mt-0.5">{{ kpis.por_vencer }}</div>
+      <div class="text-[10px] text-amber-700">Renovación preventiva</div>
+    </button>
+
+    <button type="button" data-kpi-filter="vencidos_30d"
+      class="kpi-quick-btn text-left rounded-xl border px-3 py-2 transition-colors shadow-sm {{ 'border-orange-500 bg-orange-50 ring-1 ring-orange-400' if filters.ventana == 'reciente_30d' else 'border-orange-200 bg-white hover:bg-orange-50/50' }}">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1"><span
+          class="w-2 h-2 rounded-full bg-orange-500"></span> Vencidos 1–30d</div>
+      <div class="text-lg font-extrabold text-orange-800 mt-0.5">{{ kpis.vencidos_30d }}</div>
+      <div class="text-[10px] text-orange-700">Rescate inmediato</div>
+    </button>
+
+    <button type="button" data-kpi-filter="frecuente_inactivo"
+      class="kpi-quick-btn text-left rounded-xl border px-3 py-2 transition-colors shadow-sm {{ 'border-rose-500 bg-rose-50 ring-1 ring-rose-400' if filters.segmento == 'frecuente_inactivo' else 'border-rose-200 bg-white hover:bg-rose-50/50' }}">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-rose-600 flex items-center gap-1"><span
+          class="w-2 h-2 rounded-full bg-rose-500"></span> Ex-Frecuentes</div>
+      <div class="text-lg font-extrabold text-rose-800 mt-0.5">{{ kpis.frecuente_inactivo }}</div>
+      <div class="text-[10px] text-rose-700">2+ memb. vencidos</div>
+    </button>
+
+    <button type="button" data-kpi-filter="morosos_90d"
+      class="kpi-quick-btn text-left rounded-xl border px-3 py-2 transition-colors shadow-sm {{ 'border-red-500 bg-red-50 ring-1 ring-red-400' if filters.ventana == 'mas_90d' else 'border-red-200 bg-white hover:bg-red-50/50' }}">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-red-700 flex items-center gap-1"><span
+          class="w-2 h-2 rounded-full bg-red-600"></span> Morosos >90d</div>
+      <div class="text-lg font-extrabold text-red-900 mt-0.5">{{ kpis.morosos_90d }}</div>
+      <div class="text-[10px] text-red-700">Promo recuperación</div>
+    </button>
+
+    <button type="button" data-kpi-filter="nunca"
+      class="kpi-quick-btn text-left rounded-xl border px-3 py-2 transition-colors shadow-sm {{ 'border-slate-500 bg-slate-100 ring-1 ring-slate-400' if filters.segmento == 'nunca' else 'border-slate-200 bg-white hover:bg-slate-50' }}">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span
+          class="w-2 h-2 rounded-full bg-slate-400"></span> Sin Membresía</div>
+      <div class="text-lg font-extrabold text-slate-800 mt-0.5">{{ kpis.nunca }}</div>
+      <div class="text-[10px] text-slate-500">Prospectos registrados</div>
+    </button>
+  </div>
+
+  <!-- Métricas de Seguimiento / Contacto (1 clic para filtrar) -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+    <button type="button" data-contact-kpi="sin_contacto"
+      class="contact-kpi-btn flex items-center justify-between rounded-lg border px-3 py-1.5 text-xs transition-colors {{ 'border-slate-500 bg-slate-100 ring-1 ring-slate-400' if filters.contacto == 'sin_contacto' else 'border-slate-200 bg-white hover:bg-slate-50' }}">
+      <span class="flex items-center gap-1.5 font-semibold text-slate-700"><i
+          class="ti ti-phone-off text-slate-400"></i> Sin contactar</span>
+      <span class="font-extrabold text-slate-900">{{ kpis.sin_contacto }}</span>
+    </button>
+
+    <button type="button" data-contact-kpi="contactado_reciente"
+      class="contact-kpi-btn flex items-center justify-between rounded-lg border px-3 py-1.5 text-xs transition-colors {{ 'border-blue-500 bg-blue-50 ring-1 ring-blue-400' if filters.contacto == 'contactado_reciente' else 'border-blue-200 bg-white hover:bg-blue-50/50' }}">
+      <span class="flex items-center gap-1.5 font-semibold text-blue-700"><i
+          class="ti ti-calendar-check text-blue-500"></i> Contactados (7d)</span>
+      <span class="font-extrabold text-blue-900">{{ kpis.contactados_7d }}</span>
+    </button>
+
+    <button type="button" data-contact-kpi="no_contesto"
+      class="contact-kpi-btn flex items-center justify-between rounded-lg border px-3 py-1.5 text-xs transition-colors {{ 'border-amber-500 bg-amber-50 ring-1 ring-amber-400' if filters.contacto == 'no_contesto' else 'border-amber-200 bg-white hover:bg-amber-50/50' }}">
+      <span class="flex items-center gap-1.5 font-semibold text-amber-800"><i class="ti ti-phone-x text-amber-500"></i>
+        No contestaron</span>
+      <span class="font-extrabold text-amber-900">{{ kpis.no_contesto }}</span>
+    </button>
+
+    <button type="button" data-contact-kpi="comprometido"
+      class="contact-kpi-btn flex items-center justify-between rounded-lg border px-3 py-1.5 text-xs transition-colors {{ 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400' if filters.contacto == 'comprometido' else 'border-emerald-200 bg-white hover:bg-emerald-50/50' }}">
+      <span class="flex items-center gap-1.5 font-semibold text-emerald-700"><i
+          class="ti ti-heart-handshake text-emerald-500"></i> Comprometidos</span>
+      <span class="font-extrabold text-emerald-900">{{ kpis.comprometido }} <span
+          class="text-[10px] font-medium text-emerald-600">({{ kpis.tasa_respuesta }}% resp.)</span></span>
+    </button>
+
+    <button type="button" data-contact-kpi="requiere_recontacto"
+      class="contact-kpi-btn flex items-center justify-between rounded-lg border px-3 py-1.5 text-xs transition-colors {{ 'border-rose-500 bg-rose-50 ring-1 ring-rose-400' if filters.contacto == 'requiere_recontacto' else 'border-rose-200 bg-white hover:bg-rose-50/50' }}">
+      <span class="flex items-center gap-1.5 font-semibold text-rose-700"><i
+          class="ti ti-bell-ringing text-rose-500"></i> Por recontactar</span>
+      <span class="font-extrabold text-rose-900">{{ kpis.requiere_recontacto }}</span>
+    </button>
+  </div>
+</div>
+
+<!-- Tabla Compacta de Informe y Checklist de Contacto -->
+<div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+  {% if pagination.total %}
+  {% set start_idx = ((pagination.page - 1) * pagination.per_page) + 1 %}
+  {% set end_idx = [pagination.page * pagination.per_page, pagination.total]|min %}
+  {% else %}
+  {% set start_idx = 0 %}
+  {% set end_idx = 0 %}
+  {% endif %}
+
+  <div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2 text-xs text-slate-600">
+      <i class="ti ti-list-details text-brand-600 text-base"></i>
+      <span>Mostrando <strong class="text-slate-900">{{ start_idx }}–{{ end_idx }}</strong> de <strong
+          class="text-slate-900">{{ pagination.total }}</strong> registros</span>
+      <span class="text-slate-300">|</span>
+      <span>Página <strong class="text-slate-900">{{ pagination.page }}</strong> de <strong class="text-slate-900">{{
+          pagination.pages or 1 }}</strong></span>
+      {% if filters.agrupar %}
+      <span
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200 text-[11px] font-semibold">
+        <i class="ti ti-layers-intersect text-xs"></i> Agrupado por {{ 'Segmento' if filters.agrupar == 'segmento' else
+        ('Estado de Contacto' if filters.agrupar == 'contacto' else 'Ventana de Vencimiento') }}
+      </span>
+      {% endif %}
+    </div>
+    <div class="text-[11px] text-slate-500">
+      Marca en 1 clic el resultado del contacto (llamada, WhatsApp o presencial) · Pasa el cursor sobre <i
+        class="ti ti-info-circle text-brand-600"></i> para ver el significado
+    </div>
+  </div>
+
+  <div class="w-full overflow-x-auto">
+    <table class="w-full text-xs text-left border-collapse">
+      <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
+        <tr>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('nombre', 'Cliente') }}</th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">Teléfono
+          </th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('membresias', 'Histórico') }}</th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('segmento', 'Segmentación') }}</th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('fecha_caducidad', 'Últ. Caducidad') }}
+          </th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('dias_sin_membresia', 'Inactividad /
+            Vigencia') }}</th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('ltv', 'Valor / Asist.') }}</th>
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('ultimo_contacto', 'Últ. Contacto') }}
+          </th>
+          <th scope="col"
+            class="px-3 py-2.5 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">Checklist
+            Seguimiento</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% set ns = namespace(last_group=None) %}
+        {% for r in rows %}
+        {% set c = r.cliente %}
+
+        {# Encabezado de grupo cuando está activo el agrupamiento #}
+        {% if filters.agrupar == 'segmento' %}
+        {% set current_group = r.segmento_key %}
+        {% if ns.last_group != current_group %}
+        {% set ns.last_group = current_group %}
+        <tr class="bg-slate-100/90 border-y border-slate-200">
+          <td colspan="9" class="px-3 py-1.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full {{ r.segmento.dot_class }}"></span>
+              <span class="font-bold text-[11px] uppercase tracking-wider text-slate-800">{{ r.segmento.label }}</span>
+              <span class="text-[11px] text-slate-500">— {{ r.segmento.remarketing_tip }}</span>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+        {% elif filters.agrupar == 'ventana' %}
+        {% set current_group = r.ventana_key %}
+        {% if ns.last_group != current_group %}
+        {% set ns.last_group = current_group %}
+        <tr class="bg-slate-100/90 border-y border-slate-200">
+          <td colspan="9" class="px-3 py-1.5">
+            <div class="flex items-center gap-2">
+              <i class="ti ti-clock-hour-4 text-slate-500 text-sm"></i>
+              <span class="font-bold text-[11px] uppercase tracking-wider text-slate-800">{{ r.ventana_label }}</span>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+        {% elif filters.agrupar == 'contacto' %}
+        {% set current_group = r.contacto.key %}
+        {% if ns.last_group != current_group %}
+        {% set ns.last_group = current_group %}
+        <tr class="bg-slate-100/90 border-y border-slate-200">
+          <td colspan="9" class="px-3 py-1.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full {{ r.contacto.meta.dot_class }}"></span>
+              <span class="font-bold text-[11px] uppercase tracking-wider text-slate-800">{{ r.contacto.meta.label
+                }}</span>
+              <span class="text-[11px] text-slate-500">— {{ r.contacto.meta.description }}</span>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+        {% endif %}
+
+        <tr class="transition-colors {{ r.segmento.row_class }}" data-cliente-row="{{ c.id }}">
+          <!-- Cliente -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            <div class="flex flex-col">
+              <span class="font-semibold text-slate-900 leading-tight">{{ r.nombre_completo }}</span>
+              <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                <span>{{ c.tipo_cliente }}</span>
+                {% if r.edad %}
+                <span>· {{ r.edad }}a</span>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+
+          <!-- Teléfono (WhatsApp opcional, no indispensable) -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            {% if c.telefono %}
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono text-[11px] font-semibold text-slate-800">{{ c.telefono }}</span>
+              {% if r.wa_url %}
+              <a href="{{ r.wa_url }}" target="_blank" rel="noopener noreferrer"
+                class="inline-flex items-center justify-center w-5 h-5 rounded text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-colors"
+                title="Opcional: abrir chat WhatsApp ({{ r.wa_message }})">
+                <i class="ti ti-brand-whatsapp text-sm"></i>
+              </a>
+              {% endif %}
+            </div>
+            {% else %}
+            <span class="text-[11px] text-slate-400 italic">Sin teléfono</span>
+            {% endif %}
+            {% if c.correo %}
+            <div class="text-[10px] text-slate-400 truncate max-w-[150px]" title="{{ c.correo }}">{{ c.correo }}</div>
+            {% endif %}
+          </td>
+
+          <!-- Histórico Membresías -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            <div class="flex items-center gap-1.5">
+              <span
+                class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md font-bold text-[11px] {{ 'bg-brand-50 text-brand-700 border border-brand-200' if r.valid_count >= 2 else ('bg-slate-100 text-slate-700 border border-slate-200' if r.valid_count == 1 else 'bg-slate-50 text-slate-400 border border-slate-200') }}">
+                {{ r.valid_count }}
+              </span>
+              <span class="text-[11px] text-slate-600">memb.</span>
+              {% if r.pendientes_extra > 0 %}
+              <span class="px-1 py-0 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px]"
+                title="{{ r.pendientes_extra }} solicitud(es) pendiente(s)">+{{ r.pendientes_extra }} pend.</span>
+              {% endif %}
+            </div>
+            {% if r.ultimo_plan %}
+            <div class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[130px]"
+              title="Último plan: {{ r.ultimo_plan }}">Últ: {{ r.ultimo_plan }}</div>
+            {% endif %}
+          </td>
+
+          <!-- Segmentación con Badge + Tooltip Explicativo -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            <div class="relative inline-flex items-center gap-1 group/tip">
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-semibold {{ r.segmento.badge_class }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ r.segmento.dot_class }}"></span>
+                {{ r.segmento.short_label }}
+              </span>
+              <span class="cursor-help text-slate-400 hover:text-slate-700" tabindex="0"
+                aria-label="Explicación del estado">
+                <i class="ti ti-info-circle text-sm"></i>
+              </span>
+              <div
+                class="invisible opacity-0 group-hover/tip:visible group-hover/tip:opacity-100 group-focus-within/tip:visible group-focus-within/tip:opacity-100 transition-opacity duration-150 absolute left-0 bottom-full mb-1.5 z-50 w-64 p-2.5 rounded-lg bg-slate-900 text-white shadow-xl text-[11px] leading-relaxed pointer-events-none whitespace-normal">
+                <div class="font-bold text-brand-300 mb-0.5">{{ r.segmento.label }}</div>
+                <p class="text-slate-200 mb-1">{{ r.segmento.description }}</p>
+                <div class="pt-1 border-t border-slate-700 text-emerald-300">
+                  <strong>Acción sugerida:</strong> {{ r.segmento.remarketing_tip }}
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <!-- Última Caducidad -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            {% if r.ultima_fin %}
+            <div class="font-mono text-[11px] font-semibold text-slate-800">{{ r.ultima_fin.strftime('%d/%m/%Y') }}
+            </div>
+            {% if r.ultima_inicio %}
+            <div class="text-[10px] text-slate-400">Ini: {{ r.ultima_inicio.strftime('%d/%m/%Y') }}</div>
+            {% endif %}
+            {% else %}
+            <span class="text-[11px] text-slate-400">—</span>
+            {% if c.fecha_registro %}
+            <div class="text-[10px] text-slate-400">Reg: {{ c.fecha_registro.strftime('%d/%m/%Y') }}</div>
+            {% endif %}
+            {% endif %}
+          </td>
+
+          <!-- Contador Inactividad / Vigencia -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-bold {{ r.counter.badge_class }}">
+              {{ r.counter.text }}
+            </span>
+            {% if r.counter.subtext %}
+            <div class="text-[10px] text-slate-400 mt-0.5">{{ r.counter.subtext }}</div>
+            {% endif %}
+          </td>
+
+          <!-- Valor / Asistencias -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-slate-800">Bs. {{ "%.0f"|format(r.ltv) }}</span>
+              {% if r.valid_count >= 4 or r.ltv >= 1000 %}
+              <span
+                class="px-1.5 py-0 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold"
+                title="Cliente de alto valor histórico">VIP</span>
+              {% endif %}
+            </div>
+            <div class="text-[10px] text-slate-500 mt-0.5">
+              {% if r.dias_sin_asistir is not none %}
+              Asist: hace {{ r.dias_sin_asistir }}d ({{ r.total_asistencias }})
+              {% else %}
+              Sin marcajes
+              {% endif %}
+            </div>
+          </td>
+
+          <!-- Último Contacto / Seguimiento -->
+          <td class="px-3 py-2 whitespace-nowrap">
+            <div class="flex items-center gap-1">
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-semibold {{ r.contacto.meta.badge_class }}">
+                <i class="ti {{ r.contacto.meta.icon }} text-xs"></i>
+                {{ r.contacto.meta.short_label }}
+              </span>
+              {% if r.contacto.total_contactos > 1 %}
+              <span class="text-[10px] text-slate-400 font-semibold"
+                title="{{ r.contacto.total_contactos }} contactos registrados">({{ r.contacto.total_contactos }})</span>
+              {% endif %}
+            </div>
+            {% if r.contacto.fecha_texto %}
+            <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+              <span>{{ r.contacto.canal }}</span>
+              <span>·</span>
+              <span>{{ 'Hoy' if r.contacto.dias_desde_contacto == 0 else ('Ayer' if r.contacto.dias_desde_contacto == 1
+                else 'Hace ' ~ r.contacto.dias_desde_contacto ~ 'd') }} ({{ r.contacto.fecha_texto }})</span>
+            </div>
+            {% endif %}
+            {% if r.contacto.fecha_recontacto %}
+            <div
+              class="text-[10px] font-semibold mt-0.5 {{ 'text-rose-600' if r.contacto.recontacto_vencido else 'text-indigo-600' }}">
+              <i class="ti ti-calendar-event text-[11px]"></i>
+              Recontactar: {{ r.contacto.fecha_recontacto.strftime('%d/%m/%Y') }}
+            </div>
+            {% endif %}
+            {% if r.contacto.nota %}
+            <div class="text-[10px] text-slate-500 truncate max-w-[165px]" title="{{ r.contacto.nota }}">
+              “{{ r.contacto.nota }}”
+            </div>
+            {% endif %}
+          </td>
+
+          <!-- Checklist de Seguimiento (reemplaza botones redundantes) -->
+          <td class="px-3 py-2 whitespace-nowrap text-right">
+            <div class="inline-flex items-center gap-1" role="group" aria-label="Checklist de contacto">
+              <button type="button"
+                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-blue-600 text-white border-blue-600 shadow-sm' if r.contacto.key == 'contactado' else 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300' }}"
+                data-cliente-id="{{ c.id }}" data-resultado="contactado" title="Marcar como Contactado">
+                <i class="ti ti-check text-xs"></i>
+              </button>
+
+              <button type="button"
+                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-cyan-600 text-white border-cyan-600 shadow-sm' if r.contacto.key == 'contesto' else 'bg-white text-slate-600 border-slate-200 hover:bg-cyan-50 hover:text-cyan-800 hover:border-cyan-300' }}"
+                data-cliente-id="{{ c.id }}" data-resultado="contesto" title="Marcar: Contestó">
+                <i class="ti ti-message-check text-xs"></i>
+                <span class="hidden xl:inline">Contestó</span>
+              </button>
+
+              <button type="button"
+                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-amber-500 text-white border-amber-500 shadow-sm' if r.contacto.key == 'no_contesto' else 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300' }}"
+                data-cliente-id="{{ c.id }}" data-resultado="no_contesto" title="Marcar: No contestó">
+                <i class="ti ti-phone-x text-xs"></i>
+                <span class="hidden xl:inline">No cont.</span>
+              </button>
+
+              <button type="button"
+                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-emerald-600 text-white border-emerald-600 shadow-sm' if r.contacto.key == 'comprometido' else 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300' }}"
+                data-cliente-id="{{ c.id }}" data-resultado="comprometido" title="Marcar: Se comprometió a volver">
+                <i class="ti ti-heart-handshake text-xs"></i>
+                <span class="hidden xl:inline">Vuelve</span>
+              </button>
+
+              <button type="button"
+                class="open-contact-modal-btn inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+                data-cliente-id="{{ c.id }}" data-cliente-nombre="{{ r.nombre_completo }}"
+                data-cliente-telefono="{{ c.telefono or '' }}"
+                data-ultimo-resultado="{{ '' if r.contacto.key == 'sin_contacto' else r.contacto.key }}"
+                title="Registrar nota, canal, fecha de recontacto o ver historial">
+                <i class="ti ti-notes text-sm"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="px-6 py-10 text-center">
+            <div class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-slate-100 mb-2">
+              <i class="ti ti-filter-off text-xl text-slate-400"></i>
+            </div>
+            <h3 class="text-sm font-semibold text-slate-800">Sin clientes para estos filtros</h3>
+            <p class="text-xs text-slate-500 mt-1">Prueba ajustando el segmento, el estado de contacto, el rango de días
+              o limpia los filtros activos.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación Completa: Primera, Anterior, Páginas, Siguiente, Última y Salto Directo -->
+  <div
+    class="px-4 py-3 border-t border-slate-200 bg-slate-50/70 flex flex-col md:flex-row items-center justify-between gap-3">
+    <div class="text-xs text-slate-600">
+      Mostrando <span class="font-semibold text-slate-900">{{ start_idx }}</span> a <span
+        class="font-semibold text-slate-900">{{ end_idx }}</span> de <span class="font-semibold text-slate-900">{{
+        pagination.total }}</span> clientes
+      <span class="text-slate-400 mx-1">·</span>
+      Total <span class="font-semibold text-slate-900">{{ pagination.pages or 1 }}</span> página(s)
+    </div>
+
+    <div class="flex flex-wrap items-center justify-center gap-2">
+      <nav class="isolate inline-flex -space-x-px rounded-lg shadow-sm" aria-label="Paginación del informe">
+        {% if pagination.page > 1 %}
+        <a href="{{ report_page_url(1) }}" data-page="1"
+          class="report-page-link relative inline-flex items-center rounded-l-lg px-2 py-1.5 text-slate-500 ring-1 ring-inset ring-slate-200 hover:bg-slate-100 bg-white text-xs"
+          title="Primera página">
+          <i class="ti ti-chevrons-left text-sm"></i>
+        </a>
+        <a href="{{ report_page_url(pagination.prev_num) }}" data-page="{{ pagination.prev_num }}"
+          class="report-page-link relative inline-flex items-center px-2 py-1.5 text-slate-500 ring-1 ring-inset ring-slate-200 hover:bg-slate-100 bg-white text-xs"
+          title="Página anterior">
+          <i class="ti ti-chevron-left text-sm"></i>
+        </a>
+        {% else %}
+        <span
+          class="relative inline-flex items-center rounded-l-lg px-2 py-1.5 text-slate-300 ring-1 ring-inset ring-slate-200 bg-slate-50 text-xs cursor-not-allowed">
+          <i class="ti ti-chevrons-left text-sm"></i>
+        </span>
+        <span
+          class="relative inline-flex items-center px-2 py-1.5 text-slate-300 ring-1 ring-inset ring-slate-200 bg-slate-50 text-xs cursor-not-allowed">
+          <i class="ti ti-chevron-left text-sm"></i>
+        </span>
+        {% endif %}
+
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+        {% if p == pagination.page %}
+        <span aria-current="page"
+          class="relative z-10 inline-flex items-center bg-brand-600 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-inset ring-brand-600">
+          {{ p }}
+        </span>
+        {% else %}
+        <a href="{{ report_page_url(p) }}" data-page="{{ p }}"
+          class="report-page-link relative inline-flex items-center px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-100 bg-white">
+          {{ p }}
+        </a>
+        {% endif %}
+        {% else %}
+        <span
+          class="relative inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-slate-400 ring-1 ring-inset ring-slate-200 bg-white">…</span>
+        {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+        <a href="{{ report_page_url(pagination.next_num) }}" data-page="{{ pagination.next_num }}"
+          class="report-page-link relative inline-flex items-center px-2 py-1.5 text-slate-500 ring-1 ring-inset ring-slate-200 hover:bg-slate-100 bg-white text-xs"
+          title="Página siguiente">
+          <i class="ti ti-chevron-right text-sm"></i>
+        </a>
+        <a href="{{ report_page_url(pagination.pages) }}" data-page="{{ pagination.pages }}"
+          class="report-page-link relative inline-flex items-center rounded-r-lg px-2 py-1.5 text-slate-500 ring-1 ring-inset ring-slate-200 hover:bg-slate-100 bg-white text-xs"
+          title="Última página ({{ pagination.pages }})">
+          <i class="ti ti-chevrons-right text-sm"></i>
+        </a>
+        {% else %}
+        <span
+          class="relative inline-flex items-center px-2 py-1.5 text-slate-300 ring-1 ring-inset ring-slate-200 bg-slate-50 text-xs cursor-not-allowed">
+          <i class="ti ti-chevron-right text-sm"></i>
+        </span>
+        <span
+          class="relative inline-flex items-center rounded-r-lg px-2 py-1.5 text-slate-300 ring-1 ring-inset ring-slate-200 bg-slate-50 text-xs cursor-not-allowed">
+          <i class="ti ti-chevrons-right text-sm"></i>
+        </span>
+        {% endif %}
+      </nav>
+
+      {% if pagination.pages and pagination.pages > 1 %}
+      <form id="report-jump-form" class="inline-flex items-center gap-1.5">
+        <label for="report-jump-page" class="text-[11px] text-slate-500">Ir a:</label>
+        <input id="report-jump-page" type="number" min="1" max="{{ pagination.pages }}" value="{{ pagination.page }}"
+          class="w-14 h-7 rounded-md border border-slate-200 bg-white px-2 text-xs text-center focus:outline-none focus:ring-1 focus:ring-brand-500">
+        <button type="submit"
+          class="h-7 px-2 rounded-md border border-slate-200 bg-white hover:bg-slate-100 text-[11px] font-semibold text-slate-700">Ir</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>

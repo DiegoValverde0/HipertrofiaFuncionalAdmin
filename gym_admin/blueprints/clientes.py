@@ -23,6 +23,13 @@ from ..services.client_service import (
     delete_client,
     compute_age,
 )
+from ..services.client_report_service import (
+    CONTACTO_META,
+    SEGMENT_META,
+    get_client_contact_history,
+    get_client_report_data,
+    register_client_contact,
+)
 from ..services.membership_service import compute_coverage, local_today
 from flask_login import current_user
 from ..utils import (
@@ -79,6 +86,37 @@ def _compute_client_flags_global(
                     pass
         flags[c.id] = entry
     return flags
+
+
+def _get_effective_sucursal_id():
+    """Resuelve la sucursal activa desde el usuario autenticado o la sesión."""
+    sucursal_id = None
+    if current_user and current_user.is_authenticated:
+        if current_user.sucursal_id:
+            sucursal_id = current_user.sucursal_id
+        elif "sucursal_id" in session and session.get("sucursal_id") not in (0, "0", "", None):
+            sucursal_id = int(session.get("sucursal_id"))
+    return sucursal_id
+
+
+def _extract_report_filters():
+    """Extrae y normaliza los filtros dinámicos de la vista de informe."""
+    dias_min = request.args.get("dias_min", type=int)
+    dias_max = request.args.get("dias_max", type=int)
+    return {
+        "q": (request.args.get("q", type=str) or "").strip(),
+        "segmento": (request.args.get("segmento", type=str) or "").strip(),
+        "ventana": (request.args.get("ventana", type=str) or "").strip(),
+        "dias_min": dias_min,
+        "dias_max": dias_max,
+        "historial": (request.args.get("historial", type=str) or "").strip(),
+        "tipo": (request.args.get("tipo", type=str) or "").strip(),
+        "contacto": (request.args.get("contacto", type=str) or "").strip(),
+        "agrupar": (request.args.get("agrupar", type=str) or "").strip(),
+        "sort": (request.args.get("sort", type=str) or "dias_sin_membresia").strip(),
+        "dir": (request.args.get("dir", type=str) or "asc").strip(),
+        "campana": (request.args.get("campana", type=str) or "auto").strip(),
+    }
 
 
 @clientes_bp.route("/")
@@ -315,7 +353,142 @@ def clientes_table():
     return render_template("clientes/_table.html", **ctx)
 
 
+@clientes_bp.route("/informe")
+def informe_clientes():
+    """Vista interactiva de informe y segmentación de clientes (sin exportación)."""
+    sucursal_id = _get_effective_sucursal_id()
+    filters = _extract_report_filters()
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+    if per_page not in (15, 25, 50, 100):
+        per_page = 25
+
+    report = get_client_report_data(
+        filters=filters,
+        sucursal_id=sucursal_id,
+        page=page,
+        per_page=per_page,
+    )
+    return render_template(
+        "clientes/informe.html",
+        rows=report["rows"],
+        pagination=report["pagination"],
+        kpis=report["kpis"],
+        today=report["today"],
+        segment_meta=report["segment_meta"],
+        contacto_meta=report["contacto_meta"],
+        filters=filters,
+        page=report["pagination"].page,
+        per_page=per_page,
+    )
+
+
+@clientes_bp.route("/informe/table")
+def informe_clientes_table():
+    """Parcial AJAX para actualizar tabla, KPIs y paginación del informe de clientes."""
+    sucursal_id = _get_effective_sucursal_id()
+    filters = _extract_report_filters()
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+    if per_page not in (15, 25, 50, 100):
+        per_page = 25
+
+    report = get_client_report_data(
+        filters=filters,
+        sucursal_id=sucursal_id,
+        page=page,
+        per_page=per_page,
+    )
+    return render_template(
+        "clientes/_informe_table.html",
+        rows=report["rows"],
+        pagination=report["pagination"],
+        kpis=report["kpis"],
+        today=report["today"],
+        segment_meta=report["segment_meta"],
+        contacto_meta=report["contacto_meta"],
+        filters=filters,
+        page=report["pagination"].page,
+        per_page=per_page,
+    )
+
+
+@clientes_bp.route("/informe/contacto", methods=["POST"])
+def registrar_contacto_informe():
+    """Registra en base de datos un contacto o resultado de seguimiento para remarketing."""
+    payload = request.get_json(silent=True) or request.form
+    cliente_id = payload.get("cliente_id")
+    try:
+        cliente_id = int(cliente_id)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "cliente_id inválido"}), 400
+
+    cliente = Cliente.query.get_or_404(cliente_id)
+    verify_sucursal_access(cliente)
+
+    resultado = payload.get("resultado")
+    canal = payload.get("canal") or "Llamada"
+    nota = payload.get("nota")
+    fecha_recontacto = payload.get("fecha_recontacto") or None
+    usuario_id = (
+        getattr(current_user, "id", None)
+        if current_user and getattr(current_user, "is_authenticated", False)
+        else None
+    )
+
+    ok, seg, err = register_client_contact(
+        cliente_id=cliente_id,
+        resultado=resultado,
+        canal=canal,
+        nota=nota,
+        fecha_recontacto=fecha_recontacto,
+        usuario_id=usuario_id,
+    )
+    if not ok:
+        return jsonify({"success": False, "error": err}), 400
+
+    meta = CONTACTO_META.get(seg.resultado, CONTACTO_META["contactado"])
+    return jsonify(
+        {
+            "success": True,
+            "seguimiento": {
+                "id": seg.id,
+                "cliente_id": seg.cliente_id,
+                "resultado": seg.resultado,
+                "label": meta["label"],
+                "canal": seg.canal,
+                "nota": seg.nota or "",
+                "fecha_recontacto": (
+                    seg.fecha_recontacto.strftime("%Y-%m-%d")
+                    if seg.fecha_recontacto
+                    else None
+                ),
+            },
+        }
+    )
+
+
+@clientes_bp.route("/informe/<int:cliente_id>/seguimientos", methods=["GET"])
+def historial_contactos_informe(cliente_id):
+    """Retorna el historial reciente de contactos del cliente en formato JSON."""
+    cliente = Cliente.query.get_or_404(cliente_id)
+    verify_sucursal_access(cliente)
+    items = get_client_contact_history(cliente_id, limit=10)
+    return jsonify(
+        {
+            "success": True,
+            "cliente": {
+                "id": cliente.id,
+                "nombre": f"{cliente.nombre or ''} {cliente.apellido or ''}".strip(),
+                "telefono": cliente.telefono or "",
+            },
+            "items": items,
+        }
+    )
+
+
 @clientes_bp.route("/export.csv")
+@admin_required
 def export_clientes_csv():
     # Exportar clientes actuales según filtros a CSV
     q = request.args.get("q", type=str)
@@ -781,6 +954,20 @@ def api_reporte_consolidado_bi():
       - q: str (búsqueda opcional por nombre, apellido, correo o teléfono)
     """
     try:
+        # 0. Si se accede desde sesión web (sin API key explícita), exigir rol admin
+        has_explicit_api_key = bool(
+            request.headers.get("Authorization", "").strip().startswith("Bearer ")
+            or request.headers.get("X-API-KEY")
+            or request.args.get("api_key")
+        )
+        if (
+            not has_explicit_api_key
+            and current_user
+            and getattr(current_user, "is_authenticated", False)
+            and getattr(current_user, "rol_id", None) != 1
+        ):
+            return jsonify({"success": False, "error": "No autorizado: solo administradores"}), 403
+
         # 1. Contexto de seguridad y filtros opcionales
         api_sucursal_id = getattr(g, "api_key_sucursal_id", None)
         req_sucursal_id = request.args.get("sucursal_id", type=int)

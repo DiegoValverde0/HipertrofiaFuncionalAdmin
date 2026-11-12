@@ -257,6 +257,13 @@
             <i class="ti ti-users text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
             <span :class="sidebarCollapsed ? 'hidden' : 'block'">Clientes</span>
           </a>
+          <a href="{{ url_for('clientes.informe_clientes') }}" class="flex items-center py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800/50 hover:text-white group transition-all duration-200"
+             :class="sidebarCollapsed ? 'justify-center px-0' : 'px-3'"
+             @mouseenter="if(sidebarCollapsed) { tooltipText = 'Informe Clientes'; tooltipY = $el.getBoundingClientRect().top + ($el.offsetHeight/2) - 12; tooltipShow = true; }" 
+             @mouseleave="tooltipShow = false">
+            <i class="ti ti-chart-infographic text-[22px] text-slate-400 group-hover:text-brand-500 transition-colors" :class="sidebarCollapsed ? '' : 'mr-3'"></i> 
+            <span :class="sidebarCollapsed ? 'hidden' : 'block'">Informe Clientes</span>
+          </a>
 
           <div class="space-y-1 relative" @mouseenter="if(sidebarCollapsed) { keepHoverMenu(); }" @mouseleave="if(sidebarCollapsed) { hideSidebarTooltip(); cancelSidebarHover(); }">
             <button @click="if(!sidebarCollapsed) { activeMenu = activeMenu === 'catalogo' ? null : 'catalogo'; }" 

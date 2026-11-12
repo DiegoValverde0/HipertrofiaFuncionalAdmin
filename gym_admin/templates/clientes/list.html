@@ -40,7 +40,15 @@
     </div>
 
     <div class="flex items-center gap-2 border-l border-slate-200 pl-2 shrink-0">
-      <!-- Menú Exportar con Superinforme Consolidado (Excel/CSV) y CSV Básico -->
+      <a href="{{ url_for('clientes.informe_clientes') }}"
+         class="inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-700 h-9 px-3 shadow-sm"
+         title="Abrir vista interactiva de informe y segmentación para remarketing">
+        <i class="ti ti-chart-infographic text-brand-600 text-lg"></i>
+        <span class="hidden sm:inline">Informe / Segmentación</span>
+      </a>
+
+      {% if current_user and current_user.rol_id == 1 %}
+      <!-- Menú Exportar con Superinforme Consolidado (Excel/CSV) y CSV Básico (Solo Admin) -->
       <div x-data="{ openExport: false }" class="relative inline-block text-left">
         <button @click="openExport = !openExport; $event.stopPropagation()" @click.outside="openExport = false" type="button"
           class="inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-9 px-3 shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500" title="Exportar reportes">
@@ -87,6 +95,7 @@
           </div>
         </div>
       </div>
+      {% endif %}
 
       <button id="print-clients-view" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 h-9 px-3 shadow-sm" title="Imprimir lista">
         <i class="ti ti-printer text-lg"></i>
@@ -263,10 +272,10 @@
     });
 
     // ─── Export & Print Handlers (Sincronizados con los filtros activos) ───
+    {% if current_user and current_user.rol_id == 1 %}
     var exportExcelBtn = document.getElementById('export-super-excel');
     var exportCsvBtn = document.getElementById('export-super-csv');
     var exportBasicBtn = document.getElementById('export-clients-csv');
-    var printBtn = document.getElementById('print-clients-view');
 
     function buildExportUrl(basePath, formato) {
       var url = new URL(basePath, window.location.origin);
@@ -300,6 +309,9 @@
         window.location.href = url.toString();
       });
     }
+    {% endif %}
+
+    var printBtn = document.getElementById('print-clients-view');
 
     if (printBtn) {
       printBtn.addEventListener('click', function(e){

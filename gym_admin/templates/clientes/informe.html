@@ -1,0 +1,681 @@
+{% extends 'base.html' %}
+
+{% block title %}Informe y Seguimiento de Clientes{% endblock %}
+{% block page_title %}Informe de Clientes y Remarketing{% endblock %}
+
+{% block content %}
+<div x-data="{ showGuide: false }" class="space-y-4">
+  <!-- Encabezado -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <i class="ti ti-chart-infographic text-brand-600"></i>
+        Informe Interactivo de Clientes y Seguimiento
+      </h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+        Segmentación, historial de membresías, control de contactos (llamada, WhatsApp o presencial) y recontactos sin exportar archivos.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <button type="button" @click="showGuide = !showGuide"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 h-9 px-3 shadow-sm">
+        <i class="ti ti-help-circle text-base"></i>
+        <span>Guía de Segmentos</span>
+        <i class="ti ti-chevron-down text-xs transition-transform" :class="showGuide ? 'rotate-180' : ''"></i>
+      </button>
+
+      <a href="{{ url_for('clientes.list_clientes') }}"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-9 px-3 shadow-sm">
+        <i class="ti ti-arrow-left text-base"></i>
+        <span>Volver al listado</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Toolkit / Guía Colapsable de Estados y Campañas -->
+  <div x-show="showGuide" x-transition.opacity.duration.150ms x-cloak
+       class="rounded-xl border border-indigo-200 bg-white p-4 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <i class="ti ti-bulb text-amber-500 text-lg"></i>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Guía Rápida de Segmentos y Estados de Seguimiento</h3>
+      </div>
+      <button type="button" @click="showGuide = false" class="text-xs text-slate-400 hover:text-slate-700">
+        <i class="ti ti-x text-base"></i>
+      </button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      {% for key, meta in segment_meta.items() %}
+      <div class="rounded-lg border border-slate-200 p-2.5 {{ meta.row_class }}">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-bold {{ meta.badge_class }}">
+            <span class="w-1.5 h-1.5 rounded-full {{ meta.dot_class }}"></span>
+            {{ meta.label }}
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-700 leading-snug">{{ meta.description }}</p>
+        <p class="text-[11px] text-emerald-800 font-medium mt-1 leading-snug">
+          <i class="ti ti-phone-call text-emerald-600"></i> {{ meta.remarketing_tip }}
+        </p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Barra de Filtros Dinámicos, Agrupamiento y Seguimiento -->
+  <div class="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm space-y-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+      <!-- Búsqueda -->
+      <div class="lg:col-span-2">
+        <label for="rep-q" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Buscar cliente</label>
+        <div class="relative">
+          <i class="ti ti-search text-slate-400 text-sm absolute left-2.5 top-2.5"></i>
+          <input id="rep-q" type="text" value="{{ filters.q }}"
+            placeholder="Nombre, apellido, teléfono o correo..."
+            class="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-xs focus:outline-none focus:ring-1 focus:ring-brand-500">
+        </div>
+      </div>
+
+      <!-- Segmento -->
+      <div>
+        <label for="rep-segmento" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Segmentación</label>
+        <select id="rep-segmento" class="w-full h-8 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+          <option value="" {% if not filters.segmento %}selected{% endif %}>Todos los segmentos</option>
+          <option value="por_vencer" {% if filters.segmento == 'por_vencer' %}selected{% endif %}>Por Vencer (≤ 7d)</option>
+          <option value="frecuente_inactivo" {% if filters.segmento == 'frecuente_inactivo' %}selected{% endif %}>Frecuente Inactivo (2+ memb.)</option>
+          <option value="unica_vez" {% if filters.segmento == 'unica_vez' %}selected{% endif %}>Única Vez (Vencido)</option>
+          <option value="nunca" {% if filters.segmento == 'nunca' %}selected{% endif %}>Prospecto (Nunca adquirió)</option>
+          <option value="activo_nuevo" {% if filters.segmento == 'activo_nuevo' %}selected{% endif %}>Activo Nuevo (1ra memb.)</option>
+          <option value="activo_frecuente" {% if filters.segmento == 'activo_frecuente' %}selected{% endif %}>Activo Frecuente (2+ memb.)</option>
+          <option value="vencidos_todos" {% if filters.segmento == 'vencidos_todos' %}selected{% endif %}>Todos los Vencidos</option>
+          <option value="activos_todos" {% if filters.segmento == 'activos_todos' %}selected{% endif %}>Todos los Vigentes</option>
+        </select>
+      </div>
+
+      <!-- Ventana de Vencimiento -->
+      <div>
+        <label for="rep-ventana" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Antigüedad Vencimiento</label>
+        <select id="rep-ventana" class="w-full h-8 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+          <option value="" {% if not filters.ventana %}selected{% endif %}>Cualquier fecha</option>
+          <option value="vence_hoy" {% if filters.ventana == 'vence_hoy' %}selected{% endif %}>Vencen hoy</option>
+          <option value="por_vencer_7d" {% if filters.ventana == 'por_vencer_7d' %}selected{% endif %}>Por vencer (próximos 7 días)</option>
+          <option value="ayer" {% if filters.ventana == 'ayer' %}selected{% endif %}>Vencieron ayer (1 día)</option>
+          <option value="semana" {% if filters.ventana == 'semana' %}selected{% endif %}>Vencieron esta semana (1–7d)</option>
+          <option value="mes" {% if filters.ventana == 'mes' %}selected{% endif %}>Vencieron hace 8–30 días</option>
+          <option value="reciente_30d" {% if filters.ventana == 'reciente_30d' %}selected{% endif %}>Último mes completo (1–30d)</option>
+          <option value="trimestre" {% if filters.ventana == 'trimestre' %}selected{% endif %}>Vencieron hace 1–3 meses (31–90d)</option>
+          <option value="mas_90d" {% if filters.ventana == 'mas_90d' %}selected{% endif %}>Morosos largos (&gt; 90 días)</option>
+          <option value="sin_membresia" {% if filters.ventana == 'sin_membresia' %}selected{% endif %}>Nunca adquirieron membresía</option>
+          <option value="personalizado" {% if filters.ventana == 'personalizado' %}selected{% endif %}>Rango personalizado (días)</option>
+        </select>
+      </div>
+
+      <!-- Histórico Membresías -->
+      <div>
+        <label for="rep-historial" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Cant. Membresías</label>
+        <select id="rep-historial" class="w-full h-8 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+          <option value="" {% if not filters.historial %}selected{% endif %}>Cualquier cantidad</option>
+          <option value="0" {% if filters.historial == '0' %}selected{% endif %}>0 (Sin compras)</option>
+          <option value="1" {% if filters.historial == '1' %}selected{% endif %}>1 (Única vez)</option>
+          <option value="2_3" {% if filters.historial == '2_3' %}selected{% endif %}>2 a 3 membresías</option>
+          <option value="4_plus" {% if filters.historial == '4_plus' %}selected{% endif %}>4 o más (Muy fiel)</option>
+        </select>
+      </div>
+
+      <!-- Estado de Contacto -->
+      <div>
+        <label for="rep-contacto" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Estado de Contacto</label>
+        <select id="rep-contacto" class="w-full h-8 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+          <option value="" {% if not filters.contacto %}selected{% endif %}>Todos los contactos</option>
+          <option value="sin_contacto" {% if filters.contacto == 'sin_contacto' %}selected{% endif %}>Sin contactar</option>
+          <option value="requiere_recontacto" {% if filters.contacto == 'requiere_recontacto' %}selected{% endif %}>Por recontactar ahora</option>
+          <option value="contactado_reciente" {% if filters.contacto == 'contactado_reciente' %}selected{% endif %}>Contactados (últimos 7d)</option>
+          <option value="contactado" {% if filters.contacto == 'contactado' %}selected{% endif %}>Contactado</option>
+          <option value="contesto" {% if filters.contacto == 'contesto' %}selected{% endif %}>Contestó</option>
+          <option value="no_contesto" {% if filters.contacto == 'no_contesto' %}selected{% endif %}>No contestó</option>
+          <option value="comprometido" {% if filters.contacto == 'comprometido' %}selected{% endif %}>Se comprometió a volver</option>
+          <option value="no_interesado" {% if filters.contacto == 'no_interesado' %}selected{% endif %}>No interesado / Pausa</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Rango personalizado de días (visible solo cuando ventana == 'personalizado') -->
+    <div id="rep-custom-days" class="{{ 'flex' if filters.ventana == 'personalizado' else 'hidden' }} flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+      <span class="font-semibold text-slate-600">Vencidos entre:</span>
+      <input id="rep-dias-min" type="number" min="0" placeholder="Mín días" value="{{ filters.dias_min if filters.dias_min is not none else '' }}"
+        class="w-24 h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500">
+      <span class="text-slate-400">y</span>
+      <input id="rep-dias-max" type="number" min="0" placeholder="Máx días" value="{{ filters.dias_max if filters.dias_max is not none else '' }}"
+        class="w-24 h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500">
+      <button type="button" id="rep-apply-days" class="h-7 px-3 rounded-md bg-brand-600 text-white font-semibold hover:bg-brand-700">Aplicar rango</button>
+    </div>
+
+    <!-- Fila secundaria: Agrupamiento, Ordenamiento, Canal rápido, Tipo y Per-Page -->
+    <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-1.5">
+          <label for="rep-agrupar" class="text-[11px] font-semibold text-slate-500">Agrupar:</label>
+          <select id="rep-agrupar" class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+            <option value="" {% if not filters.agrupar %}selected{% endif %}>Sin agrupar</option>
+            <option value="segmento" {% if filters.agrupar == 'segmento' %}selected{% endif %}>Por Segmento</option>
+            <option value="ventana" {% if filters.agrupar == 'ventana' %}selected{% endif %}>Por Ventana de Vencimiento</option>
+            <option value="contacto" {% if filters.agrupar == 'contacto' %}selected{% endif %}>Por Estado de Contacto</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label for="rep-sort" class="text-[11px] font-semibold text-slate-500">Ordenar:</label>
+          <select id="rep-sort" class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+            <option value="dias_sin_membresia" {% if filters.sort == 'dias_sin_membresia' %}selected{% endif %}>Días sin membresía</option>
+            <option value="fecha_caducidad" {% if filters.sort == 'fecha_caducidad' %}selected{% endif %}>Fecha última caducidad</option>
+            <option value="ultimo_contacto" {% if filters.sort == 'ultimo_contacto' %}selected{% endif %}>Último contacto</option>
+            <option value="fecha_recontacto" {% if filters.sort == 'fecha_recontacto' %}selected{% endif %}>Fecha de recontacto</option>
+            <option value="ultima_compra" {% if filters.sort == 'ultima_compra' %}selected{% endif %}>Última compra</option>
+            <option value="membresias" {% if filters.sort == 'membresias' %}selected{% endif %}>Cant. membresías</option>
+            <option value="segmento" {% if filters.sort == 'segmento' %}selected{% endif %}>Segmento</option>
+            <option value="nombre" {% if filters.sort == 'nombre' %}selected{% endif %}>Nombre (A–Z)</option>
+            <option value="ltv" {% if filters.sort == 'ltv' %}selected{% endif %}>Total invertido (LTV)</option>
+            <option value="ultima_asistencia" {% if filters.sort == 'ultima_asistencia' %}selected{% endif %}>Última asistencia</option>
+          </select>
+          <button type="button" id="rep-dir-btn" data-dir="{{ filters.dir }}"
+            class="h-8 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 inline-flex items-center gap-1"
+            title="Cambiar dirección de ordenamiento">
+            <i class="ti {{ 'ti-sort-ascending' if filters.dir == 'asc' else 'ti-sort-descending' }} text-sm"></i>
+            <span id="rep-dir-label">{{ 'Asc' if filters.dir == 'asc' else 'Desc' }}</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label for="rep-tipo" class="text-[11px] font-semibold text-slate-500">Tipo:</label>
+          <select id="rep-tipo" class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+            <option value="" {% if not filters.tipo %}selected{% endif %}>Todos</option>
+            <option value="Individual" {% if filters.tipo == 'Individual' %}selected{% endif %}>Individual</option>
+            <option value="Corporativo" {% if filters.tipo == 'Corporativo' %}selected{% endif %}>Corporativo</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label for="rep-canal-rapido" class="text-[11px] font-semibold text-indigo-700 flex items-center gap-1" title="Canal por defecto al usar los botones rápidos del checklist">
+            <i class="ti ti-phone-call text-sm"></i> Canal checklist:
+          </label>
+          <select id="rep-canal-rapido" class="h-8 rounded-lg border border-indigo-200 bg-indigo-50/50 px-2 text-xs text-indigo-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+            <option value="Llamada" selected>Llamada</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Presencial">Presencial</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
+          <label for="rep-per-page" class="text-[11px] font-semibold text-slate-500">Mostrar:</label>
+          <select id="rep-per-page" class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+            <option value="15" {% if per_page == 15 %}selected{% endif %}>15/pág</option>
+            <option value="25" {% if per_page == 25 %}selected{% endif %}>25/pág</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50/pág</option>
+            <option value="100" {% if per_page == 100 %}selected{% endif %}>100/pág</option>
+          </select>
+        </div>
+
+        <button type="button" id="rep-reset-btn"
+          class="h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 inline-flex items-center gap-1">
+          <i class="ti ti-refresh text-sm"></i> Limpiar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor dinámico de KPIs + Tabla + Paginación -->
+  <div id="informe-table-container">
+    {% include 'clientes/_informe_table.html' %}
+  </div>
+</div>
+
+<!-- Modal Ligero para Seguimiento Detallado e Historial de Contactos -->
+<div id="seguimiento-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+    <div class="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-bold text-slate-900">Registrar Seguimiento de Cliente</h3>
+        <p id="seg-modal-subtitle" class="text-xs text-slate-500 mt-0.5"></p>
+      </div>
+      <button type="button" id="seg-modal-close" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center">
+        <i class="ti ti-x text-lg"></i>
+      </button>
+    </div>
+
+    <form id="seg-modal-form" class="p-5 space-y-3">
+      <input type="hidden" id="seg-cliente-id">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label for="seg-canal" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Canal utilizado</label>
+          <select id="seg-canal" class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+            <option value="Llamada">Llamada telefónica</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Presencial">Presencial en recepción</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="seg-resultado" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Resultado</label>
+          <select id="seg-resultado" class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500" required>
+            <option value="contactado">Contactado / Mensaje enviado</option>
+            <option value="contesto">Contestó / Recibió info</option>
+            <option value="comprometido">Se comprometió a volver</option>
+            <option value="no_contesto">No contestó</option>
+            <option value="no_interesado">No interesado / Pausa</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label for="seg-recontacto" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Programar recontacto (opcional)</label>
+          <input id="seg-recontacto" type="date" class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+        </div>
+        <div>
+          <label for="seg-nota" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nota breve</label>
+          <input id="seg-nota" type="text" maxlength="255" placeholder="Ej: Dijo que vuelve el lunes..."
+            class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button type="button" id="seg-modal-cancel" class="h-9 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700">Cancelar</button>
+        <button type="submit" id="seg-modal-save" class="h-9 px-4 rounded-lg bg-brand-600 hover:bg-brand-700 text-xs font-semibold text-white">Guardar seguimiento</button>
+      </div>
+    </form>
+
+    <div class="px-5 py-3 border-t border-slate-200 bg-slate-50/70">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Historial reciente de contactos</div>
+      <div id="seg-history-list" class="space-y-1.5 max-h-40 overflow-y-auto text-xs text-slate-600">
+        <p class="text-slate-400 italic">Cargando...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var state = {
+      q: {{ (filters.q or '')|tojson }},
+      segmento: {{ (filters.segmento or '')|tojson }},
+      ventana: {{ (filters.ventana or '')|tojson }},
+      dias_min: {{ filters.dias_min|tojson }},
+      dias_max: {{ filters.dias_max|tojson }},
+      historial: {{ (filters.historial or '')|tojson }},
+      tipo: {{ (filters.tipo or '')|tojson }},
+      contacto: {{ (filters.contacto or '')|tojson }},
+      agrupar: {{ (filters.agrupar or '')|tojson }},
+      sort: {{ (filters.sort or 'dias_sin_membresia')|tojson }},
+      dir: {{ (filters.dir or 'asc')|tojson }},
+      per_page: {{ per_page or 25 }},
+      page: {{ page or 1 }}
+    };
+
+    var container = document.getElementById('informe-table-container');
+    var qEl = document.getElementById('rep-q');
+    var segEl = document.getElementById('rep-segmento');
+    var ventEl = document.getElementById('rep-ventana');
+    var customDaysEl = document.getElementById('rep-custom-days');
+    var diasMinEl = document.getElementById('rep-dias-min');
+    var diasMaxEl = document.getElementById('rep-dias-max');
+    var applyDaysBtn = document.getElementById('rep-apply-days');
+    var histEl = document.getElementById('rep-historial');
+    var contactoEl = document.getElementById('rep-contacto');
+    var tipoEl = document.getElementById('rep-tipo');
+    var agruparEl = document.getElementById('rep-agrupar');
+    var sortEl = document.getElementById('rep-sort');
+    var dirBtn = document.getElementById('rep-dir-btn');
+    var dirLabel = document.getElementById('rep-dir-label');
+    var canalRapidoEl = document.getElementById('rep-canal-rapido');
+    var perPageEl = document.getElementById('rep-per-page');
+    var resetBtn = document.getElementById('rep-reset-btn');
+
+    // Modal de seguimiento
+    var modalEl = document.getElementById('seguimiento-modal');
+    var modalClose = document.getElementById('seg-modal-close');
+    var modalCancel = document.getElementById('seg-modal-cancel');
+    var modalFormEl = document.getElementById('seg-modal-form');
+    var modalSubtitle = document.getElementById('seg-modal-subtitle');
+    var segClienteId = document.getElementById('seg-cliente-id');
+    var segCanal = document.getElementById('seg-canal');
+    var segResultado = document.getElementById('seg-resultado');
+    var segRecontacto = document.getElementById('seg-recontacto');
+    var segNota = document.getElementById('seg-nota');
+    var segHistoryList = document.getElementById('seg-history-list');
+
+    var activeController = null;
+    var lastReqId = 0;
+
+    function syncControlsFromState() {
+      if (qEl) qEl.value = state.q || '';
+      if (segEl) segEl.value = state.segmento || '';
+      if (ventEl) ventEl.value = state.ventana || '';
+      if (histEl) histEl.value = state.historial || '';
+      if (contactoEl) contactoEl.value = state.contacto || '';
+      if (tipoEl) tipoEl.value = state.tipo || '';
+      if (agruparEl) agruparEl.value = state.agrupar || '';
+      if (sortEl) sortEl.value = state.sort || 'dias_sin_membresia';
+      if (perPageEl) perPageEl.value = String(state.per_page || 25);
+      if (diasMinEl) diasMinEl.value = state.dias_min !== null && state.dias_min !== '' ? state.dias_min : '';
+      if (diasMaxEl) diasMaxEl.value = state.dias_max !== null && state.dias_max !== '' ? state.dias_max : '';
+
+      if (customDaysEl) {
+        if (state.ventana === 'personalizado') {
+          customDaysEl.classList.remove('hidden');
+          customDaysEl.classList.add('flex');
+        } else {
+          customDaysEl.classList.add('hidden');
+          customDaysEl.classList.remove('flex');
+        }
+      }
+
+      if (dirBtn && dirLabel) {
+        dirBtn.dataset.dir = state.dir;
+        dirLabel.textContent = state.dir === 'asc' ? 'Asc' : 'Desc';
+        var icon = dirBtn.querySelector('i');
+        if (icon) {
+          icon.className = 'ti ' + (state.dir === 'asc' ? 'ti-sort-ascending' : 'ti-sort-descending') + ' text-sm';
+        }
+      }
+    }
+
+    function loadReport(overrides) {
+      if (overrides) {
+        Object.keys(overrides).forEach(function(k) {
+          state[k] = overrides[k];
+        });
+      }
+      syncControlsFromState();
+
+      var reqId = ++lastReqId;
+      if (activeController) {
+        try { activeController.abort(); } catch (e) {}
+      }
+      activeController = new AbortController();
+
+      var tableUrl = new URL('{{ url_for("clientes.informe_clientes_table") }}', window.location.origin);
+      var pageUrl = new URL('{{ url_for("clientes.informe_clientes") }}', window.location.origin);
+
+      Object.keys(state).forEach(function(k) {
+        var val = state[k];
+        if (val !== null && val !== undefined && val !== '') {
+          tableUrl.searchParams.set(k, val);
+          pageUrl.searchParams.set(k, val);
+        }
+      });
+
+      if (container) {
+        container.style.opacity = '0.55';
+        container.style.pointerEvents = 'none';
+      }
+
+      fetch(tableUrl.toString(), { credentials: 'same-origin', signal: activeController.signal })
+        .then(function(res) { return res.text(); })
+        .then(function(html) {
+          if (reqId !== lastReqId) return;
+          if (container) container.innerHTML = html;
+          try {
+            history.replaceState(null, '', pageUrl.toString());
+          } catch (e) {}
+        })
+        .catch(function(err) {
+          if (err && err.name === 'AbortError') return;
+          console.error('Error cargando informe de clientes:', err);
+        })
+        .finally(function() {
+          if (reqId !== lastReqId) return;
+          if (container) {
+            container.style.opacity = '';
+            container.style.pointerEvents = '';
+          }
+        });
+    }
+
+    function saveContact(payload, triggerBtn) {
+      if (triggerBtn) triggerBtn.disabled = true;
+      return fetch('{{ url_for("clientes.registrar_contacto_informe") }}', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data || !data.success) {
+          alert((data && data.error) || 'No se pudo guardar el seguimiento');
+          return false;
+        }
+        loadReport();
+        return true;
+      })
+      .catch(function(err) {
+        console.error('Error registrando contacto:', err);
+        return false;
+      })
+      .finally(function() {
+        if (triggerBtn) triggerBtn.disabled = false;
+      });
+    }
+
+    function openSeguimientoModal(clienteId, nombre, telefono, ultimoResultado) {
+      if (!modalEl) return;
+      segClienteId.value = clienteId;
+      modalSubtitle.textContent = nombre + (telefono ? ' · Tel: ' + telefono : '');
+      segCanal.value = canalRapidoEl ? canalRapidoEl.value : 'Llamada';
+      segResultado.value = ultimoResultado || 'contactado';
+      segRecontacto.value = '';
+      segNota.value = '';
+      segHistoryList.innerHTML = '<p class="text-slate-400 italic">Cargando historial...</p>';
+      modalEl.classList.remove('hidden');
+
+      fetch('/clientes/informe/' + clienteId + '/seguimientos', { credentials: 'same-origin' })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data || !data.success || !data.items || data.items.length === 0) {
+            segHistoryList.innerHTML = '<p class="text-slate-400 italic">Sin contactos registrados previamente.</p>';
+            return;
+          }
+          segHistoryList.innerHTML = data.items.map(function(item) {
+            var recont = item.fecha_recontacto_fmt ? ' · Recontactar: ' + item.fecha_recontacto_fmt : '';
+            var notaHtml = item.nota ? '<div class="text-slate-600 mt-0.5">“' + item.nota.replace(/</g, '&lt;') + '”</div>' : '';
+            return '<div class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">' +
+              '<div class="flex items-center justify-between gap-2">' +
+                '<span class="font-semibold text-slate-800">' + item.resultado_label + ' (' + item.canal + ')</span>' +
+                '<span class="text-[10px] text-slate-400">' + item.fecha_contacto + '</span>' +
+              '</div>' +
+              '<div class="text-[10px] text-slate-500">Por: ' + item.usuario + recont + '</div>' +
+              notaHtml +
+            '</div>';
+          }).join('');
+        })
+        .catch(function() {
+          segHistoryList.innerHTML = '<p class="text-rose-500">Error cargando historial.</p>';
+        });
+    }
+
+    function closeSeguimientoModal() {
+      if (modalEl) modalEl.classList.add('hidden');
+    }
+
+    if (modalClose) modalClose.addEventListener('click', closeSeguimientoModal);
+    if (modalCancel) modalCancel.addEventListener('click', closeSeguimientoModal);
+    if (modalEl) {
+      modalEl.addEventListener('click', function(e) {
+        if (e.target === modalEl) closeSeguimientoModal();
+      });
+    }
+
+    if (modalFormEl) {
+      modalFormEl.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var saveBtn = document.getElementById('seg-modal-save');
+        saveContact({
+          cliente_id: parseInt(segClienteId.value, 10),
+          canal: segCanal.value,
+          resultado: segResultado.value,
+          fecha_recontacto: segRecontacto.value || null,
+          nota: segNota.value.trim()
+        }, saveBtn).then(function(ok) {
+          if (ok) closeSeguimientoModal();
+        });
+      });
+    }
+
+    var searchTimer = null;
+    if (qEl) {
+      qEl.addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        var val = this.value.trim();
+        searchTimer = setTimeout(function() {
+          loadReport({ q: val, page: 1 });
+        }, 300);
+      });
+    }
+
+    if (segEl) segEl.addEventListener('change', function() { loadReport({ segmento: this.value, page: 1 }); });
+    if (ventEl) {
+      ventEl.addEventListener('change', function() {
+        var val = this.value;
+        if (val === 'personalizado') {
+          state.ventana = 'personalizado';
+          syncControlsFromState();
+        } else {
+          loadReport({ ventana: val, dias_min: null, dias_max: null, page: 1 });
+        }
+      });
+    }
+    if (applyDaysBtn) {
+      applyDaysBtn.addEventListener('click', function() {
+        var dmin = diasMinEl && diasMinEl.value !== '' ? parseInt(diasMinEl.value, 10) : null;
+        var dmax = diasMaxEl && diasMaxEl.value !== '' ? parseInt(diasMaxEl.value, 10) : null;
+        loadReport({ ventana: 'personalizado', dias_min: dmin, dias_max: dmax, page: 1 });
+      });
+    }
+    if (histEl) histEl.addEventListener('change', function() { loadReport({ historial: this.value, page: 1 }); });
+    if (contactoEl) contactoEl.addEventListener('change', function() { loadReport({ contacto: this.value, page: 1 }); });
+    if (tipoEl) tipoEl.addEventListener('change', function() { loadReport({ tipo: this.value, page: 1 }); });
+    if (agruparEl) agruparEl.addEventListener('change', function() { loadReport({ agrupar: this.value, page: 1 }); });
+    if (sortEl) sortEl.addEventListener('change', function() { loadReport({ sort: this.value, page: 1 }); });
+    if (dirBtn) {
+      dirBtn.addEventListener('click', function() {
+        loadReport({ dir: state.dir === 'asc' ? 'desc' : 'asc', page: 1 });
+      });
+    }
+    if (perPageEl) perPageEl.addEventListener('change', function() { loadReport({ per_page: parseInt(this.value, 10), page: 1 }); });
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function() {
+        loadReport({
+          q: '',
+          segmento: '',
+          ventana: '',
+          dias_min: null,
+          dias_max: null,
+          historial: '',
+          tipo: '',
+          contacto: '',
+          agrupar: '',
+          sort: 'dias_sin_membresia',
+          dir: 'asc',
+          per_page: 25,
+          page: 1
+        });
+      });
+    }
+
+    // Delegación dentro del contenedor dinámico: Paginación, Ordenamiento, KPIs y Checklist de Contacto
+    if (container) {
+      container.addEventListener('click', function(e) {
+        var quickBtn = e.target.closest('.quick-contact-btn');
+        if (quickBtn) {
+          e.preventDefault();
+          saveContact({
+            cliente_id: parseInt(quickBtn.dataset.clienteId, 10),
+            resultado: quickBtn.dataset.resultado,
+            canal: canalRapidoEl ? canalRapidoEl.value : 'Llamada'
+          }, quickBtn);
+          return;
+        }
+
+        var modalBtn = e.target.closest('.open-contact-modal-btn');
+        if (modalBtn) {
+          e.preventDefault();
+          openSeguimientoModal(
+            modalBtn.dataset.clienteId,
+            modalBtn.dataset.clienteNombre,
+            modalBtn.dataset.clienteTelefono,
+            modalBtn.dataset.ultimoResultado
+          );
+          return;
+        }
+
+        var pageLink = e.target.closest('.report-page-link');
+        if (pageLink) {
+          e.preventDefault();
+          var targetPage = parseInt(pageLink.dataset.page || '1', 10);
+          if (!isNaN(targetPage) && targetPage >= 1) {
+            loadReport({ page: targetPage });
+          }
+          return;
+        }
+
+        var sortBtn = e.target.closest('.report-sort-btn');
+        if (sortBtn) {
+          e.preventDefault();
+          loadReport({
+            sort: sortBtn.dataset.sort,
+            dir: sortBtn.dataset.dir,
+            page: 1
+          });
+          return;
+        }
+
+        var kpiBtn = e.target.closest('.kpi-quick-btn');
+        if (kpiBtn) {
+          e.preventDefault();
+          var kind = kpiBtn.dataset.kpiFilter;
+          if (kind === 'reset') {
+            loadReport({ segmento: '', ventana: '', dias_min: null, dias_max: null, contacto: '', page: 1 });
+          } else if (kind === 'por_vencer') {
+            loadReport({ segmento: 'por_vencer', ventana: '', page: 1 });
+          } else if (kind === 'vencidos_30d') {
+            loadReport({ segmento: '', ventana: 'reciente_30d', page: 1 });
+          } else if (kind === 'frecuente_inactivo') {
+            loadReport({ segmento: 'frecuente_inactivo', ventana: '', page: 1 });
+          } else if (kind === 'morosos_90d') {
+            loadReport({ segmento: '', ventana: 'mas_90d', page: 1 });
+          } else if (kind === 'nunca') {
+            loadReport({ segmento: 'nunca', ventana: '', page: 1 });
+          }
+          return;
+        }
+
+        var contactKpi = e.target.closest('.contact-kpi-btn');
+        if (contactKpi) {
+          e.preventDefault();
+          var cFilter = contactKpi.dataset.contactKpi;
+          loadReport({ contacto: state.contacto === cFilter ? '' : cFilter, page: 1 });
+        }
+      });
+
+      container.addEventListener('submit', function(e) {
+        var jumpForm = e.target.closest('#report-jump-form');
+        if (!jumpForm) return;
+        e.preventDefault();
+        var input = document.getElementById('report-jump-page');
+        var p = input ? parseInt(input.value, 10) : 1;
+        var maxP = input && input.max ? parseInt(input.max, 10) : 1;
+        if (isNaN(p) || p < 1) p = 1;
+        if (maxP && p > maxP) p = maxP;
+        loadReport({ page: p });
+      });
+    }
+  })();
+</script>
+{% endblock %}
