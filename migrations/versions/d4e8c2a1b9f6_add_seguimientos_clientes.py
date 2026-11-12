@@ -1,7 +1,7 @@
 """Add seguimientos_clientes table for interactive remarketing contact tracking.
 
 Revision ID: d4e8c2a1b9f6
-Revises: a1d4e7c9b3f0
+Revises: c3f9b1e5d7a2
 Create Date: 2026-11-12 10:30:00.000000
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "d4e8c2a1b9f6"
-down_revision = "a1d4e7c9b3f0"
+down_revision = "c3f9b1e5d7a2"
 branch_labels = None
 depends_on = None
 

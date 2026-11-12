@@ -369,7 +369,8 @@ def test_recepcion_no_ve_exportar_y_accede_informe(app, db_session, sucursal, da
         inf_html = resp_inf.get_data(as_text=True)
         assert "Informe Interactivo de Clientes" in inf_html
         assert "Guía de Segmentos" in inf_html
-        assert "Checklist Seguimiento" in inf_html
+        assert "Últ. Contacto" in inf_html
+        assert "Checklist de contacto" in inf_html
         assert "Sofia Exfiel" in inf_html
         assert "Nora OtraSede" not in inf_html
         # Opciones innecesarias y botones redundantes eliminados
