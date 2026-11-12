@@ -231,67 +231,93 @@
   </div>
 </div>
 
-<!-- Modal Ligero para Seguimiento Detallado e Historial de Contactos -->
-<div id="seguimiento-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
-    <div class="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-      <div>
-        <h3 class="text-sm font-bold text-slate-900">Registrar Seguimiento de Cliente</h3>
-        <p id="seg-modal-subtitle" class="text-xs text-slate-500 mt-0.5"></p>
+<!-- Modal Fijo y Centrado para Seguimiento Detallado e Historial de Contactos -->
+<div id="seguimiento-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
+  style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; margin: 0; z-index: 9999;">
+  <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg my-auto overflow-hidden flex flex-col max-h-[92vh]">
+    <!-- Header -->
+    <div class="px-5 py-3.5 border-b border-slate-200 bg-slate-50/90 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center shrink-0">
+          <i class="ti ti-notes text-lg"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">Registrar Seguimiento de Cliente</h3>
+          <p id="seg-modal-subtitle" class="text-xs text-slate-500 mt-0.5 truncate max-w-xs sm:max-w-md"></p>
+        </div>
       </div>
-      <button type="button" id="seg-modal-close" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center">
+      <button type="button" id="seg-modal-close" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 flex items-center justify-center transition-colors" title="Cerrar (Esc)">
         <i class="ti ti-x text-lg"></i>
       </button>
     </div>
 
-    <form id="seg-modal-form" class="p-5 space-y-3">
-      <input type="hidden" id="seg-cliente-id">
+    <!-- Body Scrollable -->
+    <div class="overflow-y-auto flex-1 p-5 space-y-4">
+      <form id="seg-modal-form" class="space-y-3.5">
+        <input type="hidden" id="seg-cliente-id">
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label for="seg-canal" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Canal utilizado</label>
-          <select id="seg-canal" class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
-            <option value="Llamada">Llamada telefónica</option>
-            <option value="WhatsApp">WhatsApp</option>
-            <option value="Presencial">Presencial en recepción</option>
-            <option value="Otro">Otro</option>
-          </select>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="seg-canal" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Canal utilizado</label>
+            <select id="seg-canal" class="w-full h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500">
+              <option value="Llamada">📞 Llamada telefónica</option>
+              <option value="WhatsApp">💬 WhatsApp</option>
+              <option value="Presencial">🏢 Presencial en recepción</option>
+              <option value="Otro">🌐 Otro canal</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="seg-resultado" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Resultado de contacto</label>
+            <select id="seg-resultado" class="w-full h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500 font-medium" required>
+              <option value="contactado">✓ Contactado / Mensaje enviado</option>
+              <option value="contesto">💬 Contestó / Recibió info</option>
+              <option value="comprometido">🤝 Se comprometió a volver</option>
+              <option value="no_contesto">📞 No contestó</option>
+              <option value="no_interesado">⏸ No interesado / Pausa</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label for="seg-resultado" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Resultado</label>
-          <select id="seg-resultado" class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500" required>
-            <option value="contactado">Contactado / Mensaje enviado</option>
-            <option value="contesto">Contestó / Recibió info</option>
-            <option value="comprometido">Se comprometió a volver</option>
-            <option value="no_contesto">No contestó</option>
-            <option value="no_interesado">No interesado / Pausa</option>
-          </select>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="seg-recontacto" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Programar recontacto</label>
+            <input id="seg-recontacto" type="date" class="w-full h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500">
+            <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+              <span class="text-[10px] text-slate-400">Atajos:</span>
+              <button type="button" class="seg-quick-date px-1.5 py-0.5 rounded bg-slate-100 hover:bg-brand-50 hover:text-brand-700 border border-slate-200 text-[10px] text-slate-600" data-days="3">+3d</button>
+              <button type="button" class="seg-quick-date px-1.5 py-0.5 rounded bg-slate-100 hover:bg-brand-50 hover:text-brand-700 border border-slate-200 text-[10px] text-slate-600" data-days="7">+1 sem</button>
+              <button type="button" class="seg-quick-date px-1.5 py-0.5 rounded bg-slate-100 hover:bg-brand-50 hover:text-brand-700 border border-slate-200 text-[10px] text-slate-600" data-days="15">+15d</button>
+              <button type="button" id="seg-clear-date" class="px-1.5 py-0.5 rounded hover:bg-rose-50 text-[10px] text-slate-400 hover:text-rose-600" title="Limpiar fecha">Limpiar</button>
+            </div>
+          </div>
+          <div>
+            <label for="seg-nota" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Nota u observación</label>
+            <textarea id="seg-nota" rows="2" maxlength="255" placeholder="Ej: Pidió que le llamemos por la tarde, promete pasar el sábado..."
+              class="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500 resize-none"></textarea>
+          </div>
         </div>
-      </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label for="seg-recontacto" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Programar recontacto (opcional)</label>
-          <input id="seg-recontacto" type="date" class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" id="seg-modal-cancel" class="h-9 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors">Cancelar</button>
+          <button type="submit" id="seg-modal-save" class="h-9 px-4 rounded-lg bg-brand-600 hover:bg-brand-700 text-xs font-semibold text-white shadow-sm transition-colors flex items-center gap-1.5">
+            <i class="ti ti-device-floppy text-sm"></i>
+            Guardar seguimiento
+          </button>
         </div>
-        <div>
-          <label for="seg-nota" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nota breve</label>
-          <input id="seg-nota" type="text" maxlength="255" placeholder="Ej: Dijo que vuelve el lunes..."
-            class="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+      </form>
+
+      <!-- Historial reciente -->
+      <div class="pt-3 border-t border-slate-200">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+            <i class="ti ti-history text-xs"></i> Historial de contactos del cliente
+          </span>
+          <span class="text-[10px] text-slate-400">Últimos registros</span>
         </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2 pt-2">
-        <button type="button" id="seg-modal-cancel" class="h-9 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700">Cancelar</button>
-        <button type="submit" id="seg-modal-save" class="h-9 px-4 rounded-lg bg-brand-600 hover:bg-brand-700 text-xs font-semibold text-white">Guardar seguimiento</button>
-      </div>
-    </form>
-
-    <div class="px-5 py-3 border-t border-slate-200 bg-slate-50/70">
-      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Historial reciente de contactos</div>
-      <div id="seg-history-list" class="space-y-1.5 max-h-40 overflow-y-auto text-xs text-slate-600">
-        <p class="text-slate-400 italic">Cargando...</p>
+        <div id="seg-history-list" class="space-y-1.5 max-h-36 overflow-y-auto text-xs text-slate-600 pr-1">
+          <p class="text-slate-400 italic text-[11px]">Cargando...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -461,44 +487,63 @@
       });
     }
 
+    // Garantizar que el modal viva directamente en <body> para que 'fixed inset-0'
+    // sea estático respecto al viewport sin verse afectado por transforms o scroll de <main>
+    if (modalEl && modalEl.parentNode !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+
     function openSeguimientoModal(clienteId, nombre, telefono, ultimoResultado) {
       if (!modalEl) return;
+      if (modalEl.parentNode !== document.body) {
+        document.body.appendChild(modalEl);
+      }
       segClienteId.value = clienteId;
       modalSubtitle.textContent = nombre + (telefono ? ' · Tel: ' + telefono : '');
       segCanal.value = canalRapidoEl ? canalRapidoEl.value : 'Llamada';
       segResultado.value = ultimoResultado || 'contactado';
       segRecontacto.value = '';
       segNota.value = '';
-      segHistoryList.innerHTML = '<p class="text-slate-400 italic">Cargando historial...</p>';
+      segHistoryList.innerHTML = '<p class="text-slate-400 italic text-[11px]">Cargando historial...</p>';
       modalEl.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      var mainContent = document.getElementById('main-content');
+      if (mainContent) mainContent.style.overflowY = 'hidden';
+
+      setTimeout(function() {
+        if (segNota) segNota.focus();
+      }, 60);
 
       fetch('/clientes/informe/' + clienteId + '/seguimientos', { credentials: 'same-origin' })
         .then(function(res) { return res.json(); })
         .then(function(data) {
           if (!data || !data.success || !data.items || data.items.length === 0) {
-            segHistoryList.innerHTML = '<p class="text-slate-400 italic">Sin contactos registrados previamente.</p>';
+            segHistoryList.innerHTML = '<p class="text-slate-400 italic text-[11px]">Sin contactos registrados previamente.</p>';
             return;
           }
           segHistoryList.innerHTML = data.items.map(function(item) {
             var recont = item.fecha_recontacto_fmt ? ' · Recontactar: ' + item.fecha_recontacto_fmt : '';
-            var notaHtml = item.nota ? '<div class="text-slate-600 mt-0.5">“' + item.nota.replace(/</g, '&lt;') + '”</div>' : '';
-            return '<div class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">' +
+            var notaHtml = item.nota ? '<div class="text-slate-600 mt-0.5 italic">“' + item.nota.replace(/</g, '&lt;') + '”</div>' : '';
+            return '<div class="rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-2">' +
               '<div class="flex items-center justify-between gap-2">' +
-                '<span class="font-semibold text-slate-800">' + item.resultado_label + ' (' + item.canal + ')</span>' +
-                '<span class="text-[10px] text-slate-400">' + item.fecha_contacto + '</span>' +
+                '<span class="font-semibold text-slate-800">' + item.resultado_label + ' <span class="font-normal text-slate-500">(' + item.canal + ')</span></span>' +
+                '<span class="text-[10px] text-slate-400 font-mono">' + item.fecha_contacto + '</span>' +
               '</div>' +
-              '<div class="text-[10px] text-slate-500">Por: ' + item.usuario + recont + '</div>' +
+              '<div class="text-[10px] text-slate-500 mt-0.5">Por: ' + item.usuario + recont + '</div>' +
               notaHtml +
             '</div>';
           }).join('');
         })
         .catch(function() {
-          segHistoryList.innerHTML = '<p class="text-rose-500">Error cargando historial.</p>';
+          segHistoryList.innerHTML = '<p class="text-rose-500 text-[11px]">Error cargando historial.</p>';
         });
     }
 
     function closeSeguimientoModal() {
       if (modalEl) modalEl.classList.add('hidden');
+      document.body.style.overflow = '';
+      var mainContent = document.getElementById('main-content');
+      if (mainContent) mainContent.style.overflowY = '';
     }
 
     if (modalClose) modalClose.addEventListener('click', closeSeguimientoModal);
@@ -507,6 +552,33 @@
       modalEl.addEventListener('click', function(e) {
         if (e.target === modalEl) closeSeguimientoModal();
       });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modalEl && !modalEl.classList.contains('hidden')) {
+        closeSeguimientoModal();
+      }
+    });
+
+    if (modalEl) {
+      modalEl.querySelectorAll('.seg-quick-date').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var days = parseInt(this.dataset.days || '0', 10);
+          var d = new Date();
+          d.setDate(d.getDate() + days);
+          var yyyy = d.getFullYear();
+          var mm = String(d.getMonth() + 1).padStart(2, '0');
+          var dd = String(d.getDate()).padStart(2, '0');
+          if (segRecontacto) segRecontacto.value = yyyy + '-' + mm + '-' + dd;
+        });
+      });
+
+      var clearDateBtn = modalEl.querySelector('#seg-clear-date');
+      if (clearDateBtn && segRecontacto) {
+        clearDateBtn.addEventListener('click', function() {
+          segRecontacto.value = '';
+        });
+      }
     }
 
     if (modalFormEl) {
