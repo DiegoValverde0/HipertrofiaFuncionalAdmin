@@ -175,8 +175,6 @@
             <option value="membresias" {% if filters.sort == 'membresias' %}selected{% endif %}>Cant. membresías</option>
             <option value="segmento" {% if filters.sort == 'segmento' %}selected{% endif %}>Segmento</option>
             <option value="nombre" {% if filters.sort == 'nombre' %}selected{% endif %}>Nombre (A–Z)</option>
-            <option value="ltv" {% if filters.sort == 'ltv' %}selected{% endif %}>Total invertido (LTV)</option>
-            <option value="ultima_asistencia" {% if filters.sort == 'ultima_asistencia' %}selected{% endif %}>Última asistencia</option>
           </select>
           <button type="button" id="rep-dir-btn" data-dir="{{ filters.dir }}"
             class="h-8 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 inline-flex items-center gap-1"
@@ -661,6 +659,17 @@
           e.preventDefault();
           var cFilter = contactKpi.dataset.contactKpi;
           loadReport({ contacto: state.contacto === cFilter ? '' : cFilter, page: 1 });
+        }
+      });
+
+      container.addEventListener('change', function(e) {
+        var quickSelect = e.target.closest('.quick-contact-select');
+        if (quickSelect && quickSelect.value) {
+          saveContact({
+            cliente_id: parseInt(quickSelect.dataset.clienteId, 10),
+            resultado: quickSelect.value,
+            canal: canalRapidoEl ? canalRapidoEl.value : 'Llamada'
+          }, quickSelect);
         }
       });
 

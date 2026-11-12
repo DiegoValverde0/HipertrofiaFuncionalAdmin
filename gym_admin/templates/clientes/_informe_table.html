@@ -148,7 +148,7 @@
       {% endif %}
     </div>
     <div class="text-[11px] text-slate-500">
-      Marca en 1 clic el resultado del contacto (llamada, WhatsApp o presencial) · Pasa el cursor sobre <i
+      Selecciona el resultado en la lista rápida o abre notas (<i class="ti ti-notes text-indigo-600"></i>) · Pasa el cursor sobre <i
         class="ti ti-info-circle text-brand-600"></i> para ver el significado
     </div>
   </div>
@@ -157,17 +157,16 @@
     <table class="w-full text-xs text-left border-collapse">
       <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
         <tr>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('nombre', 'Cliente') }}</th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">Teléfono
+          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('nombre', 'Cliente / Teléfono') }}</th>
+          <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">{{ sort_header('membresias', 'Histórico') }}</th>
+          <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">
+            <div class="inline-flex items-center gap-1.5">
+              {{ sort_header('segmento', 'Segmento') }}
+              <span class="text-slate-300">/</span>
+              {{ sort_header('dias_sin_membresia', 'Vigencia') }}
+            </div>
           </th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('membresias', 'Histórico') }}</th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('segmento', 'Segmentación') }}</th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('fecha_caducidad', 'Últ. Caducidad') }}
-          </th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('dias_sin_membresia', 'Inactividad /
-            Vigencia') }}</th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('ltv', 'Valor / Asist.') }}</th>
-          <th scope="col" class="px-3 py-2.5 whitespace-nowrap">{{ sort_header('ultimo_contacto', 'Últ. Contacto') }}
+          <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">{{ sort_header('ultimo_contacto', 'Últ. Contacto') }}
           </th>
           <th scope="col"
             class="px-3 py-2.5 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">Checklist
@@ -185,7 +184,7 @@
         {% if ns.last_group != current_group %}
         {% set ns.last_group = current_group %}
         <tr class="bg-slate-100/90 border-y border-slate-200">
-          <td colspan="9" class="px-3 py-1.5">
+          <td colspan="5" class="px-3 py-1.5">
             <div class="flex flex-wrap items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full {{ r.segmento.dot_class }}"></span>
               <span class="font-bold text-[11px] uppercase tracking-wider text-slate-800">{{ r.segmento.label }}</span>
@@ -199,7 +198,7 @@
         {% if ns.last_group != current_group %}
         {% set ns.last_group = current_group %}
         <tr class="bg-slate-100/90 border-y border-slate-200">
-          <td colspan="9" class="px-3 py-1.5">
+          <td colspan="5" class="px-3 py-1.5">
             <div class="flex items-center gap-2">
               <i class="ti ti-clock-hour-4 text-slate-500 text-sm"></i>
               <span class="font-bold text-[11px] uppercase tracking-wider text-slate-800">{{ r.ventana_label }}</span>
@@ -212,7 +211,7 @@
         {% if ns.last_group != current_group %}
         {% set ns.last_group = current_group %}
         <tr class="bg-slate-100/90 border-y border-slate-200">
-          <td colspan="9" class="px-3 py-1.5">
+          <td colspan="5" class="px-3 py-1.5">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full {{ r.contacto.meta.dot_class }}"></span>
               <span class="font-bold text-[11px] uppercase tracking-wider text-slate-800">{{ r.contacto.meta.label
@@ -225,195 +224,139 @@
         {% endif %}
 
         <tr class="transition-colors {{ r.segmento.row_class }}" data-cliente-row="{{ c.id }}">
-          <!-- Cliente -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            <div class="flex flex-col">
-              <span class="font-semibold text-slate-900 leading-tight">{{ r.nombre_completo }}</span>
-              <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
-                <span>{{ c.tipo_cliente }}</span>
+          <!-- Cliente y Teléfono agrupados -->
+          <td class="px-3 py-2">
+            <div class="flex flex-col min-w-[150px] max-w-[230px]">
+              <div class="flex items-center gap-1.5 leading-tight">
+                <span class="font-semibold text-slate-900 truncate" title="{{ r.nombre_completo }}">{{ r.nombre_completo }}</span>
+                {% if c.tipo_cliente and c.tipo_cliente != 'Regular' %}
+                <span class="px-1 py-0 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-semibold shrink-0">{{ c.tipo_cliente }}</span>
+                {% endif %}
+              </div>
+              <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5 flex-wrap">
+                {% if c.telefono %}
+                <span class="font-mono font-semibold text-slate-700">{{ c.telefono }}</span>
+                {% if r.wa_url %}
+                <a href="{{ r.wa_url }}" target="_blank" rel="noopener noreferrer"
+                  class="inline-flex items-center justify-center w-4 h-4 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"
+                  title="Opcional: abrir chat WhatsApp ({{ r.wa_message }})">
+                  <i class="ti ti-brand-whatsapp text-sm"></i>
+                </a>
+                {% endif %}
+                {% else %}
+                <span class="text-[10px] text-slate-400 italic">Sin tel.</span>
+                {% endif %}
                 {% if r.edad %}
-                <span>· {{ r.edad }}a</span>
+                <span class="text-[10px] text-slate-400">· {{ r.edad }}a</span>
+                {% endif %}
+                {% if c.correo %}
+                <span class="text-[10px] text-slate-400 truncate max-w-[115px]" title="{{ c.correo }}">· {{ c.correo }}</span>
                 {% endif %}
               </div>
             </div>
           </td>
 
-          <!-- Teléfono (WhatsApp opcional, no indispensable) -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            {% if c.telefono %}
-            <div class="flex items-center gap-1.5">
-              <span class="font-mono text-[11px] font-semibold text-slate-800">{{ c.telefono }}</span>
-              {% if r.wa_url %}
-              <a href="{{ r.wa_url }}" target="_blank" rel="noopener noreferrer"
-                class="inline-flex items-center justify-center w-5 h-5 rounded text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-colors"
-                title="Opcional: abrir chat WhatsApp ({{ r.wa_message }})">
-                <i class="ti ti-brand-whatsapp text-sm"></i>
-              </a>
-              {% endif %}
-            </div>
-            {% else %}
-            <span class="text-[11px] text-slate-400 italic">Sin teléfono</span>
-            {% endif %}
-            {% if c.correo %}
-            <div class="text-[10px] text-slate-400 truncate max-w-[150px]" title="{{ c.correo }}">{{ c.correo }}</div>
-            {% endif %}
-          </td>
-
           <!-- Histórico Membresías -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            <div class="flex items-center gap-1.5">
+          <td class="px-2.5 py-2 whitespace-nowrap">
+            <div class="flex items-center gap-1">
               <span
-                class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md font-bold text-[11px] {{ 'bg-brand-50 text-brand-700 border border-brand-200' if r.valid_count >= 2 else ('bg-slate-100 text-slate-700 border border-slate-200' if r.valid_count == 1 else 'bg-slate-50 text-slate-400 border border-slate-200') }}">
-                {{ r.valid_count }}
+                class="inline-flex items-center justify-center px-1.5 py-0.5 rounded font-bold text-[11px] {{ 'bg-brand-50 text-brand-700 border border-brand-200' if r.valid_count >= 2 else ('bg-slate-100 text-slate-700 border border-slate-200' if r.valid_count == 1 else 'bg-slate-50 text-slate-400 border border-slate-200') }}">
+                {{ r.valid_count }} memb.
               </span>
-              <span class="text-[11px] text-slate-600">memb.</span>
               {% if r.pendientes_extra > 0 %}
               <span class="px-1 py-0 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px]"
-                title="{{ r.pendientes_extra }} solicitud(es) pendiente(s)">+{{ r.pendientes_extra }} pend.</span>
+                title="{{ r.pendientes_extra }} solicitud(es) pendiente(s)">+{{ r.pendientes_extra }}</span>
               {% endif %}
             </div>
             {% if r.ultimo_plan %}
-            <div class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[130px]"
-              title="Último plan: {{ r.ultimo_plan }}">Últ: {{ r.ultimo_plan }}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[115px]"
+              title="Último plan: {{ r.ultimo_plan }}">{{ r.ultimo_plan }}</div>
             {% endif %}
           </td>
 
-          <!-- Segmentación con Badge + Tooltip Explicativo -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            <div class="relative inline-flex items-center gap-1 group/tip">
-              <span
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-semibold {{ r.segmento.badge_class }}">
-                <span class="w-1.5 h-1.5 rounded-full {{ r.segmento.dot_class }}"></span>
-                {{ r.segmento.short_label }}
-              </span>
-              <span class="cursor-help text-slate-400 hover:text-slate-700" tabindex="0"
-                aria-label="Explicación del estado">
-                <i class="ti ti-info-circle text-sm"></i>
-              </span>
-              <div
-                class="invisible opacity-0 group-hover/tip:visible group-hover/tip:opacity-100 group-focus-within/tip:visible group-focus-within/tip:opacity-100 transition-opacity duration-150 absolute left-0 bottom-full mb-1.5 z-50 w-64 p-2.5 rounded-lg bg-slate-900 text-white shadow-xl text-[11px] leading-relaxed pointer-events-none whitespace-normal">
-                <div class="font-bold text-brand-300 mb-0.5">{{ r.segmento.label }}</div>
-                <p class="text-slate-200 mb-1">{{ r.segmento.description }}</p>
-                <div class="pt-1 border-t border-slate-700 text-emerald-300">
-                  <strong>Acción sugerida:</strong> {{ r.segmento.remarketing_tip }}
+          <!-- Segmentación, Caducidad y Contador compactados -->
+          <td class="px-2.5 py-2 whitespace-nowrap">
+            <div class="flex flex-col gap-0.5">
+              <div class="relative inline-flex items-center gap-1 group/tip">
+                <span
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-semibold {{ r.segmento.badge_class }}">
+                  <span class="w-1.5 h-1.5 rounded-full {{ r.segmento.dot_class }}"></span>
+                  {{ r.segmento.short_label }}
+                </span>
+                <span class="cursor-help text-slate-400 hover:text-slate-700" tabindex="0"
+                  aria-label="Explicación del estado">
+                  <i class="ti ti-info-circle text-xs"></i>
+                </span>
+                <div
+                  class="invisible opacity-0 group-hover/tip:visible group-hover/tip:opacity-100 group-focus-within/tip:visible group-focus-within/tip:opacity-100 transition-opacity duration-150 absolute left-0 bottom-full mb-1.5 z-50 w-64 p-2.5 rounded-lg bg-slate-900 text-white shadow-xl text-[11px] leading-relaxed pointer-events-none whitespace-normal">
+                  <div class="font-bold text-brand-300 mb-0.5">{{ r.segmento.label }}</div>
+                  <p class="text-slate-200 mb-1">{{ r.segmento.description }}</p>
+                  <div class="pt-1 border-t border-slate-700 text-emerald-300">
+                    <strong>Acción sugerida:</strong> {{ r.segmento.remarketing_tip }}
+                  </div>
                 </div>
+              </div>
+              <div class="flex items-center gap-1 text-[10px]">
+                <span class="px-1.5 py-0 rounded border font-semibold {{ r.counter.badge_class }}">{{ r.counter.text }}</span>
+                {% if r.ultima_fin %}
+                <span class="font-mono text-slate-500" title="Última caducidad: {{ r.ultima_fin.strftime('%d/%m/%Y') }}">· {{ r.ultima_fin.strftime('%d/%m/%y') }}</span>
+                {% endif %}
               </div>
             </div>
           </td>
 
-          <!-- Última Caducidad -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            {% if r.ultima_fin %}
-            <div class="font-mono text-[11px] font-semibold text-slate-800">{{ r.ultima_fin.strftime('%d/%m/%Y') }}
-            </div>
-            {% if r.ultima_inicio %}
-            <div class="text-[10px] text-slate-400">Ini: {{ r.ultima_inicio.strftime('%d/%m/%Y') }}</div>
-            {% endif %}
-            {% else %}
-            <span class="text-[11px] text-slate-400">—</span>
-            {% if c.fecha_registro %}
-            <div class="text-[10px] text-slate-400">Reg: {{ c.fecha_registro.strftime('%d/%m/%Y') }}</div>
-            {% endif %}
-            {% endif %}
-          </td>
-
-          <!-- Contador Inactividad / Vigencia -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-bold {{ r.counter.badge_class }}">
-              {{ r.counter.text }}
-            </span>
-            {% if r.counter.subtext %}
-            <div class="text-[10px] text-slate-400 mt-0.5">{{ r.counter.subtext }}</div>
-            {% endif %}
-          </td>
-
-          <!-- Valor / Asistencias -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            <div class="flex items-center gap-1.5">
-              <span class="font-bold text-slate-800">Bs. {{ "%.0f"|format(r.ltv) }}</span>
-              {% if r.valid_count >= 4 or r.ltv >= 1000 %}
-              <span
-                class="px-1.5 py-0 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold"
-                title="Cliente de alto valor histórico">VIP</span>
-              {% endif %}
-            </div>
-            <div class="text-[10px] text-slate-500 mt-0.5">
-              {% if r.dias_sin_asistir is not none %}
-              Asist: hace {{ r.dias_sin_asistir }}d ({{ r.total_asistencias }})
-              {% else %}
-              Sin marcajes
-              {% endif %}
-            </div>
-          </td>
-
           <!-- Último Contacto / Seguimiento -->
-          <td class="px-3 py-2 whitespace-nowrap">
-            <div class="flex items-center gap-1">
-              <span
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-semibold {{ r.contacto.meta.badge_class }}">
-                <i class="ti {{ r.contacto.meta.icon }} text-xs"></i>
-                {{ r.contacto.meta.short_label }}
-              </span>
-              {% if r.contacto.total_contactos > 1 %}
-              <span class="text-[10px] text-slate-400 font-semibold"
-                title="{{ r.contacto.total_contactos }} contactos registrados">({{ r.contacto.total_contactos }})</span>
+          <td class="px-2.5 py-2">
+            <div class="flex flex-col gap-0.5 min-w-[130px] max-w-[185px]">
+              <div class="flex items-center gap-1 flex-wrap">
+                <span
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-semibold {{ r.contacto.meta.badge_class }}">
+                  <i class="ti {{ r.contacto.meta.icon }} text-[11px]"></i>
+                  {{ r.contacto.meta.short_label }}
+                </span>
+                {% if r.contacto.total_contactos > 1 %}
+                <span class="text-[10px] text-slate-400 font-semibold"
+                  title="{{ r.contacto.total_contactos }} contactos registrados">({{ r.contacto.total_contactos }})</span>
+                {% endif %}
+              </div>
+              {% if r.contacto.fecha_texto %}
+              <div class="text-[10px] text-slate-500 leading-tight">
+                {{ r.contacto.canal }} · {{ 'Hoy' if r.contacto.dias_desde_contacto == 0 else ('Ayer' if r.contacto.dias_desde_contacto == 1 else 'hace ' ~ r.contacto.dias_desde_contacto ~ 'd') }}
+              </div>
+              {% endif %}
+              {% if r.contacto.fecha_recontacto %}
+              <div
+                class="text-[10px] font-semibold {{ 'text-rose-600' if r.contacto.recontacto_vencido else 'text-indigo-600' }}">
+                <i class="ti ti-calendar-event text-[10px]"></i>
+                Recontactar: {{ r.contacto.fecha_recontacto.strftime('%d/%m/%y') }}
+              </div>
+              {% endif %}
+              {% if r.contacto.nota %}
+              <div class="text-[10px] text-slate-500 truncate" title="{{ r.contacto.nota }}">
+                “{{ r.contacto.nota }}”
+              </div>
               {% endif %}
             </div>
-            {% if r.contacto.fecha_texto %}
-            <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-              <span>{{ r.contacto.canal }}</span>
-              <span>·</span>
-              <span>{{ 'Hoy' if r.contacto.dias_desde_contacto == 0 else ('Ayer' if r.contacto.dias_desde_contacto == 1
-                else 'Hace ' ~ r.contacto.dias_desde_contacto ~ 'd') }} ({{ r.contacto.fecha_texto }})</span>
-            </div>
-            {% endif %}
-            {% if r.contacto.fecha_recontacto %}
-            <div
-              class="text-[10px] font-semibold mt-0.5 {{ 'text-rose-600' if r.contacto.recontacto_vencido else 'text-indigo-600' }}">
-              <i class="ti ti-calendar-event text-[11px]"></i>
-              Recontactar: {{ r.contacto.fecha_recontacto.strftime('%d/%m/%Y') }}
-            </div>
-            {% endif %}
-            {% if r.contacto.nota %}
-            <div class="text-[10px] text-slate-500 truncate max-w-[165px]" title="{{ r.contacto.nota }}">
-              “{{ r.contacto.nota }}”
-            </div>
-            {% endif %}
           </td>
 
-          <!-- Checklist de Seguimiento (reemplaza botones redundantes) -->
+          <!-- Checklist en Modo Lista Desplegable + Modal de Notas -->
           <td class="px-3 py-2 whitespace-nowrap text-right">
-            <div class="inline-flex items-center gap-1" role="group" aria-label="Checklist de contacto">
-              <button type="button"
-                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-blue-600 text-white border-blue-600 shadow-sm' if r.contacto.key == 'contactado' else 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300' }}"
-                data-cliente-id="{{ c.id }}" data-resultado="contactado" title="Marcar como Contactado">
-                <i class="ti ti-check text-xs"></i>
-              </button>
+            <div class="inline-flex items-center gap-1 justify-end" aria-label="Checklist de contacto">
+              <select
+                class="quick-contact-select h-7 rounded-lg border border-slate-300 bg-white hover:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 px-2 text-[11px] font-medium text-slate-700 cursor-pointer shadow-xs max-w-[145px]"
+                data-cliente-id="{{ c.id }}"
+                aria-label="Registrar contacto para {{ r.nombre_completo }}"
+                title="Selecciona el resultado para registrar el seguimiento">
+                <option value="" disabled selected>+ Marcar estado...</option>
+                <option value="contactado">✓ Contactado</option>
+                <option value="contesto">💬 Contestó</option>
+                <option value="no_contesto">📞 No contestó</option>
+                <option value="comprometido">🤝 Vuelve / Comprometido</option>
+                <option value="no_interesado">⏸ No interesado / Pausa</option>
+              </select>
 
               <button type="button"
-                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-cyan-600 text-white border-cyan-600 shadow-sm' if r.contacto.key == 'contesto' else 'bg-white text-slate-600 border-slate-200 hover:bg-cyan-50 hover:text-cyan-800 hover:border-cyan-300' }}"
-                data-cliente-id="{{ c.id }}" data-resultado="contesto" title="Marcar: Contestó">
-                <i class="ti ti-message-check text-xs"></i>
-                <span class="hidden xl:inline">Contestó</span>
-              </button>
-
-              <button type="button"
-                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-amber-500 text-white border-amber-500 shadow-sm' if r.contacto.key == 'no_contesto' else 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300' }}"
-                data-cliente-id="{{ c.id }}" data-resultado="no_contesto" title="Marcar: No contestó">
-                <i class="ti ti-phone-x text-xs"></i>
-                <span class="hidden xl:inline">No cont.</span>
-              </button>
-
-              <button type="button"
-                class="quick-contact-btn inline-flex items-center gap-0.5 px-1.5 py-1 rounded border text-[10px] font-semibold transition-colors {{ 'bg-emerald-600 text-white border-emerald-600 shadow-sm' if r.contacto.key == 'comprometido' else 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300' }}"
-                data-cliente-id="{{ c.id }}" data-resultado="comprometido" title="Marcar: Se comprometió a volver">
-                <i class="ti ti-heart-handshake text-xs"></i>
-                <span class="hidden xl:inline">Vuelve</span>
-              </button>
-
-              <button type="button"
-                class="open-contact-modal-btn inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+                class="open-contact-modal-btn inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 transition-colors shrink-0"
                 data-cliente-id="{{ c.id }}" data-cliente-nombre="{{ r.nombre_completo }}"
                 data-cliente-telefono="{{ c.telefono or '' }}"
                 data-ultimo-resultado="{{ '' if r.contacto.key == 'sin_contacto' else r.contacto.key }}"
@@ -425,7 +368,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="9" class="px-6 py-10 text-center">
+          <td colspan="5" class="px-6 py-10 text-center">
             <div class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-slate-100 mb-2">
               <i class="ti ti-filter-off text-xl text-slate-400"></i>
             </div>

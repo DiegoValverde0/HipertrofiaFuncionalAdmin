@@ -375,6 +375,7 @@ def test_recepcion_no_ve_exportar_y_accede_informe(app, db_session, sucursal, da
         assert "Nora OtraSede" not in inf_html
         # Opciones innecesarias y botones redundantes eliminados
         assert "Saldo Bs." not in inf_html
+        assert "Valor / Asist." not in inf_html
         assert 'id="rep-deuda-btn"' not in inf_html
         assert "+ Memb." not in inf_html
         assert "Ver perfil" not in inf_html
